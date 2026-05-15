@@ -7,6 +7,7 @@ const state = {
   cards: [],
   editingCard: null,
   containers: [],
+  containerBackups: [],
   containerView: "card",
   containerDetail: null,
   logs: { id: "", text: "" },
@@ -102,6 +103,14 @@ function containerName(container) {
   return namesOf(container) || shortId(container.Id);
 }
 
+function containerKey(container) {
+  return container.DockPilot?.key || containerName(container);
+}
+
+function containerColor(container) {
+  return container.DockPilot?.color || "#2f80ed";
+}
+
 function zhContainerState(value) {
   const stateText = String(value || "").toLowerCase();
   const map = {
@@ -189,6 +198,11 @@ function zhError(message) {
     ["destination already exists", "目标路径已经存在。"],
     ["cannot move or copy a directory into itself", "不能把目录移动或复制到自身内部。"],
     ["refusing to operate on a root directory", "不能对根目录执行这个操作。"],
+    ["container key is required", "容器标识不能为空。"],
+    ["backup not found", "没有找到这个备份。"],
+    ["image name is not checkable", "这个镜像名称不能检查更新。"],
+    ["update check timed out", "检查更新超时。"],
+    ["failed to parse docker output", "解析 Docker 输出失败。"],
     ["user not found", "用户不存在。"],
     ["refusing to delete a root directory", "不能删除根目录。"],
     ["request body too large", "请求内容太大。"],
@@ -256,8 +270,9 @@ async function loadDashboard() {
 }
 
 async function loadContainers() {
-  const data = await api("/api/docker/containers");
+  const [data, backups] = await Promise.all([api("/api/docker/containers"), api("/api/docker/backups")]);
   state.containers = data.containers || [];
+  state.containerBackups = backups.backups || [];
 }
 
 async function loadCompose() {
@@ -456,7 +471,7 @@ function renderContainers() {
       <div class="panel-head">
         <div>
           <h3>容器管理</h3>
-          <span class="muted">查看状态、日志，并执行启动、停止、重启操作。</span>
+          <span class="muted">支持自定义颜色、更新检查、配置备份和恢复为 Compose 项目。</span>
         </div>
         <div class="segmented">
           <button class="${state.containerView === "card" ? "active" : ""}" data-action="container-view" data-view="card">卡片</button>
@@ -473,6 +488,7 @@ function renderContainers() {
     </section>
     ${state.containerDetail ? renderContainerDetail() : ""}
     ${state.logs.text ? `<div class="panel" style="margin-top:16px"><div class="panel-head"><h3>日志 ${h(shortId(state.logs.id))}</h3></div><pre class="console">${h(state.logs.text)}</pre></div>` : ""}
+    ${renderContainerBackups()}
   `;
 }
 
@@ -482,18 +498,23 @@ function renderContainerCards() {
       ${state.containers
         .map(
           (item) => `
-          <article class="container-card ${h(item.State)}">
+          <article class="container-card ${h(item.State)}" style="--card-color:${h(containerColor(item))}">
+            <span class="state-dot ${h(item.State)}" title="${h(zhContainerState(item.State))}"></span>
+            ${item.DockPilot?.update_available ? `<button class="upgrade-badge" title="发现可更新镜像" data-action="container-check-update" data-id="${h(item.Id)}">⇧</button>` : `<button class="upgrade-badge muted-badge" title="检查镜像更新" data-action="container-check-update" data-id="${h(item.Id)}">↻</button>`}
             <div class="container-head">
               <div class="container-icon">${h(containerName(item).slice(0, 2).toUpperCase())}</div>
               <div>
                 <strong>${h(containerName(item))}</strong>
                 <span>${h(shortId(item.Id))}</span>
               </div>
-              <span class="status ${h(item.State)}">${h(zhContainerState(item.State))}</span>
             </div>
             <div class="container-meta">
               <div class="meta-row"><span>镜像</span><b>${h(item.Image)}</b></div>
               <div class="meta-row"><span>端口</span><b>${h(formatPorts(item.Ports))}</b></div>
+            </div>
+            <div class="color-row">
+              <span>卡片颜色</span>
+              <input type="color" value="${h(containerColor(item))}" data-action="container-color" data-id="${h(item.Id)}" data-key="${h(containerKey(item))}" />
             </div>
             <div class="card-toolbar">
               <button data-action="container-command" data-command="start" data-id="${h(item.Id)}">启动</button>
@@ -501,6 +522,7 @@ function renderContainerCards() {
               <button data-action="container-command" data-command="restart" data-id="${h(item.Id)}">重启</button>
               <button data-action="container-inspect" data-id="${h(item.Id)}">详情</button>
               <button data-action="container-logs" data-id="${h(item.Id)}">日志</button>
+              <button data-action="container-backup" data-id="${h(item.Id)}">备份</button>
             </div>
           </article>
         `
@@ -529,6 +551,8 @@ function renderContainerTable() {
                   <button data-action="container-command" data-command="start" data-id="${h(item.Id)}">启动</button>
                   <button data-action="container-command" data-command="stop" data-id="${h(item.Id)}">停止</button>
                   <button data-action="container-command" data-command="restart" data-id="${h(item.Id)}">重启</button>
+                  <button data-action="container-check-update" data-id="${h(item.Id)}">检查更新</button>
+                  <button data-action="container-backup" data-id="${h(item.Id)}">备份</button>
                   <button data-action="container-inspect" data-id="${h(item.Id)}">详情</button>
                   <button data-action="container-logs" data-id="${h(item.Id)}">日志</button>
                 </td>
@@ -539,6 +563,37 @@ function renderContainerTable() {
         </tbody>
       </table>
     </div>
+  `;
+}
+
+function renderContainerBackups() {
+  return `
+    <section class="panel detail-panel">
+      <div class="panel-head">
+        <div>
+          <h3>容器备份</h3>
+          <span class="muted">备份会保存容器配置和可恢复的 compose.yml。恢复时创建新 Compose 项目，不会覆盖原容器。</span>
+        </div>
+      </div>
+      ${
+        state.containerBackups.length
+          ? `<div class="backup-list">${state.containerBackups
+              .map(
+                (backup) => `
+                <div class="backup-item">
+                  <div>
+                    <strong>${h(backup.container_name || backup.name)}</strong>
+                    <span>${h(backup.image || "")}</span>
+                    <small>${h(backup.name)} · ${h(backup.created_at || "")}</small>
+                  </div>
+                  <button data-action="container-restore" data-name="${h(backup.name)}">恢复为 Compose</button>
+                </div>
+              `
+              )
+              .join("")}</div>`
+          : `<div class="empty">还没有容器备份。</div>`
+      }
+    </section>
   `;
 }
 
@@ -860,6 +915,29 @@ document.addEventListener("click", async (event) => {
       state.logs = { id: button.dataset.id, text: data.logs || "" };
       render();
     }
+    if (action === "container-check-update") {
+      const data = await api(`/api/docker/containers/${encodeURIComponent(button.dataset.id)}/check-update`, { method: "POST" });
+      state.error = data.ok
+        ? data.update_available
+          ? "发现可更新镜像。"
+          : "当前镜像没有检测到更新。"
+        : zhError(data.message || "检查更新失败。");
+      await refreshCurrent();
+    }
+    if (action === "container-backup") {
+      const data = await api(`/api/docker/containers/${encodeURIComponent(button.dataset.id)}/backup`, { method: "POST" });
+      state.error = `备份已创建：${data.backup.name}`;
+      await refreshCurrent();
+    }
+    if (action === "container-restore") {
+      if (confirm("恢复会创建一个新的 Compose 项目，不会覆盖原容器。继续吗？")) {
+        const data = await api(`/api/docker/backups/${encodeURIComponent(button.dataset.name)}`, { method: "POST" });
+        state.tab = "compose";
+        state.compose.selected = data.project.path;
+        state.error = "已恢复为 Compose 项目，可检查后再启动。";
+        await refreshCurrent();
+      }
+    }
     if (action === "container-inspect") {
       const data = await api(`/api/docker/containers/${encodeURIComponent(button.dataset.id)}/inspect`);
       state.containerDetail = data.container;
@@ -1009,6 +1087,13 @@ document.addEventListener("change", async (event) => {
         },
       });
       event.target.value = "";
+      await refreshCurrent();
+    }
+    if (event.target.dataset.action === "container-color") {
+      await api(`/api/docker/containers/${encodeURIComponent(event.target.dataset.id)}/pref`, {
+        method: "POST",
+        body: { container_key: event.target.dataset.key, color: event.target.value },
+      });
       await refreshCurrent();
     }
   } catch (error) {

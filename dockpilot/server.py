@@ -99,6 +99,7 @@ class Store:
         DATA_DIR.mkdir(parents=True, exist_ok=True)
         (DATA_DIR / "stacks").mkdir(parents=True, exist_ok=True)
         (DATA_DIR / "files").mkdir(parents=True, exist_ok=True)
+        (DATA_DIR / "backups" / "containers").mkdir(parents=True, exist_ok=True)
         with self.connect() as conn:
             conn.executescript(
                 """
@@ -132,6 +133,13 @@ class Store:
                     color TEXT NOT NULL DEFAULT '#2563eb',
                     sort_order INTEGER NOT NULL DEFAULT 0,
                     created_at INTEGER NOT NULL,
+                    updated_at INTEGER NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS container_prefs (
+                    container_key TEXT PRIMARY KEY,
+                    color TEXT NOT NULL DEFAULT '#2f80ed',
+                    update_available INTEGER NOT NULL DEFAULT 0,
+                    update_checked_at INTEGER,
                     updated_at INTEGER NOT NULL
                 );
                 """
@@ -292,6 +300,42 @@ class Store:
             cursor = conn.execute("DELETE FROM cards WHERE id=?", (card_id,))
             if cursor.rowcount == 0:
                 raise LookupError("card not found")
+
+    def get_container_prefs(self) -> dict[str, dict[str, Any]]:
+        with self.connect() as conn:
+            rows = conn.execute("SELECT * FROM container_prefs").fetchall()
+            return {
+                row["container_key"]: {
+                    "color": row["color"],
+                    "update_available": bool(row["update_available"]),
+                    "update_checked_at": row["update_checked_at"],
+                }
+                for row in rows
+            }
+
+    def set_container_pref(self, container_key: str, color: str | None = None, update_available: bool | None = None) -> dict[str, Any]:
+        if not container_key:
+            raise ValueError("container key is required")
+        current = self.get_container_prefs().get(container_key, {})
+        next_color = normalize_color(color or str(current.get("color", "#2f80ed")))
+        next_update = bool(current.get("update_available", False)) if update_available is None else bool(update_available)
+        checked_at = current.get("update_checked_at")
+        if update_available is not None:
+            checked_at = now_ts()
+        with self.connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO container_prefs(container_key,color,update_available,update_checked_at,updated_at)
+                VALUES(?,?,?,?,?)
+                ON CONFLICT(container_key) DO UPDATE SET
+                  color=excluded.color,
+                  update_available=excluded.update_available,
+                  update_checked_at=excluded.update_checked_at,
+                  updated_at=excluded.updated_at
+                """,
+                (container_key, next_color, int(next_update), checked_at, now_ts()),
+            )
+        return {"container_key": container_key, "color": next_color, "update_available": next_update, "update_checked_at": checked_at}
 
 
 def hash_password(password: str, salt: str | None = None, iterations: int = 260_000) -> tuple[str, str, int]:
@@ -575,15 +619,41 @@ class AppHandler(BaseHTTPRequestHandler):
                 return
             if path == "/api/docker/containers" and self.command == "GET":
                 containers = docker.json("GET", "/containers/json", query={"all": "1", "size": "0"})
+                containers = enrich_containers(containers, STORE.get_container_prefs())
                 self.write_json({"containers": containers})
+                return
+            if path == "/api/docker/backups" and self.command == "GET":
+                self.write_json({"backups": list_container_backups()})
                 return
             if path == "/api/docker/images" and self.command == "GET":
                 images = docker.json("GET", "/images/json", query={"all": "0"})
                 self.write_json({"images": images})
                 return
+            if len(parts) == 4 and parts[:3] == ["api", "docker", "backups"]:
+                backup_name = urllib.parse.unquote(parts[3])
+                if self.command == "POST":
+                    self.write_json({"project": restore_container_backup(backup_name, self.compose_roots())})
+                    return
             if len(parts) == 5 and parts[:3] == ["api", "docker", "containers"]:
                 container_id = urllib.parse.unquote(parts[3])
                 action = parts[4]
+                if self.command == "POST" and action == "pref":
+                    data = self.read_json()
+                    key = str(data.get("container_key", container_id)).strip()
+                    color = str(data.get("color", "")).strip() or None
+                    self.write_json({"pref": STORE.set_container_pref(key, color=color)})
+                    return
+                if self.command == "POST" and action == "backup":
+                    inspect_data = docker.json("GET", f"/containers/{urllib.parse.quote(container_id, safe='')}/json")
+                    backup = create_container_backup(inspect_data)
+                    self.write_json({"backup": backup}, status=201)
+                    return
+                if self.command == "POST" and action == "check-update":
+                    inspect_data = docker.json("GET", f"/containers/{urllib.parse.quote(container_id, safe='')}/json")
+                    result = check_container_update(inspect_data)
+                    STORE.set_container_pref(container_key_from_inspect(inspect_data), update_available=bool(result["update_available"]))
+                    self.write_json(result)
+                    return
                 if self.command == "GET" and action == "logs":
                     status, data, reason = docker.request(
                         "GET",
@@ -999,6 +1069,214 @@ def list_directory(target: Path) -> list[dict[str, Any]]:
             }
         )
     return items
+
+
+def container_key_from_summary(container: dict[str, Any]) -> str:
+    names = container.get("Names") or []
+    if names:
+        return str(names[0]).lstrip("/")
+    return str(container.get("Id", ""))[:12]
+
+
+def container_key_from_inspect(container: dict[str, Any]) -> str:
+    name = str(container.get("Name", "")).lstrip("/")
+    return name or str(container.get("Id", ""))[:12]
+
+
+def enrich_containers(containers: list[dict[str, Any]], prefs: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+    for container in containers:
+        key = container_key_from_summary(container)
+        pref = prefs.get(key, {})
+        container["DockPilot"] = {
+            "key": key,
+            "color": pref.get("color", color_from_text(key)),
+            "update_available": bool(pref.get("update_available", False)),
+            "update_checked_at": pref.get("update_checked_at"),
+        }
+    return containers
+
+
+def color_from_text(value: str) -> str:
+    palette = ["#2f80ed", "#16a36a", "#7c5cff", "#f08c2e", "#0f766e", "#d946ef", "#ef4444", "#64748b"]
+    digest = hashlib.sha256(value.encode("utf-8")).digest()
+    return palette[digest[0] % len(palette)]
+
+
+def backup_dir() -> Path:
+    path = DATA_DIR / "backups" / "containers"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def backup_file_path(name: str) -> Path:
+    clean = Path(name).name
+    if not clean.endswith(".json"):
+        clean += ".json"
+    target = (backup_dir() / clean).resolve()
+    if not is_relative_to(target, backup_dir().resolve()):
+        raise ValueError("invalid backup name")
+    return target
+
+
+def list_container_backups() -> list[dict[str, Any]]:
+    backups: list[dict[str, Any]] = []
+    for path in sorted(backup_dir().glob("*.json"), key=lambda item: item.stat().st_mtime, reverse=True):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            stat = path.stat()
+            backups.append(
+                {
+                    "name": path.name,
+                    "container_name": data.get("container_name", ""),
+                    "image": data.get("image", ""),
+                    "created_at": data.get("created_at"),
+                    "size": stat.st_size,
+                }
+            )
+        except (OSError, json.JSONDecodeError):
+            continue
+    return backups
+
+
+def create_container_backup(inspect_data: dict[str, Any]) -> dict[str, Any]:
+    container_name = container_key_from_inspect(inspect_data)
+    image = str((inspect_data.get("Config") or {}).get("Image", ""))
+    created_at = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+    file_name = f"{safe_name(container_name, 'container')}-{created_at}.json"
+    content = {
+        "version": 1,
+        "created_at": created_at,
+        "container_name": container_name,
+        "image": image,
+        "inspect": inspect_data,
+        "compose": compose_from_container_inspect(inspect_data),
+    }
+    path = backup_file_path(file_name)
+    path.write_text(json_dumps(content), encoding="utf-8")
+    return {"name": path.name, "container_name": container_name, "image": image, "created_at": created_at, "size": path.stat().st_size}
+
+
+def restore_container_backup(backup_name: str, roots: list[Path]) -> dict[str, Any]:
+    if not roots:
+        raise ValueError("no compose roots configured")
+    path = backup_file_path(backup_name)
+    if not path.exists():
+        raise FileNotFoundError("backup not found")
+    data = json.loads(path.read_text(encoding="utf-8"))
+    container_name = safe_name(str(data.get("container_name", "container")), "container")
+    stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+    target_dir = (roots[0] / f"restore-{container_name}-{stamp}").resolve()
+    if not is_relative_to(target_dir, roots[0].resolve()):
+        raise ValueError("restore target is outside compose root")
+    target_dir.mkdir(parents=True, exist_ok=False)
+    target_file = target_dir / "compose.yml"
+    target_file.write_text(str(data.get("compose", "")), encoding="utf-8")
+    return compose_project_info(target_file)
+
+
+def quote_yaml(value: Any) -> str:
+    text = str(value)
+    if text == "":
+        return '""'
+    if re.fullmatch(r"[A-Za-z0-9_.:/@+-]+", text):
+        return text
+    return json.dumps(text, ensure_ascii=False)
+
+
+def compose_from_container_inspect(inspect_data: dict[str, Any]) -> str:
+    config = inspect_data.get("Config") or {}
+    host_config = inspect_data.get("HostConfig") or {}
+    network_settings = inspect_data.get("NetworkSettings") or {}
+    name = safe_name(str(inspect_data.get("Name", "")).lstrip("/") or "container", "container")
+    service_name = safe_name(name, "service")
+    lines = ["services:", f"  {service_name}:", f"    image: {quote_yaml(config.get('Image', ''))}", f"    container_name: {quote_yaml(service_name + '-restored')}"]
+    restart = (host_config.get("RestartPolicy") or {}).get("Name")
+    if restart and restart != "no":
+        lines.append(f"    restart: {quote_yaml(restart)}")
+    env = config.get("Env") or []
+    if env:
+        lines.append("    environment:")
+        for item in env:
+            lines.append(f"      - {quote_yaml(item)}")
+    ports = network_settings.get("Ports") or {}
+    port_lines: list[str] = []
+    for container_port, bindings in ports.items():
+        for binding in bindings or []:
+            host_port = binding.get("HostPort")
+            if host_port:
+                port_lines.append(f"{host_port}:{container_port}")
+    if port_lines:
+        lines.append("    ports:")
+        for item in sorted(port_lines):
+            lines.append(f"      - {quote_yaml(item)}")
+    mounts = inspect_data.get("Mounts") or []
+    volume_lines: list[str] = []
+    for mount in mounts:
+        source = mount.get("Source") or mount.get("Name")
+        destination = mount.get("Destination")
+        if source and destination:
+            suffix = ":ro" if not mount.get("RW", True) else ""
+            volume_lines.append(f"{source}:{destination}{suffix}")
+    if volume_lines:
+        lines.append("    volumes:")
+        for item in sorted(volume_lines):
+            lines.append(f"      - {quote_yaml(item)}")
+    networks = (network_settings.get("Networks") or {}).keys()
+    network_list = [name for name in networks if name and name != "bridge"]
+    if network_list:
+        lines.append("    networks:")
+        for network in network_list:
+            lines.append(f"      - {quote_yaml(network)}")
+        lines.append("networks:")
+        for network in network_list:
+            lines.append(f"  {quote_yaml(network)}:")
+            lines.append("    external: true")
+    return "\n".join(lines) + "\n"
+
+
+def check_container_update(inspect_data: dict[str, Any]) -> dict[str, Any]:
+    image = str((inspect_data.get("Config") or {}).get("Image", "")).strip()
+    if not image or image.startswith("sha256:"):
+        return {"ok": False, "update_available": False, "message": "image name is not checkable"}
+    try:
+        local = subprocess.run(
+            ["docker", "image", "inspect", image, "--format", "{{json .RepoDigests}}"],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=30,
+            check=False,
+        )
+        remote = subprocess.run(
+            ["docker", "manifest", "inspect", image],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=60,
+            check=False,
+        )
+    except FileNotFoundError:
+        return {"ok": False, "update_available": False, "message": "docker CLI not found in PATH"}
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "update_available": False, "message": "update check timed out"}
+    if local.returncode != 0:
+        return {"ok": False, "update_available": False, "message": local.stdout.strip()}
+    if remote.returncode != 0:
+        return {"ok": False, "update_available": False, "message": remote.stdout.strip()}
+    try:
+        local_digests = json.loads(local.stdout.strip() or "[]") or []
+        remote_data = json.loads(remote.stdout)
+    except json.JSONDecodeError:
+        return {"ok": False, "update_available": False, "message": "failed to parse docker output"}
+    remote_digest = str(remote_data.get("Descriptor", {}).get("digest") or remote_data.get("config", {}).get("digest") or "")
+    update_available = bool(remote_digest and not any(remote_digest in digest for digest in local_digests))
+    return {
+        "ok": True,
+        "image": image,
+        "update_available": update_available,
+        "remote_digest": remote_digest,
+        "local_digests": local_digests,
+    }
 
 
 def discover_compose_projects(roots: list[Path]) -> list[dict[str, Any]]:

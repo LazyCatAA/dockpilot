@@ -162,6 +162,14 @@ def main() -> int:
             assert_true("Docker socket not found" in docker_status["error"], "无 Docker 环境时应返回明确错误")
         else:
             assert_true("containers" in docker_status, "有 Docker 环境时应返回容器列表")
+        _, pref = client.request(
+            "POST",
+            "/api/docker/containers/fake-container/pref",
+            {"container_key": "fake-container", "color": "#16a36a"},
+        )
+        assert_true(pref["pref"]["color"] == "#16a36a", "容器卡片颜色偏好应可保存")
+        _, backups = client.request("GET", "/api/docker/backups")
+        assert_true("backups" in backups, "容器备份列表应可读取")
 
         client.request("DELETE", f"/api/cards/{card_id}")
         print("PASS: DockPilot 冒烟测试全部通过")

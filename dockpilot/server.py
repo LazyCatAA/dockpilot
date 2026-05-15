@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import binascii
 import hashlib
 import hmac
 import http.client
@@ -138,12 +139,19 @@ class Store:
                 CREATE TABLE IF NOT EXISTS container_prefs (
                     container_key TEXT PRIMARY KEY,
                     color TEXT NOT NULL DEFAULT '#2f80ed',
+                    icon_data TEXT NOT NULL DEFAULT '',
                     update_available INTEGER NOT NULL DEFAULT 0,
                     update_checked_at INTEGER,
                     updated_at INTEGER NOT NULL
                 );
                 """
             )
+            existing_columns = {
+                str(row["name"])
+                for row in conn.execute("PRAGMA table_info(container_prefs)").fetchall()
+            }
+            if "icon_data" not in existing_columns:
+                conn.execute("ALTER TABLE container_prefs ADD COLUMN icon_data TEXT NOT NULL DEFAULT ''")
             defaults = {
                 "docker_socket": DEFAULT_DOCKER_SOCKET,
                 "compose_roots": json_dumps([str(DATA_DIR / "stacks")]),
@@ -307,18 +315,26 @@ class Store:
             return {
                 row["container_key"]: {
                     "color": row["color"],
+                    "icon_data": row["icon_data"],
                     "update_available": bool(row["update_available"]),
                     "update_checked_at": row["update_checked_at"],
                 }
                 for row in rows
             }
 
-    def set_container_pref(self, container_key: str, color: str | None = None, update_available: bool | None = None) -> dict[str, Any]:
+    def set_container_pref(
+        self,
+        container_key: str,
+        color: str | None = None,
+        update_available: bool | None = None,
+        icon_data: str | None = None,
+    ) -> dict[str, Any]:
         if not container_key:
             raise ValueError("container key is required")
         current = self.get_container_prefs().get(container_key, {})
         fallback_color = color_from_text(container_key)
         next_color = normalize_color(color if color is not None else str(current.get("color", fallback_color)))
+        next_icon = str(current.get("icon_data", "")) if icon_data is None else icon_data
         next_update = bool(current.get("update_available", False)) if update_available is None else bool(update_available)
         checked_at = current.get("update_checked_at")
         if update_available is not None:
@@ -326,17 +342,24 @@ class Store:
         with self.connect() as conn:
             conn.execute(
                 """
-                INSERT INTO container_prefs(container_key,color,update_available,update_checked_at,updated_at)
-                VALUES(?,?,?,?,?)
+                INSERT INTO container_prefs(container_key,color,icon_data,update_available,update_checked_at,updated_at)
+                VALUES(?,?,?,?,?,?)
                 ON CONFLICT(container_key) DO UPDATE SET
                   color=excluded.color,
+                  icon_data=excluded.icon_data,
                   update_available=excluded.update_available,
                   update_checked_at=excluded.update_checked_at,
                   updated_at=excluded.updated_at
                 """,
-                (container_key, next_color, int(next_update), checked_at, now_ts()),
+                (container_key, next_color, next_icon, int(next_update), checked_at, now_ts()),
             )
-        return {"container_key": container_key, "color": next_color, "update_available": next_update, "update_checked_at": checked_at}
+        return {
+            "container_key": container_key,
+            "color": next_color,
+            "icon_data": next_icon,
+            "update_available": next_update,
+            "update_checked_at": checked_at,
+        }
 
 
 def hash_password(password: str, salt: str | None = None, iterations: int = 260_000) -> tuple[str, str, int]:
@@ -642,7 +665,15 @@ class AppHandler(BaseHTTPRequestHandler):
                     data = self.read_json()
                     key = str(data.get("container_key", container_id)).strip()
                     color = str(data.get("color", "")).strip() or None
-                    self.write_json({"pref": STORE.set_container_pref(key, color=color)})
+                    icon_data = None
+                    if data.get("clear_icon"):
+                        icon_data = ""
+                    elif data.get("icon_content_base64"):
+                        icon_data = normalize_container_icon(
+                            str(data.get("icon_content_base64", "")),
+                            str(data.get("icon_mime", "")),
+                        )
+                    self.write_json({"pref": STORE.set_container_pref(key, color=color, icon_data=icon_data)})
                     return
                 if self.command == "POST" and action == "backup":
                     inspect_data = docker.json("GET", f"/containers/{urllib.parse.quote(container_id, safe='')}/json")
@@ -651,8 +682,14 @@ class AppHandler(BaseHTTPRequestHandler):
                     return
                 if self.command == "POST" and action == "check-update":
                     inspect_data = docker.json("GET", f"/containers/{urllib.parse.quote(container_id, safe='')}/json")
-                    result = check_container_update(inspect_data)
+                    result = check_container_update(inspect_data, docker.socket_path)
                     STORE.set_container_pref(container_key_from_inspect(inspect_data), update_available=bool(result["update_available"]))
+                    self.write_json(result)
+                    return
+                if self.command == "POST" and action == "update":
+                    result = update_container_image(docker, container_id)
+                    if result.get("ok"):
+                        STORE.set_container_pref(result["container_key"], update_available=False)
                     self.write_json(result)
                     return
                 if self.command == "GET" and action == "logs":
@@ -1091,6 +1128,7 @@ def enrich_containers(containers: list[dict[str, Any]], prefs: dict[str, dict[st
         container["DockPilot"] = {
             "key": key,
             "color": pref.get("color", color_from_text(key)),
+            "icon_data": pref.get("icon_data", ""),
             "update_available": bool(pref.get("update_available", False)),
             "update_checked_at": pref.get("update_checked_at"),
         }
@@ -1101,6 +1139,22 @@ def color_from_text(value: str) -> str:
     palette = ["#2f80ed", "#16a36a", "#7c5cff", "#f08c2e", "#0f766e", "#d946ef", "#ef4444", "#64748b"]
     digest = hashlib.sha256(value.encode("utf-8")).digest()
     return palette[digest[0] % len(palette)]
+
+
+def normalize_container_icon(content_base64: str, mime_type: str) -> str:
+    mime = mime_type.strip().lower()
+    allowed = {"image/png", "image/jpeg", "image/webp", "image/gif"}
+    if mime not in allowed:
+        raise ValueError("unsupported icon image type")
+    try:
+        raw = base64.b64decode(content_base64, validate=True)
+    except (ValueError, binascii.Error) as exc:
+        raise ValueError("invalid icon image data") from exc
+    if not raw:
+        raise ValueError("icon image is empty")
+    if len(raw) > 512 * 1024:
+        raise ValueError("icon image is too large")
+    return f"data:{mime};base64,{base64.b64encode(raw).decode('ascii')}"
 
 
 def backup_dir() -> Path:
@@ -1235,27 +1289,33 @@ def compose_from_container_inspect(inspect_data: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def check_container_update(inspect_data: dict[str, Any]) -> dict[str, Any]:
+def docker_cli_env(socket_path: str | None = None) -> dict[str, str]:
+    env = os.environ.copy()
+    if socket_path:
+        env["DOCKER_HOST"] = f"unix://{socket_path}"
+    return env
+
+
+def run_docker_cli(args: list[str], socket_path: str | None = None, timeout: int = 300, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["docker", *args],
+        cwd=str(cwd) if cwd else None,
+        env=docker_cli_env(socket_path),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        timeout=timeout,
+        check=False,
+    )
+
+
+def check_container_update(inspect_data: dict[str, Any], socket_path: str | None = None) -> dict[str, Any]:
     image = str((inspect_data.get("Config") or {}).get("Image", "")).strip()
     if not image or image.startswith("sha256:"):
         return {"ok": False, "update_available": False, "message": "image name is not checkable"}
     try:
-        local = subprocess.run(
-            ["docker", "image", "inspect", image, "--format", "{{json .RepoDigests}}"],
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            timeout=30,
-            check=False,
-        )
-        remote = subprocess.run(
-            ["docker", "manifest", "inspect", image],
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            timeout=60,
-            check=False,
-        )
+        local = run_docker_cli(["image", "inspect", image, "--format", "{{json .RepoDigests}}"], socket_path, timeout=30)
+        remote = run_docker_cli(["manifest", "inspect", image], socket_path, timeout=60)
     except FileNotFoundError:
         return {"ok": False, "update_available": False, "message": "docker CLI not found in PATH"}
     except subprocess.TimeoutExpired:
@@ -1278,6 +1338,184 @@ def check_container_update(inspect_data: dict[str, Any]) -> dict[str, Any]:
         "remote_digest": remote_digest,
         "local_digests": local_digests,
     }
+
+
+def update_container_image(docker: DockerClient, container_id: str) -> dict[str, Any]:
+    inspect_data = docker.json("GET", f"/containers/{urllib.parse.quote(container_id, safe='')}/json")
+    container_key = container_key_from_inspect(inspect_data)
+    image = str((inspect_data.get("Config") or {}).get("Image", "")).strip()
+    if not image or image.startswith("sha256:"):
+        raise ValueError("image name is not checkable")
+    backup = create_container_backup(inspect_data)
+    compose_result = update_compose_managed_container(inspect_data, docker.socket_path)
+    if compose_result:
+        compose_result.update({"container_key": container_key, "backup": backup})
+        return compose_result
+    try:
+        pull = run_docker_cli(["pull", image], docker.socket_path, timeout=600)
+    except FileNotFoundError:
+        return {
+            "ok": False,
+            "container_key": container_key,
+            "backup": backup,
+            "method": "standalone",
+            "output": "",
+            "message": "docker CLI not found in PATH",
+        }
+    except subprocess.TimeoutExpired as exc:
+        return {
+            "ok": False,
+            "container_key": container_key,
+            "backup": backup,
+            "method": "standalone",
+            "output": str(exc.stdout or ""),
+            "message": "container update timed out",
+        }
+    if pull.returncode != 0:
+        return {
+            "ok": False,
+            "container_key": container_key,
+            "backup": backup,
+            "method": "standalone",
+            "output": pull.stdout,
+            "message": "docker pull failed",
+        }
+    result = recreate_standalone_container(docker, inspect_data)
+    result.update({"container_key": container_key, "backup": backup, "pull_output": pull.stdout})
+    return result
+
+
+def update_compose_managed_container(inspect_data: dict[str, Any], socket_path: str | None = None) -> dict[str, Any] | None:
+    config = inspect_data.get("Config") or {}
+    labels = config.get("Labels") or {}
+    service = str(labels.get("com.docker.compose.service", "")).strip()
+    config_files = str(labels.get("com.docker.compose.project.config_files", "")).strip()
+    if not service or not config_files:
+        return None
+    compose_file = Path(config_files.split(",", 1)[0]).expanduser()
+    if not compose_file.exists():
+        return None
+    working_dir = Path(str(labels.get("com.docker.compose.project.working_dir", ""))).expanduser()
+    cwd = working_dir if str(working_dir) != "." and working_dir.exists() else compose_file.parent
+    try:
+        pull = run_docker_cli(["compose", "-f", str(compose_file), "pull", service], socket_path, timeout=600, cwd=cwd)
+        if pull.returncode != 0:
+            return {
+                "ok": False,
+                "method": "compose",
+                "output": pull.stdout,
+                "message": "docker compose pull failed",
+            }
+        up = run_docker_cli(
+            ["compose", "-f", str(compose_file), "up", "-d", "--force-recreate", service],
+            socket_path,
+            timeout=600,
+            cwd=cwd,
+        )
+    except FileNotFoundError:
+        return {"ok": False, "method": "compose", "output": "", "message": "docker CLI not found in PATH"}
+    except subprocess.TimeoutExpired as exc:
+        return {"ok": False, "method": "compose", "output": str(exc.stdout or ""), "message": "container update timed out"}
+    return {
+        "ok": up.returncode == 0,
+        "method": "compose",
+        "output": pull.stdout + "\n" + up.stdout,
+        "message": "updated" if up.returncode == 0 else "docker compose up failed",
+    }
+
+
+def recreate_standalone_container(docker: DockerClient, inspect_data: dict[str, Any]) -> dict[str, Any]:
+    container_id = str(inspect_data.get("Id", ""))
+    original_name = container_key_from_inspect(inspect_data)
+    backup_name = safe_name(f"{original_name}-old-{time.strftime('%Y%m%d-%H%M%S')}-{container_id[:8]}", "old-container")
+    was_running = bool((inspect_data.get("State") or {}).get("Running"))
+    new_id = ""
+    try:
+        if was_running:
+            status, data, reason = docker.request(
+                "POST",
+                f"/containers/{urllib.parse.quote(container_id, safe='')}/stop",
+                query={"t": "30"},
+                timeout=40,
+            )
+            if status not in (200, 204, 304):
+                raise RuntimeError(data.decode("utf-8", "replace") or reason)
+        status, data, reason = docker.request(
+            "POST",
+            f"/containers/{urllib.parse.quote(container_id, safe='')}/rename",
+            query={"name": backup_name},
+        )
+        if status not in (200, 204):
+            raise RuntimeError(data.decode("utf-8", "replace") or reason)
+        create_body = container_create_body_from_inspect(inspect_data)
+        created = docker.json("POST", "/containers/create", query={"name": original_name}, body=create_body)
+        new_id = str(created.get("Id", ""))
+        if was_running:
+            status, data, reason = docker.request("POST", f"/containers/{urllib.parse.quote(new_id, safe='')}/start")
+            if status not in (200, 204, 304):
+                raise RuntimeError(data.decode("utf-8", "replace") or reason)
+        status, _, _ = docker.request(
+            "DELETE",
+            f"/containers/{urllib.parse.quote(container_id, safe='')}",
+            query={"force": "0", "v": "0"},
+        )
+        return {
+            "ok": True,
+            "method": "standalone",
+            "message": "updated",
+            "old_container": backup_name if status not in (200, 204) else "",
+            "new_container_id": new_id,
+        }
+    except Exception:
+        rollback_standalone_update(docker, original_name, backup_name, new_id, was_running)
+        raise
+
+
+def rollback_standalone_update(docker: DockerClient, original_name: str, backup_name: str, new_id: str, was_running: bool) -> None:
+    if new_id:
+        try:
+            docker.request("DELETE", f"/containers/{urllib.parse.quote(new_id, safe='')}", query={"force": "1", "v": "0"})
+        except Exception:
+            pass
+    try:
+        docker.request("POST", f"/containers/{urllib.parse.quote(backup_name, safe='')}/rename", query={"name": original_name})
+    except Exception:
+        pass
+    if was_running:
+        try:
+            docker.request("POST", f"/containers/{urllib.parse.quote(original_name, safe='')}/start")
+        except Exception:
+            pass
+
+
+def container_create_body_from_inspect(inspect_data: dict[str, Any]) -> dict[str, Any]:
+    config = dict(inspect_data.get("Config") or {})
+    host_config = dict(inspect_data.get("HostConfig") or {})
+    networking_config = networking_config_from_inspect(inspect_data)
+    body: dict[str, Any] = {
+        **config,
+        "HostConfig": host_config,
+    }
+    if networking_config:
+        body["NetworkingConfig"] = networking_config
+    return body
+
+
+def networking_config_from_inspect(inspect_data: dict[str, Any]) -> dict[str, Any]:
+    network_settings = inspect_data.get("NetworkSettings") or {}
+    networks = network_settings.get("Networks") or {}
+    endpoints: dict[str, Any] = {}
+    for network_name, network in networks.items():
+        endpoint: dict[str, Any] = {}
+        aliases = [
+            str(alias)
+            for alias in network.get("Aliases") or []
+            if alias and str(alias) != str(inspect_data.get("Id", ""))[:12]
+        ]
+        if aliases:
+            endpoint["Aliases"] = aliases
+        endpoints[str(network_name)] = endpoint
+    return {"EndpointsConfig": endpoints} if endpoints else {}
 
 
 def discover_compose_projects(roots: list[Path]) -> list[dict[str, Any]]:

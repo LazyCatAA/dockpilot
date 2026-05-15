@@ -168,6 +168,16 @@ def main() -> int:
             {"container_key": "fake-container", "color": "#16a36a"},
         )
         assert_true(pref["pref"]["color"] == "#16a36a", "容器卡片颜色偏好应可保存")
+        _, icon_pref = client.request(
+            "POST",
+            "/api/docker/containers/fake-container/pref",
+            {
+                "container_key": "fake-container",
+                "icon_mime": "image/gif",
+                "icon_content_base64": "R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==",
+            },
+        )
+        assert_true(icon_pref["pref"]["icon_data"].startswith("data:image/gif;base64,"), "容器自定义图标应可保存")
         _, backups = client.request("GET", "/api/docker/backups")
         assert_true("backups" in backups, "容器备份列表应可读取")
 

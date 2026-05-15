@@ -317,7 +317,8 @@ class Store:
         if not container_key:
             raise ValueError("container key is required")
         current = self.get_container_prefs().get(container_key, {})
-        next_color = normalize_color(color or str(current.get("color", "#2f80ed")))
+        fallback_color = color_from_text(container_key)
+        next_color = normalize_color(color if color is not None else str(current.get("color", fallback_color)))
         next_update = bool(current.get("update_available", False)) if update_available is None else bool(update_available)
         checked_at = current.get("update_checked_at")
         if update_available is not None:

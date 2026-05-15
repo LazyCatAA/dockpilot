@@ -1058,12 +1058,19 @@ td.actions button {
     flex-direction: column;
   }
 
-  button:not(.circle) {
+  button:not(.circle):not(.upgrade-badge) {
     width: 100%;
   }
 
   .container-card {
-    padding: 14px 12px 14px 16px;
+    padding: 40px 12px 14px 16px;
+  }
+
+  .upgrade-badge {
+    width: 30px;
+    min-width: 30px;
+    height: 30px;
+    min-height: 30px;
   }
 
   .container-head {
@@ -1078,6 +1085,11 @@ td.actions button {
   .card-toolbar {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .backup-item {
+    grid-template-columns: 1fr;
+    align-items: stretch;
   }
 
   .editor-shell {

@@ -40,6 +40,34 @@ function h(value) {
     .replaceAll("'", "&#039;");
 }
 
+function highlightYaml(value) {
+  return String(value || "")
+    .split("\n")
+    .map((line) => {
+      if (/^\s*#/.test(line)) return `<span class="yaml-comment">${h(line)}</span>`;
+      let escaped = h(line);
+      escaped = escaped.replace(
+        /^(\s*)([A-Za-z0-9_.-]+)(:)/,
+        `$1<span class="yaml-key">$2</span><span class="yaml-punc">$3</span>`
+      );
+      escaped = escaped.replace(/(&quot;[^&]*?&quot;|'[^']*?')/g, `<span class="yaml-string">$1</span>`);
+      escaped = escaped.replace(/\b(true|false|null|yes|no|on|off)\b/gi, `<span class="yaml-bool">$1</span>`);
+      escaped = escaped.replace(/(^|\s)(-\s)/g, `$1<span class="yaml-list">$2</span>`);
+      escaped = escaped.replace(/(#.*)$/g, `<span class="yaml-comment">$1</span>`);
+      return escaped;
+    })
+    .join("\n");
+}
+
+function syncComposeHighlight() {
+  const editor = document.getElementById("composeEditor");
+  const highlight = document.getElementById("composeHighlight");
+  if (!editor || !highlight) return;
+  highlight.innerHTML = `${highlightYaml(editor.value)}\n`;
+  highlight.scrollTop = editor.scrollTop;
+  highlight.scrollLeft = editor.scrollLeft;
+}
+
 function fmtBytes(bytes) {
   const value = Number(bytes || 0);
   if (value < 1024) return `${value} B`;
@@ -454,7 +482,7 @@ function renderContainerCards() {
       ${state.containers
         .map(
           (item) => `
-          <article class="container-card">
+          <article class="container-card ${h(item.State)}">
             <div class="container-head">
               <div class="container-icon">${h(containerName(item).slice(0, 2).toUpperCase())}</div>
               <div>
@@ -463,8 +491,10 @@ function renderContainerCards() {
               </div>
               <span class="status ${h(item.State)}">${h(zhContainerState(item.State))}</span>
             </div>
-            <div class="meta-row"><span>镜像</span><b>${h(item.Image)}</b></div>
-            <div class="meta-row"><span>端口</span><b>${h(formatPorts(item.Ports))}</b></div>
+            <div class="container-meta">
+              <div class="meta-row"><span>镜像</span><b>${h(item.Image)}</b></div>
+              <div class="meta-row"><span>端口</span><b>${h(formatPorts(item.Ports))}</b></div>
+            </div>
             <div class="card-toolbar">
               <button data-action="container-command" data-command="start" data-id="${h(item.Id)}">启动</button>
               <button data-action="container-command" data-command="stop" data-id="${h(item.Id)}">停止</button>
@@ -599,7 +629,10 @@ function renderCompose() {
             <button data-action="compose-action" data-command="down" class="danger">停止</button>
           </div>
         </div>
-        <textarea id="composeEditor" spellcheck="false">${h(state.compose.content)}</textarea>
+        <div class="editor-shell">
+          <pre id="composeHighlight" class="code-highlight" aria-hidden="true">${highlightYaml(state.compose.content)}\n</pre>
+          <textarea id="composeEditor" class="code-input" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off">${h(state.compose.content)}</textarea>
+        </div>
         <div class="toolbar"><button data-action="compose-save" class="primary">保存 compose.yml</button></div>
         ${state.compose.output ? `<pre class="console">${h(state.compose.output)}</pre>` : ""}
       </section>
@@ -983,6 +1016,18 @@ document.addEventListener("change", async (event) => {
     render();
   }
 });
+
+document.addEventListener("input", (event) => {
+  if (event.target.id === "composeEditor") syncComposeHighlight();
+});
+
+document.addEventListener(
+  "scroll",
+  (event) => {
+    if (event.target.id === "composeEditor") syncComposeHighlight();
+  },
+  true
+);
 
 function bytesToBase64(buffer) {
   const bytes = new Uint8Array(buffer);

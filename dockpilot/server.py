@@ -10,6 +10,7 @@ import mimetypes
 import os
 import re
 import secrets
+import shlex
 import shutil
 import socket
 import sqlite3
@@ -594,7 +595,7 @@ class AppHandler(BaseHTTPRequestHandler):
                 "docker": docker_status,
                 "containers": {"total": len(containers), "running": running, "stopped": max(len(containers) - running, 0)},
                 "cards": len(STORE.list_cards()),
-                "compose_projects": len(discover_compose_projects(self.compose_roots())),
+                "compose_projects": len(discover_compose_projects(self.compose_roots(), containers)),
             }
         )
 
@@ -736,7 +737,12 @@ class AppHandler(BaseHTTPRequestHandler):
     def api_compose(self, path: str, parsed: urllib.parse.ParseResult) -> None:
         try:
             if path == "/api/compose/projects" and self.command == "GET":
-                self.write_json({"projects": discover_compose_projects(self.compose_roots())})
+                containers = []
+                try:
+                    containers = self.docker().json("GET", "/containers/json", query={"all": "1", "size": "0"})
+                except Exception:
+                    containers = []
+                self.write_json({"projects": discover_compose_projects(self.compose_roots(), containers)})
                 return
             if path == "/api/compose/projects" and self.command == "POST":
                 data = self.read_json()
@@ -751,6 +757,30 @@ class AppHandler(BaseHTTPRequestHandler):
                 target_file = target_dir / "compose.yml"
                 target_file.write_text(content, encoding="utf-8")
                 self.write_json({"project": compose_project_info(target_file)}, status=201)
+                return
+            if path == "/api/compose/from-command" and self.command == "POST":
+                data = self.read_json()
+                roots = self.compose_roots()
+                if not roots:
+                    self.write_json({"error": "no compose roots configured"}, status=400)
+                    return
+                name = safe_name(str(data.get("name", "command-stack")), "command-stack")
+                command = str(data.get("command", "")).strip()
+                deploy = bool(data.get("deploy"))
+                content = compose_from_docker_run(command, name)
+                target_dir = roots[0] / name
+                target_dir.mkdir(parents=True, exist_ok=False)
+                target_file = target_dir / "compose.yml"
+                target_file.write_text(content, encoding="utf-8")
+                output = ""
+                ok = True
+                code = 0
+                if deploy:
+                    result = run_compose_action(target_file, "up")
+                    output = result.get("output", "")
+                    ok = bool(result.get("ok"))
+                    code = int(result.get("code", 0))
+                self.write_json({"ok": ok, "code": code, "output": output, "project": compose_project_info(target_file)}, status=201)
                 return
             if path == "/api/compose/file" and self.command == "GET":
                 file_path = self.compose_file_from_query(parsed)
@@ -1152,7 +1182,7 @@ def normalize_container_icon(content_base64: str, mime_type: str) -> str:
         raise ValueError("invalid icon image data") from exc
     if not raw:
         raise ValueError("icon image is empty")
-    if len(raw) > 512 * 1024:
+    if len(raw) > 6 * 1024 * 1024:
         raise ValueError("icon image is too large")
     return f"data:{mime};base64,{base64.b64encode(raw).decode('ascii')}"
 
@@ -1313,31 +1343,36 @@ def check_container_update(inspect_data: dict[str, Any], socket_path: str | None
     image = str((inspect_data.get("Config") or {}).get("Image", "")).strip()
     if not image or image.startswith("sha256:"):
         return {"ok": False, "update_available": False, "message": "image name is not checkable"}
+    container_image_id = str(inspect_data.get("Image", "")).strip()
     try:
-        local = run_docker_cli(["image", "inspect", image, "--format", "{{json .RepoDigests}}"], socket_path, timeout=30)
-        remote = run_docker_cli(["manifest", "inspect", image], socket_path, timeout=60)
+        before = run_docker_cli(["image", "inspect", image, "--format", "{{.Id}}"], socket_path, timeout=30)
+        pull = run_docker_cli(["pull", image], socket_path, timeout=600)
+        after = run_docker_cli(["image", "inspect", image, "--format", "{{.Id}}"], socket_path, timeout=30)
     except FileNotFoundError:
         return {"ok": False, "update_available": False, "message": "docker CLI not found in PATH"}
     except subprocess.TimeoutExpired:
         return {"ok": False, "update_available": False, "message": "update check timed out"}
-    if local.returncode != 0:
-        return {"ok": False, "update_available": False, "message": local.stdout.strip()}
-    if remote.returncode != 0:
-        return {"ok": False, "update_available": False, "message": remote.stdout.strip()}
-    try:
-        local_digests = json.loads(local.stdout.strip() or "[]") or []
-        remote_data = json.loads(remote.stdout)
-    except json.JSONDecodeError:
-        return {"ok": False, "update_available": False, "message": "failed to parse docker output"}
-    remote_digest = str(remote_data.get("Descriptor", {}).get("digest") or remote_data.get("config", {}).get("digest") or "")
-    update_available = bool(remote_digest and not any(remote_digest in digest for digest in local_digests))
+    if pull.returncode != 0:
+        return {"ok": False, "update_available": False, "message": pull.stdout.strip() or "docker pull failed"}
+    if after.returncode != 0:
+        return {"ok": False, "update_available": False, "message": after.stdout.strip()}
+    before_id = before.stdout.strip() if before.returncode == 0 else ""
+    latest_id = after.stdout.strip()
+    update_available = bool(container_image_id and latest_id and normalize_image_id(container_image_id) != normalize_image_id(latest_id))
     return {
         "ok": True,
         "image": image,
         "update_available": update_available,
-        "remote_digest": remote_digest,
-        "local_digests": local_digests,
+        "container_image_id": container_image_id,
+        "previous_local_image_id": before_id,
+        "latest_image_id": latest_id,
+        "pull_output": pull.stdout,
     }
+
+
+def normalize_image_id(value: str) -> str:
+    text = value.strip()
+    return text[7:] if text.startswith("sha256:") else text
 
 
 def update_container_image(docker: DockerClient, container_id: str) -> dict[str, Any]:
@@ -1518,9 +1553,256 @@ def networking_config_from_inspect(inspect_data: dict[str, Any]) -> dict[str, An
     return {"EndpointsConfig": endpoints} if endpoints else {}
 
 
-def discover_compose_projects(roots: list[Path]) -> list[dict[str, Any]]:
+def compose_from_docker_run(command: str, project_name: str) -> str:
+    tokens = shlex.split(command)
+    if not tokens:
+        raise ValueError("command is required")
+    if tokens and tokens[0] == "sudo":
+        tokens = tokens[1:]
+    if tokens[:2] == ["docker", "run"]:
+        tokens = tokens[2:]
+    elif tokens[:3] == ["docker", "container", "run"]:
+        tokens = tokens[3:]
+    else:
+        raise ValueError("command must start with docker run")
+    service_name = safe_name(project_name, "app")
+    container_name = service_name
+    image = ""
+    command_parts: list[str] = []
+    ports: list[str] = []
+    volumes: list[str] = []
+    environment: list[str] = []
+    restart = ""
+    network = ""
+    hostname = ""
+    user = ""
+    workdir = ""
+    entrypoint = ""
+    add_hosts: list[str] = []
+    cap_add: list[str] = []
+    devices: list[str] = []
+    dns: list[str] = []
+    privileged = False
+    init = False
+    tty = False
+    stdin_open = False
+    i = 0
+    while i < len(tokens):
+        token = tokens[i]
+        if token in {"-d", "--detach", "--rm"}:
+            i += 1
+            continue
+        if token in {"-i", "--interactive"}:
+            stdin_open = True
+            i += 1
+            continue
+        if token in {"-t", "--tty"}:
+            tty = True
+            i += 1
+            continue
+        if token == "--privileged":
+            privileged = True
+            i += 1
+            continue
+        if token == "--init":
+            init = True
+            i += 1
+            continue
+        if token.startswith("--name="):
+            container_name = safe_name(token.split("=", 1)[1], service_name)
+            i += 1
+            continue
+        if token == "--name":
+            container_name = safe_name(tokens[i + 1], service_name)
+            i += 2
+            continue
+        if token in {"-p", "--publish"}:
+            ports.append(tokens[i + 1])
+            i += 2
+            continue
+        if token.startswith("-p") and token != "-p":
+            ports.append(token[2:])
+            i += 1
+            continue
+        if token in {"-v", "--volume"}:
+            volumes.append(tokens[i + 1])
+            i += 2
+            continue
+        if token.startswith("-v") and token != "-v":
+            volumes.append(token[2:])
+            i += 1
+            continue
+        if token in {"-e", "--env"}:
+            environment.append(tokens[i + 1])
+            i += 2
+            continue
+        if token.startswith("-e") and token != "-e":
+            environment.append(token[2:])
+            i += 1
+            continue
+        if token == "--restart":
+            restart = tokens[i + 1]
+            i += 2
+            continue
+        if token.startswith("--restart="):
+            restart = token.split("=", 1)[1]
+            i += 1
+            continue
+        if token == "--network":
+            network = tokens[i + 1]
+            i += 2
+            continue
+        if token.startswith("--network="):
+            network = token.split("=", 1)[1]
+            i += 1
+            continue
+        if token == "--hostname":
+            hostname = tokens[i + 1]
+            i += 2
+            continue
+        if token.startswith("--hostname="):
+            hostname = token.split("=", 1)[1]
+            i += 1
+            continue
+        if token in {"-u", "--user"}:
+            user = tokens[i + 1]
+            i += 2
+            continue
+        if token.startswith("--user="):
+            user = token.split("=", 1)[1]
+            i += 1
+            continue
+        if token in {"-w", "--workdir"}:
+            workdir = tokens[i + 1]
+            i += 2
+            continue
+        if token.startswith("--workdir="):
+            workdir = token.split("=", 1)[1]
+            i += 1
+            continue
+        if token == "--entrypoint":
+            entrypoint = tokens[i + 1]
+            i += 2
+            continue
+        if token.startswith("--entrypoint="):
+            entrypoint = token.split("=", 1)[1]
+            i += 1
+            continue
+        if token == "--add-host":
+            add_hosts.append(tokens[i + 1])
+            i += 2
+            continue
+        if token.startswith("--add-host="):
+            add_hosts.append(token.split("=", 1)[1])
+            i += 1
+            continue
+        if token == "--cap-add":
+            cap_add.append(tokens[i + 1])
+            i += 2
+            continue
+        if token.startswith("--cap-add="):
+            cap_add.append(token.split("=", 1)[1])
+            i += 1
+            continue
+        if token == "--device":
+            devices.append(tokens[i + 1])
+            i += 2
+            continue
+        if token.startswith("--device="):
+            devices.append(token.split("=", 1)[1])
+            i += 1
+            continue
+        if token == "--dns":
+            dns.append(tokens[i + 1])
+            i += 2
+            continue
+        if token.startswith("--dns="):
+            dns.append(token.split("=", 1)[1])
+            i += 1
+            continue
+        if token in {"--pull", "--platform", "--env-file", "--label", "--log-driver", "--log-opt", "--cpus", "--memory", "--memory-swap"}:
+            i += 2
+            continue
+        if any(token.startswith(prefix + "=") for prefix in {"--pull", "--platform", "--env-file", "--label", "--log-driver", "--log-opt", "--cpus", "--memory", "--memory-swap"}):
+            i += 1
+            continue
+        if token == "--":
+            command_parts = tokens[i + 1 :]
+            break
+        if token.startswith("-"):
+            i += 1
+            continue
+        image = token
+        command_parts = tokens[i + 1 :]
+        break
+    if not image:
+        raise ValueError("docker image is required")
+    lines = ["services:", f"  {service_name}:", f"    image: {quote_yaml(image)}", f"    container_name: {quote_yaml(container_name)}"]
+    if restart and restart != "no":
+        lines.append(f"    restart: {quote_yaml(restart)}")
+    if ports:
+        lines.append("    ports:")
+        for item in ports:
+            lines.append(f"      - {quote_yaml(item)}")
+    if volumes:
+        lines.append("    volumes:")
+        for item in volumes:
+            lines.append(f"      - {quote_yaml(item)}")
+    if environment:
+        lines.append("    environment:")
+        for item in environment:
+            lines.append(f"      - {quote_yaml(item)}")
+    if hostname:
+        lines.append(f"    hostname: {quote_yaml(hostname)}")
+    if user:
+        lines.append(f"    user: {quote_yaml(user)}")
+    if workdir:
+        lines.append(f"    working_dir: {quote_yaml(workdir)}")
+    if entrypoint:
+        lines.append(f"    entrypoint: {quote_yaml(entrypoint)}")
+    if command_parts:
+        lines.append("    command:")
+        for item in command_parts:
+            lines.append(f"      - {quote_yaml(item)}")
+    if add_hosts:
+        lines.append("    extra_hosts:")
+        for item in add_hosts:
+            lines.append(f"      - {quote_yaml(item)}")
+    if cap_add:
+        lines.append("    cap_add:")
+        for item in cap_add:
+            lines.append(f"      - {quote_yaml(item)}")
+    if devices:
+        lines.append("    devices:")
+        for item in devices:
+            lines.append(f"      - {quote_yaml(item)}")
+    if dns:
+        lines.append("    dns:")
+        for item in dns:
+            lines.append(f"      - {quote_yaml(item)}")
+    if privileged:
+        lines.append("    privileged: true")
+    if init:
+        lines.append("    init: true")
+    if tty:
+        lines.append("    tty: true")
+    if stdin_open:
+        lines.append("    stdin_open: true")
+    if network and network not in {"bridge", "host", "none"}:
+        lines.append("    networks:")
+        lines.append(f"      - {quote_yaml(network)}")
+        lines.append("networks:")
+        lines.append(f"  {quote_yaml(network)}:")
+        lines.append("    external: true")
+    elif network in {"host", "none"}:
+        lines.append(f"    network_mode: {quote_yaml(network)}")
+    return "\n".join(lines) + "\n"
+
+
+def discover_compose_projects(roots: list[Path], containers: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
     projects: list[dict[str, Any]] = []
     seen: set[Path] = set()
+    containers = containers or []
     for root in roots:
         if not root.exists():
             continue
@@ -1536,22 +1818,64 @@ def discover_compose_projects(roots: list[Path]) -> list[dict[str, Any]]:
                     compose_file = (current / name).resolve()
                     if compose_file not in seen:
                         seen.add(compose_file)
-                        projects.append(compose_project_info(compose_file))
+                        projects.append(compose_project_info(compose_file, containers))
                     break
     projects.sort(key=lambda item: item["name"].lower())
     return projects
 
 
-def compose_project_info(compose_file: Path) -> dict[str, Any]:
+def compose_project_info(compose_file: Path, containers: list[dict[str, Any]] | None = None) -> dict[str, Any]:
     content = compose_file.read_text(encoding="utf-8", errors="replace") if compose_file.exists() else ""
+    services = parse_compose_services(content)
     return {
         "name": compose_file.parent.name,
         "path": str(compose_file),
         "directory": str(compose_file.parent),
         "file": compose_file.name,
-        "services": parse_compose_services(content),
+        "services": services,
+        "containers": compose_service_statuses(compose_file, services, containers or []),
         "modified": compose_file.stat().st_mtime if compose_file.exists() else None,
     }
+
+
+def compose_service_statuses(compose_file: Path, services: list[str], containers: list[dict[str, Any]]) -> list[dict[str, str]]:
+    by_service: dict[str, dict[str, str]] = {}
+    compose_file_text = str(compose_file.resolve())
+    compose_dir = str(compose_file.parent.resolve())
+    for container in containers:
+        labels = container.get("Labels") or {}
+        if not isinstance(labels, dict):
+            labels = {}
+        service = str(labels.get("com.docker.compose.service", "")).strip()
+        config_files = [
+            str(Path(item.strip()).expanduser().resolve())
+            for item in str(labels.get("com.docker.compose.project.config_files", "")).split(",")
+            if item.strip()
+        ]
+        working_dir = str(labels.get("com.docker.compose.project.working_dir", "")).strip()
+        same_file = compose_file_text in config_files
+        same_dir = bool(working_dir) and str(Path(working_dir).expanduser().resolve()) == compose_dir
+        if not service or (not same_file and not same_dir):
+            continue
+        by_service[service] = {
+            "service": service,
+            "name": container_key_from_summary(container),
+            "state": str(container.get("State", "")),
+            "status": str(container.get("Status", "")),
+            "id": str(container.get("Id", "")),
+        }
+    result: list[dict[str, str]] = []
+    for service in services:
+        result.append(
+            by_service.get(
+                service,
+                {"service": service, "name": "", "state": "missing", "status": "未部署", "id": ""},
+            )
+        )
+    for service, item in by_service.items():
+        if service not in services:
+            result.append(item)
+    return result
 
 
 def parse_compose_services(content: str) -> list[str]:

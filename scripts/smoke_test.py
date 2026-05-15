@@ -129,6 +129,15 @@ def main() -> int:
             "/api/compose/file",
             {"path": project["project"]["path"], "content": compose_file["content"] + "\n# smoke\n"},
         )
+        _, from_command = client.request(
+            "POST",
+            "/api/compose/from-command",
+            {"name": "cmd-demo", "command": "docker run -d --name cmd-demo -p 8090:80 -e TZ=Asia/Shanghai nginx:alpine"},
+            expect=201,
+        )
+        _, command_compose = client.request("GET", f"/api/compose/file?path={urllib.parse.quote(from_command['project']['path'], safe='')}")
+        assert_true("image: nginx:alpine" in command_compose["content"], "docker run 命令应可转换为 Compose")
+        assert_true("8090:80" in command_compose["content"], "docker run 端口应写入 Compose")
 
         client.request("PUT", "/api/files/write", {"root": "files", "path": "hello.txt", "content": "测试通过"})
         _, read_file = client.request("GET", "/api/files/read?root=files&path=hello.txt")

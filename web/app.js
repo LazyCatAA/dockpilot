@@ -9,7 +9,9 @@ const state = {
   containers: [],
   containerBackups: [],
   containerView: "card",
+  containerFilter: "all",
   containerDetail: null,
+  sidebarCollapsed: false,
   logs: { id: "", text: "" },
   compose: { projects: [], selected: "", content: "", output: "" },
   files: { roots: [], root: "", path: "", items: [], editPath: "", content: "" },
@@ -19,14 +21,14 @@ const state = {
 const tabs = [
   ["dashboard", "总览"],
   ["containers", "容器"],
-  ["compose", "编排"],
+  ["compose", "Compose"],
   ["files", "文件"],
   ["settings", "设置"],
 ];
 
 const navGroups = [
   { title: "发现", items: [["dashboard", "首页导航", "⌂"]] },
-  { title: "Docker", items: [["containers", "容器管理", "▦"], ["compose", "编排管理", "◇"]] },
+  { title: "Docker", items: [["containers", "容器管理", "▦"], ["compose", "Compose管理", "◇"]] },
   { title: "系统", items: [["files", "文件管理", "≡"], ["settings", "系统设置", "⚙"]] },
 ];
 
@@ -147,6 +149,37 @@ function containerStats() {
   return { total, running, stopped: Math.max(total - running, 0), updates };
 }
 
+function filteredContainers() {
+  if (state.containerFilter === "running") {
+    return state.containers.filter((item) => String(item.State).toLowerCase() === "running");
+  }
+  if (state.containerFilter === "stopped") {
+    return state.containers.filter((item) => String(item.State).toLowerCase() !== "running");
+  }
+  if (state.containerFilter === "updates") {
+    return state.containers.filter((item) => item.DockPilot?.update_available);
+  }
+  return state.containers;
+}
+
+function containerFilterTitle() {
+  const map = { all: "全部容器", running: "运行中容器", stopped: "已停止容器", updates: "有更新容器" };
+  return map[state.containerFilter] || "全部容器";
+}
+
+function zhServiceState(value) {
+  const stateText = String(value || "").toLowerCase();
+  if (stateText === "missing") return "未部署";
+  return zhContainerState(stateText);
+}
+
+function projectStateTone(project) {
+  const items = project.containers || [];
+  if (!items.length || items.every((item) => item.state === "missing")) return "missing";
+  if (items.some((item) => String(item.state).toLowerCase() === "running")) return "running";
+  return "stopped";
+}
+
 function zhDurationText(text) {
   const normalized = String(text || "").toLowerCase();
   const match = normalized.match(/(\d+)\s*(second|minute|hour|day|week|month|year)s?/);
@@ -255,13 +288,16 @@ function zhError(message) {
     ["unsupported icon image type", "只支持 PNG、JPG、WebP 或 GIF 图标。"],
     ["invalid icon image data", "图标文件读取失败。"],
     ["icon image is empty", "图标文件为空。"],
-    ["icon image is too large", "图标不能超过 512KB。"],
+    ["icon image is too large", "图标不能超过 6MB。"],
     ["update check timed out", "检查更新超时。"],
     ["container update timed out", "容器更新超时。"],
     ["docker pull failed", "镜像拉取失败。"],
     ["docker compose pull failed", "Compose 拉取镜像失败。"],
     ["docker compose up failed", "Compose 重建容器失败。"],
     ["failed to parse docker output", "解析 Docker 输出失败。"],
+    ["command is required", "请输入部署命令。"],
+    ["command must start with docker run", "命令必须以 docker run 开头。"],
+    ["docker image is required", "命令中没有识别到镜像名称。"],
     ["user not found", "用户不存在。"],
     ["refusing to delete a root directory", "不能删除根目录。"],
     ["request body too large", "请求内容太大。"],
@@ -339,6 +375,9 @@ async function loadCompose() {
   state.compose.projects = data.projects || [];
   if (!state.compose.selected && state.compose.projects[0]) {
     await selectCompose(state.compose.projects[0].path);
+  } else if (state.compose.selected && !state.compose.projects.some((project) => project.path === state.compose.selected)) {
+    state.compose.selected = "";
+    state.compose.content = "";
   }
 }
 
@@ -376,11 +415,12 @@ function render() {
     return;
   }
   app.innerHTML = `
-    <div class="layout">
+    <div class="layout ${state.sidebarCollapsed ? "sidebar-collapsed" : ""}">
       <aside class="sidebar">
         <div class="brand">
           <div class="mark">DP</div>
-          <div><h1>DockPilot</h1><p>私有 NAS 控制台</p></div>
+          <div class="brand-text"><h1>DockPilot</h1><p>私有 NAS 控制台</p></div>
+          <button class="sidebar-toggle" title="隐藏/显示侧边栏" data-action="sidebar-toggle">${state.sidebarCollapsed ? "›" : "‹"}</button>
         </div>
         <nav class="nav">${renderNav()}</nav>
       </aside>
@@ -530,6 +570,7 @@ function renderCards() {
 
 function renderContainers() {
   const stats = containerStats();
+  const visibleContainers = filteredContainers();
   return `
     <section class="container-page">
       <div class="container-titlebar">
@@ -543,16 +584,17 @@ function renderContainers() {
         </div>
       </div>
       <div class="container-statbar">
-        <div class="container-stat active"><strong>${stats.total}</strong><span>总容器</span></div>
-        <div class="container-stat"><strong class="green">${stats.running}</strong><span>运行中</span></div>
-        <div class="container-stat"><strong class="red">${stats.stopped}</strong><span>已停止</span></div>
-        <div class="container-stat"><strong class="orange">${stats.updates}</strong><span>有更新</span></div>
+        <button class="container-stat ${state.containerFilter === "all" ? "active" : ""}" data-action="container-filter" data-filter="all"><strong>${stats.total}</strong><span>总容器</span></button>
+        <button class="container-stat ${state.containerFilter === "running" ? "active" : ""}" data-action="container-filter" data-filter="running"><strong class="green">${stats.running}</strong><span>运行中</span></button>
+        <button class="container-stat ${state.containerFilter === "stopped" ? "active" : ""}" data-action="container-filter" data-filter="stopped"><strong class="red">${stats.stopped}</strong><span>已停止</span></button>
+        <button class="container-stat ${state.containerFilter === "updates" ? "active" : ""}" data-action="container-filter" data-filter="updates"><strong class="orange">${stats.updates}</strong><span>有更新</span></button>
       </div>
+      <div class="container-filter-label">${h(containerFilterTitle())} · ${visibleContainers.length} 个</div>
       ${
         state.containers.length
           ? state.containerView === "table"
-            ? renderContainerTable()
-            : renderContainerCards()
+            ? renderContainerTable(visibleContainers)
+            : renderContainerCards(visibleContainers)
           : `<div class="empty">Docker 没有返回容器。请到“设置”里检查 Docker socket。</div>`
       }
       <input class="hidden-input" id="containerIconUpload" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
@@ -563,10 +605,11 @@ function renderContainers() {
   `;
 }
 
-function renderContainerCards() {
+function renderContainerCards(containers = filteredContainers()) {
+  if (!containers.length) return `<div class="empty">当前筛选下没有容器。</div>`;
   return `
     <div class="container-cards">
-      ${state.containers
+      ${containers
         .map((item) => {
           const running = String(item.State).toLowerCase() === "running";
           const updateHot = Boolean(item.DockPilot?.update_available);
@@ -612,13 +655,14 @@ function renderContainerCards() {
   `;
 }
 
-function renderContainerTable() {
+function renderContainerTable(containers = filteredContainers()) {
+  if (!containers.length) return `<div class="empty">当前筛选下没有容器。</div>`;
   return `
     <div class="table-wrap">
       <table>
         <thead><tr><th>名称</th><th>镜像</th><th>状态</th><th>端口</th><th>ID</th><th>操作</th></tr></thead>
         <tbody>
-          ${state.containers
+          ${containers
             .map(
               (item) => `
               <tr>
@@ -740,8 +784,23 @@ function renderCompose() {
                   .map(
                     (project) => `
                     <button class="list-item ${state.compose.selected === project.path ? "active" : ""}" data-action="compose-select" data-path="${h(project.path)}">
-                      <strong>${h(project.name)}</strong>
-                      <span class="muted">${h(project.services.join(", ") || "未识别到服务")}</span>
+                      <span class="project-row">
+                        <strong>${h(project.name)}</strong>
+                        <span class="service-pill ${h(projectStateTone(project))}">${h(projectStateTone(project) === "running" ? "运行中" : projectStateTone(project) === "missing" ? "未部署" : "已停止")}</span>
+                      </span>
+                      <span class="compose-services">
+                        ${(project.containers || [])
+                          .map(
+                            (item) => `
+                            <span class="compose-service">
+                              <i class="state-dot ${h(item.state)}"></i>
+                              <b>${h(item.service)}</b>
+                              <small>${h(zhServiceState(item.state))}</small>
+                            </span>
+                          `
+                          )
+                          .join("") || `<span class="muted">${h(project.services.join(", ") || "未识别到服务")}</span>`}
+                      </span>
                     </button>
                   `
                   )
@@ -749,6 +808,15 @@ function renderCompose() {
               : `<div class="empty">配置的目录中没有找到 Compose 文件。</div>`
           }
         </div>
+        <form class="form-stack command-deploy" id="composeCommandForm">
+          <div class="panel-head"><h3>命令部署</h3><span class="muted">粘贴 docker run 命令，可转为 Compose 后部署。</span></div>
+          <div class="field"><label>项目名称</label><input name="name" placeholder="my-app" required /></div>
+          <div class="field"><label>Docker run 命令</label><textarea name="command" placeholder="docker run -d --name app -p 8080:80 nginx:alpine" required></textarea></div>
+          <div class="form-actions">
+            <button type="submit" data-deploy="0">转 Compose</button>
+            <button type="submit" class="primary" data-deploy="1">转 Compose 并部署</button>
+          </div>
+        </form>
       </section>
       <section class="panel">
         <div class="panel-head">
@@ -759,7 +827,7 @@ function renderCompose() {
           <div class="top-actions">
             <button data-action="compose-action" data-command="config">检查</button>
             <button data-action="compose-action" data-command="pull">拉取</button>
-            <button data-action="compose-action" data-command="up" class="primary">启动</button>
+            <button data-action="compose-action" data-command="up" class="primary">部署</button>
             <button data-action="compose-action" data-command="restart">重启</button>
             <button data-action="compose-action" data-command="logs">日志</button>
             <button data-action="compose-action" data-command="down" class="danger">停止</button>
@@ -914,6 +982,21 @@ document.addEventListener("submit", async (event) => {
       state.compose.selected = "";
       await refreshCurrent();
     }
+    if (form.id === "composeCommandForm") {
+      const data = Object.fromEntries(new FormData(form));
+      const deploy = event.submitter?.dataset.deploy === "1";
+      const result = await api("/api/compose/from-command", {
+        method: "POST",
+        body: { name: data.name, command: data.command, deploy },
+      });
+      state.tab = "compose";
+      state.compose.selected = result.project.path;
+      state.compose.output = result.output ? `$ docker compose up -d\n\n${result.output}` : "";
+      form.reset();
+      await refreshCurrent();
+      state.error = deploy ? "命令已转为 Compose 并完成部署。" : "命令已转为 Compose 项目。";
+      render();
+    }
     if (form.id === "settingsForm") {
       const data = Object.fromEntries(new FormData(form));
       await api("/api/settings", {
@@ -959,19 +1042,32 @@ document.addEventListener("click", async (event) => {
       state.tab = button.dataset.tab;
       await refreshCurrent();
     }
+    if (action === "sidebar-toggle") {
+      state.sidebarCollapsed = !state.sidebarCollapsed;
+      render();
+    }
     if (action === "refresh") await refreshCurrent();
     if (action === "container-view") {
       state.containerView = button.dataset.view;
       render();
     }
+    if (action === "container-filter") {
+      state.containerFilter = button.dataset.filter || "all";
+      render();
+    }
     if (action === "container-bulk-check") {
       if (!state.containers.length) return;
       if (confirm("批量操作会依次检查所有容器镜像是否有更新，继续吗？")) {
+        let failed = 0;
         for (const item of state.containers) {
-          await api(`/api/docker/containers/${encodeURIComponent(item.Id)}/check-update`, { method: "POST" });
+          try {
+            await api(`/api/docker/containers/${encodeURIComponent(item.Id)}/check-update`, { method: "POST" });
+          } catch {
+            failed += 1;
+          }
         }
         await refreshCurrent();
-        state.error = "批量检查完成。";
+        state.error = failed ? `批量检查完成，${failed} 个容器检查失败。` : "批量检查完成。";
         render();
       }
     }

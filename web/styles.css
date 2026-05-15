@@ -647,6 +647,101 @@ a {
   font-weight: 700;
 }
 
+.container-update-progress {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid #bfdbfe;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #eff6ff, #ffffff);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.1);
+}
+
+.container-update-progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.container-update-progress-head div {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.container-update-progress strong {
+  color: #111827;
+  font-size: 15px;
+}
+
+.container-update-progress span,
+.container-update-progress p {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.container-update-progress b {
+  color: #2563eb;
+  font-size: 18px;
+}
+
+.container-update-track {
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dbeafe;
+}
+
+.container-update-track i {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2563eb, #06b6d4);
+  transition: width 0.25s ease;
+}
+
+.container-update-progress p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.container-update-progress.success {
+  border-color: #bbf7d0;
+  background: linear-gradient(135deg, #f0fdf4, #ffffff);
+}
+
+.container-update-progress.success b {
+  color: #16a34a;
+}
+
+.container-update-progress.success .container-update-track {
+  background: #dcfce7;
+}
+
+.container-update-progress.success .container-update-track i {
+  background: linear-gradient(90deg, #16a34a, #22c55e);
+}
+
+.container-update-progress.error {
+  border-color: #fecaca;
+  background: linear-gradient(135deg, #fef2f2, #ffffff);
+}
+
+.container-update-progress.error b {
+  color: #dc2626;
+}
+
+.container-update-progress.error .container-update-track {
+  background: #fee2e2;
+}
+
+.container-update-progress.error .container-update-track i {
+  background: linear-gradient(90deg, #dc2626, #f97316);
+}
+
 .container-stat strong {
   color: #2563eb;
   font-size: 34px;
@@ -896,6 +991,12 @@ a {
 .container-action span {
   font-size: 18px;
   line-height: 1;
+}
+
+.container-action[disabled],
+.actions button[disabled] {
+  opacity: 0.62;
+  cursor: not-allowed;
 }
 
 .container-extra-actions {
@@ -1461,6 +1562,16 @@ td.actions button {
 
   .container-stat:nth-child(4) {
     border-top: 1px solid #eef2f7;
+  }
+
+  .container-update-progress-head,
+  .container-update-progress-head div {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .container-update-progress-head {
+    gap: 8px;
   }
 
   .metrics,

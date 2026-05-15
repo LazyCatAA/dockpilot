@@ -11,12 +11,16 @@ const state = {
   containerView: "card",
   containerFilter: "all",
   containerDetail: null,
+  containerUpdateJob: null,
   sidebarCollapsed: false,
   logs: { id: "", text: "" },
   compose: { projects: [], selected: "", content: "", output: "" },
   files: { roots: [], root: "", path: "", items: [], editPath: "", content: "" },
   settings: null,
 };
+
+let containerUpdatePollTimer = null;
+let containerUpdateClearTimer = null;
 
 const tabs = [
   ["dashboard", "总览"],
@@ -147,6 +151,41 @@ function containerStats() {
   const running = state.containers.filter((item) => String(item.State).toLowerCase() === "running").length;
   const updates = state.containers.filter((item) => item.DockPilot?.update_available).length;
   return { total, running, stopped: Math.max(total - running, 0), updates };
+}
+
+function isContainerUpdating(containerId) {
+  const job = state.containerUpdateJob;
+  return Boolean(job && job.container_id === containerId && ["queued", "running"].includes(job.status));
+}
+
+function updateJobStatusText(status) {
+  const map = {
+    queued: "等待中",
+    running: "更新中",
+    success: "已完成",
+    error: "失败",
+  };
+  return map[status] || "更新任务";
+}
+
+function renderContainerUpdateProgress() {
+  const job = state.containerUpdateJob;
+  if (!job) return "";
+  const progress = Math.max(0, Math.min(100, Number(job.progress || 0)));
+  const status = String(job.status || "queued");
+  return `
+    <div class="container-update-progress ${h(status)}">
+      <div class="container-update-progress-head">
+        <div>
+          <strong>${h(updateJobStatusText(status))}</strong>
+          <span>${h(job.step || "容器更新")}</span>
+        </div>
+        <b>${progress}%</b>
+      </div>
+      <div class="container-update-track"><i style="width:${progress}%"></i></div>
+      <p>${h(job.message || "正在处理容器更新任务。")}</p>
+    </div>
+  `;
 }
 
 function filteredContainers() {
@@ -370,6 +409,45 @@ async function loadContainers() {
   state.containerBackups = backups.backups || [];
 }
 
+async function startContainerUpdate(containerId) {
+  if (containerUpdateClearTimer) clearTimeout(containerUpdateClearTimer);
+  const data = await api(`/api/docker/containers/${encodeURIComponent(containerId)}/update-job`, { method: "POST" });
+  state.containerUpdateJob = data.job;
+  state.error = "容器更新任务已开始。";
+  render();
+  pollContainerUpdateJob(data.job.id);
+}
+
+async function pollContainerUpdateJob(jobId) {
+  if (containerUpdatePollTimer) clearTimeout(containerUpdatePollTimer);
+  try {
+    const data = await api(`/api/docker/jobs/${encodeURIComponent(jobId)}`);
+    state.containerUpdateJob = data.job;
+    const status = String(data.job.status || "");
+    render();
+    if (["queued", "running"].includes(status)) {
+      containerUpdatePollTimer = setTimeout(() => pollContainerUpdateJob(jobId), 1000);
+      return;
+    }
+    await refreshCurrent();
+    state.containerUpdateJob = data.job;
+    state.error =
+      status === "success"
+        ? data.job.message || "容器更新完成。"
+        : zhError(data.job.error || data.job.message || "容器更新失败。");
+    render();
+    containerUpdateClearTimer = setTimeout(() => {
+      if (state.containerUpdateJob?.id === jobId) {
+        state.containerUpdateJob = null;
+        render();
+      }
+    }, status === "success" ? 5000 : 12000);
+  } catch (error) {
+    state.error = error.message;
+    render();
+  }
+}
+
 async function loadCompose() {
   const data = await api("/api/compose/projects");
   state.compose.projects = data.projects || [];
@@ -583,6 +661,7 @@ function renderContainers() {
           <button class="refresh-button" data-action="refresh"><span>↻</span>刷新</button>
         </div>
       </div>
+      ${renderContainerUpdateProgress()}
       <div class="container-statbar">
         <button class="container-stat ${state.containerFilter === "all" ? "active" : ""}" data-action="container-filter" data-filter="all"><strong>${stats.total}</strong><span>总容器</span></button>
         <button class="container-stat ${state.containerFilter === "running" ? "active" : ""}" data-action="container-filter" data-filter="running"><strong class="green">${stats.running}</strong><span>运行中</span></button>
@@ -613,6 +692,7 @@ function renderContainerCards(containers = filteredContainers()) {
         .map((item) => {
           const running = String(item.State).toLowerCase() === "running";
           const updateHot = Boolean(item.DockPilot?.update_available);
+          const updating = isContainerUpdating(item.Id);
           return `
             <article class="container-card ${h(item.State)} ${updateHot ? "has-update" : ""}" style="--card-color:${h(containerColor(item))}">
               ${updateHot ? `<div class="new-ribbon">NEW</div>` : ""}
@@ -637,8 +717,8 @@ function renderContainerCards(containers = filteredContainers()) {
                 <button class="container-action restart" data-action="container-command" data-command="restart" data-id="${h(item.Id)}">
                   <span>↻</span>重启
                 </button>
-                <button class="container-action update ${updateHot ? "hot" : ""}" data-action="container-update" data-id="${h(item.Id)}">
-                  <span>⇧</span>更新
+                <button class="container-action update ${updateHot ? "hot" : ""}" data-action="container-update" data-id="${h(item.Id)}" ${updating ? "disabled" : ""}>
+                  <span>⇧</span>${updating ? "更新中" : "更新"}
                 </button>
               </div>
               <div class="container-extra-actions">
@@ -663,8 +743,9 @@ function renderContainerTable(containers = filteredContainers()) {
         <thead><tr><th>名称</th><th>镜像</th><th>状态</th><th>端口</th><th>ID</th><th>操作</th></tr></thead>
         <tbody>
           ${containers
-            .map(
-              (item) => `
+            .map((item) => {
+              const updating = isContainerUpdating(item.Id);
+              return `
               <tr>
                 <td><strong>${h(containerName(item))}</strong></td>
                 <td>${h(item.Image)}</td>
@@ -675,15 +756,15 @@ function renderContainerTable(containers = filteredContainers()) {
                   <button data-action="container-command" data-command="start" data-id="${h(item.Id)}">启动</button>
                   <button data-action="container-command" data-command="stop" data-id="${h(item.Id)}">停止</button>
                   <button data-action="container-command" data-command="restart" data-id="${h(item.Id)}">重启</button>
-                  <button data-action="container-update" data-id="${h(item.Id)}">一键更新</button>
+                  <button data-action="container-update" data-id="${h(item.Id)}" ${updating ? "disabled" : ""}>${updating ? "更新中" : "一键更新"}</button>
                   <button data-action="container-check-update" data-id="${h(item.Id)}">检查更新</button>
                   <button data-action="container-backup" data-id="${h(item.Id)}">备份</button>
                   <button data-action="container-inspect" data-id="${h(item.Id)}">详情</button>
                   <button data-action="container-logs" data-id="${h(item.Id)}">日志</button>
                 </td>
               </tr>
-            `
-            )
+            `;
+            })
             .join("")}
         </tbody>
       </table>
@@ -1116,11 +1197,7 @@ document.addEventListener("click", async (event) => {
     }
     if (action === "container-update") {
       if (confirm("一键更新会先备份当前容器配置，然后拉取镜像并重建容器。继续吗？")) {
-        const data = await api(`/api/docker/containers/${encodeURIComponent(button.dataset.id)}/update`, { method: "POST" });
-        const message = data.ok ? `更新完成，已自动备份：${data.backup?.name || ""}` : zhError(data.message || "更新失败。");
-        await refreshCurrent();
-        state.error = message;
-        render();
+        await startContainerUpdate(button.dataset.id);
       }
     }
     if (action === "container-icon-pick") {

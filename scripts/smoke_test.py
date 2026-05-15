@@ -104,7 +104,13 @@ def main() -> int:
         assert_true("DockPilot" in page, "首页静态文件应可访问")
         _, app_js = client.request("GET", "/app.js")
         assert_true("首页导航" in app_js, "前端脚本应为中文界面")
-        client.request("GET", "/styles.css")
+        assert_true("update-job" in app_js, "容器更新应使用后台任务接口")
+        _, styles_css = client.request("GET", "/styles.css")
+        assert_true("container-update-progress" in styles_css, "容器更新应提供进度条样式")
+        _, update_job = client.request("POST", "/api/docker/containers/fake-container/update-job", expect=202)
+        job_id = update_job["job"]["id"]
+        _, job_state = client.request("GET", f"/api/docker/jobs/{job_id}")
+        assert_true(job_state["job"]["container_id"] == "fake-container", "更新任务应记录容器 ID")
 
         _, overview = client.request("GET", "/api/overview")
         assert_true("docker" in overview, "总览应包含 Docker 状态")

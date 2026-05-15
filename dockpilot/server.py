@@ -17,11 +17,13 @@ import sqlite3
 import subprocess
 import sys
 import time
+import threading
 import urllib.parse
+import uuid
 from http import cookies
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 APP_ROOT = Path(__file__).resolve().parent.parent
@@ -452,6 +454,125 @@ def decode_docker_stream(data: bytes) -> str:
 
 
 STORE = Store(DB_PATH)
+JOB_LOCK = threading.Lock()
+JOBS: dict[str, dict[str, Any]] = {}
+JOB_TTL_SECONDS = 60 * 60
+TERMINAL_JOB_STATUSES = {"success", "error"}
+ProgressCallback = Callable[[int, str, str], None]
+
+
+def public_job(job: dict[str, Any]) -> dict[str, Any]:
+    result = job.get("result")
+    if isinstance(result, dict):
+        result = {
+            key: result.get(key)
+            for key in ("ok", "method", "message", "backup", "container_key", "old_container", "new_container_id")
+            if key in result
+        }
+    return {
+        "id": job.get("id", ""),
+        "type": job.get("type", ""),
+        "container_id": job.get("container_id", ""),
+        "status": job.get("status", "queued"),
+        "progress": int(job.get("progress") or 0),
+        "step": job.get("step", ""),
+        "message": job.get("message", ""),
+        "error": job.get("error", ""),
+        "result": result,
+        "created_at": job.get("created_at", 0),
+        "updated_at": job.get("updated_at", 0),
+        "finished_at": job.get("finished_at"),
+    }
+
+
+def prune_jobs_locked() -> None:
+    cutoff = now_ts() - JOB_TTL_SECONDS
+    for job_id, job in list(JOBS.items()):
+        if job.get("status") in TERMINAL_JOB_STATUSES and int(job.get("updated_at") or 0) < cutoff:
+            del JOBS[job_id]
+
+
+def create_job(job_type: str, container_id: str) -> dict[str, Any]:
+    job_id = uuid.uuid4().hex
+    now = now_ts()
+    job = {
+        "id": job_id,
+        "type": job_type,
+        "container_id": container_id,
+        "status": "queued",
+        "progress": 0,
+        "step": "排队中",
+        "message": "任务已创建，等待开始。",
+        "error": "",
+        "result": None,
+        "created_at": now,
+        "updated_at": now,
+        "finished_at": None,
+    }
+    with JOB_LOCK:
+        prune_jobs_locked()
+        JOBS[job_id] = job
+        return public_job(job)
+
+
+def update_job(job_id: str, **values: Any) -> dict[str, Any] | None:
+    with JOB_LOCK:
+        job = JOBS.get(job_id)
+        if not job:
+            return None
+        for key, value in values.items():
+            if value is not None:
+                job[key] = value
+        job["updated_at"] = now_ts()
+        if job.get("status") in TERMINAL_JOB_STATUSES and job.get("finished_at") is None:
+            job["finished_at"] = job["updated_at"]
+        return public_job(job)
+
+
+def get_job(job_id: str) -> dict[str, Any] | None:
+    with JOB_LOCK:
+        prune_jobs_locked()
+        job = JOBS.get(job_id)
+        return public_job(job) if job else None
+
+
+def emit_progress(progress: ProgressCallback | None, percent: int, step: str, message: str) -> None:
+    if progress:
+        progress(max(0, min(100, percent)), step, message)
+
+
+def start_container_update_job(socket_path: str, container_id: str) -> dict[str, Any]:
+    job = create_job("container-update", container_id)
+    job_id = str(job["id"])
+
+    def progress(percent: int, step: str, message: str) -> None:
+        update_job(job_id, status="running", progress=percent, step=step, message=message, error="")
+
+    def worker() -> None:
+        try:
+            progress(3, "准备更新", "正在连接 Docker。")
+            docker = DockerClient(socket_path)
+            result = update_container_image(docker, container_id, progress=progress)
+            if result.get("ok"):
+                STORE.set_container_pref(result["container_key"], update_available=False)
+                update_job(
+                    job_id,
+                    status="success",
+                    progress=100,
+                    step="更新完成",
+                    message=f"容器更新完成，已自动备份：{(result.get('backup') or {}).get('name', '')}",
+                    result=result,
+                    error="",
+                )
+                return
+            message = str(result.get("message") or "容器更新失败。")
+            update_job(job_id, status="error", step="更新失败", message=message, result=result, error=message)
+        except Exception as exc:
+            update_job(job_id, status="error", step="更新失败", message=str(exc), error=str(exc))
+
+    thread = threading.Thread(target=worker, name=f"dockpilot-update-{container_id[:12]}", daemon=True)
+    thread.start()
+    return get_job(job_id) or job
 
 
 class AppHandler(BaseHTTPRequestHandler):
@@ -654,6 +775,13 @@ class AppHandler(BaseHTTPRequestHandler):
                 images = docker.json("GET", "/images/json", query={"all": "0"})
                 self.write_json({"images": images})
                 return
+            if len(parts) == 4 and parts[:3] == ["api", "docker", "jobs"] and self.command == "GET":
+                job = get_job(urllib.parse.unquote(parts[3]))
+                if not job:
+                    self.write_json({"error": "job not found"}, status=404)
+                    return
+                self.write_json({"job": job})
+                return
             if len(parts) == 4 and parts[:3] == ["api", "docker", "backups"]:
                 backup_name = urllib.parse.unquote(parts[3])
                 if self.command == "POST":
@@ -692,6 +820,9 @@ class AppHandler(BaseHTTPRequestHandler):
                     if result.get("ok"):
                         STORE.set_container_pref(result["container_key"], update_available=False)
                     self.write_json(result)
+                    return
+                if self.command == "POST" and action == "update-job":
+                    self.write_json({"job": start_container_update_job(docker.socket_path, container_id)}, status=202)
                     return
                 if self.command == "GET" and action == "logs":
                     status, data, reason = docker.request(
@@ -1375,18 +1506,22 @@ def normalize_image_id(value: str) -> str:
     return text[7:] if text.startswith("sha256:") else text
 
 
-def update_container_image(docker: DockerClient, container_id: str) -> dict[str, Any]:
+def update_container_image(docker: DockerClient, container_id: str, progress: ProgressCallback | None = None) -> dict[str, Any]:
+    emit_progress(progress, 8, "读取容器", "正在读取当前容器配置。")
     inspect_data = docker.json("GET", f"/containers/{urllib.parse.quote(container_id, safe='')}/json")
     container_key = container_key_from_inspect(inspect_data)
     image = str((inspect_data.get("Config") or {}).get("Image", "")).strip()
     if not image or image.startswith("sha256:"):
         raise ValueError("image name is not checkable")
+    emit_progress(progress, 16, "备份配置", "正在备份当前容器配置。")
     backup = create_container_backup(inspect_data)
-    compose_result = update_compose_managed_container(inspect_data, docker.socket_path)
+    emit_progress(progress, 24, "识别部署方式", "正在判断容器是否由 Compose 管理。")
+    compose_result = update_compose_managed_container(inspect_data, docker.socket_path, progress=progress)
     if compose_result:
         compose_result.update({"container_key": container_key, "backup": backup})
         return compose_result
     try:
+        emit_progress(progress, 38, "拉取镜像", f"正在拉取最新镜像：{image}")
         pull = run_docker_cli(["pull", image], docker.socket_path, timeout=600)
     except FileNotFoundError:
         return {
@@ -1415,12 +1550,18 @@ def update_container_image(docker: DockerClient, container_id: str) -> dict[str,
             "output": pull.stdout,
             "message": "docker pull failed",
         }
-    result = recreate_standalone_container(docker, inspect_data)
+    emit_progress(progress, 72, "重建容器", "镜像拉取完成，正在重建容器。")
+    result = recreate_standalone_container(docker, inspect_data, progress=progress)
     result.update({"container_key": container_key, "backup": backup, "pull_output": pull.stdout})
+    emit_progress(progress, 96, "更新完成", "容器重建完成，正在刷新状态。")
     return result
 
 
-def update_compose_managed_container(inspect_data: dict[str, Any], socket_path: str | None = None) -> dict[str, Any] | None:
+def update_compose_managed_container(
+    inspect_data: dict[str, Any],
+    socket_path: str | None = None,
+    progress: ProgressCallback | None = None,
+) -> dict[str, Any] | None:
     config = inspect_data.get("Config") or {}
     labels = config.get("Labels") or {}
     service = str(labels.get("com.docker.compose.service", "")).strip()
@@ -1433,6 +1574,7 @@ def update_compose_managed_container(inspect_data: dict[str, Any], socket_path: 
     working_dir = Path(str(labels.get("com.docker.compose.project.working_dir", ""))).expanduser()
     cwd = working_dir if str(working_dir) != "." and working_dir.exists() else compose_file.parent
     try:
+        emit_progress(progress, 38, "Compose 拉取镜像", f"正在更新服务镜像：{service}")
         pull = run_docker_cli(["compose", "-f", str(compose_file), "pull", service], socket_path, timeout=600, cwd=cwd)
         if pull.returncode != 0:
             return {
@@ -1441,6 +1583,7 @@ def update_compose_managed_container(inspect_data: dict[str, Any], socket_path: 
                 "output": pull.stdout,
                 "message": "docker compose pull failed",
             }
+        emit_progress(progress, 76, "Compose 重建服务", f"正在重建服务：{service}")
         up = run_docker_cli(
             ["compose", "-f", str(compose_file), "up", "-d", "--force-recreate", service],
             socket_path,
@@ -1459,7 +1602,11 @@ def update_compose_managed_container(inspect_data: dict[str, Any], socket_path: 
     }
 
 
-def recreate_standalone_container(docker: DockerClient, inspect_data: dict[str, Any]) -> dict[str, Any]:
+def recreate_standalone_container(
+    docker: DockerClient,
+    inspect_data: dict[str, Any],
+    progress: ProgressCallback | None = None,
+) -> dict[str, Any]:
     container_id = str(inspect_data.get("Id", ""))
     original_name = container_key_from_inspect(inspect_data)
     backup_name = safe_name(f"{original_name}-old-{time.strftime('%Y%m%d-%H%M%S')}-{container_id[:8]}", "old-container")
@@ -1467,6 +1614,7 @@ def recreate_standalone_container(docker: DockerClient, inspect_data: dict[str, 
     new_id = ""
     try:
         if was_running:
+            emit_progress(progress, 78, "停止旧容器", "正在停止旧容器。")
             status, data, reason = docker.request(
                 "POST",
                 f"/containers/{urllib.parse.quote(container_id, safe='')}/stop",
@@ -1475,6 +1623,7 @@ def recreate_standalone_container(docker: DockerClient, inspect_data: dict[str, 
             )
             if status not in (200, 204, 304):
                 raise RuntimeError(data.decode("utf-8", "replace") or reason)
+        emit_progress(progress, 82, "保留旧容器", "正在保留旧容器用于回滚。")
         status, data, reason = docker.request(
             "POST",
             f"/containers/{urllib.parse.quote(container_id, safe='')}/rename",
@@ -1483,12 +1632,15 @@ def recreate_standalone_container(docker: DockerClient, inspect_data: dict[str, 
         if status not in (200, 204):
             raise RuntimeError(data.decode("utf-8", "replace") or reason)
         create_body = container_create_body_from_inspect(inspect_data)
+        emit_progress(progress, 88, "创建新容器", "正在使用新镜像创建容器。")
         created = docker.json("POST", "/containers/create", query={"name": original_name}, body=create_body)
         new_id = str(created.get("Id", ""))
         if was_running:
+            emit_progress(progress, 92, "启动新容器", "正在启动新容器。")
             status, data, reason = docker.request("POST", f"/containers/{urllib.parse.quote(new_id, safe='')}/start")
             if status not in (200, 204, 304):
                 raise RuntimeError(data.decode("utf-8", "replace") or reason)
+        emit_progress(progress, 94, "清理旧容器", "新容器启动完成，正在清理旧容器。")
         status, _, _ = docker.request(
             "DELETE",
             f"/containers/{urllib.parse.quote(container_id, safe='')}",

@@ -1,0 +1,19 @@
+services:
+  dockpilot:
+    build: .
+    container_name: dockpilot
+    restart: unless-stopped
+    ports:
+      - "8088:8088"
+    environment:
+      # 关键点：这里使用宿主机绝对路径，并把同一个路径映射到容器内。
+      # 这样容器内执行 docker compose 时，Compose 里的相对挂载路径才能被宿主机 Docker 正确识别。
+      DOCKPILOT_DATA: ${PWD}/data
+      DOCKPILOT_DOCKER_SOCKET: /var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${PWD}/data:${PWD}/data
+      # 如果你还想让文件管理器管理 NAS 上已有的 Docker 目录，请按实际路径取消注释。
+      # 左右路径建议保持完全一致，避免 Compose bind mount 路径错位。
+      # - /volume1/docker:/volume1/docker
+      # - /mnt/user/appdata:/mnt/user/appdata

@@ -1,0 +1,10 @@
+.git
+.github
+data
+__pycache__
+*.pyc
+*.pyo
+.DS_Store
+*.log
+ACCEPTANCE.md
+scripts

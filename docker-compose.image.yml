@@ -1,0 +1,16 @@
+services:
+  dockpilot:
+    image: ${DOCKPILOT_IMAGE}
+    container_name: dockpilot
+    restart: unless-stopped
+    ports:
+      - "${DOCKPILOT_PORT:-8088}:8088"
+    environment:
+      DOCKPILOT_DATA: ${DOCKPILOT_HOST_PATH}/data
+      DOCKPILOT_DOCKER_SOCKET: /var/run/docker.sock
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${DOCKPILOT_HOST_PATH}/data:${DOCKPILOT_HOST_PATH}/data
+      # 需要管理 NAS 上已有目录时，把真实路径按“左右一致”的方式挂载进来。
+      # - /volume1/docker:/volume1/docker
+      # - /mnt/user/appdata:/mnt/user/appdata

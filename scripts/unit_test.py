@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from dockpilot import server
-from dockpilot.server import proxied_image_reference, recreate_standalone_container
+from dockpilot.server import build_image_name_lookup, enrich_containers, proxied_image_reference, recreate_standalone_container
 
 
 def assert_true(value: bool, message: str) -> None:
@@ -170,6 +170,28 @@ def test_failed_update_check_should_not_clear_existing_update_state() -> None:
     )
 
 
+def test_container_card_uses_repo_tag_when_summary_image_is_digest() -> None:
+    containers = [
+        {
+            "Id": "container-id",
+            "Names": ["/symedia"],
+            "Image": "sha256:dc77c7eaaa34641e1d9fac605fa6cbbc5590a7d004eb0800b788827a3870c5c",
+            "ImageID": "sha256:dc77c7eaaa34641e1d9fac605fa6cbbc5590a7d004eb0800b788827a3870c5c",
+        }
+    ]
+    images = [
+        {
+            "Id": "sha256:dc77c7eaaa34641e1d9fac605fa6cbbc5590a7d004eb0800b788827a3870c5c",
+            "RepoTags": ["shenxianmq/symedia:latest"],
+        }
+    ]
+    enriched = enrich_containers(containers, {}, build_image_name_lookup(images))
+    assert_true(
+        enriched[0]["DockPilot"]["image_name"] == "shenxianmq/symedia:latest",
+        "容器摘要只有 sha256 时应通过本地镜像列表反查镜像名",
+    )
+
+
 def main() -> int:
     test_standalone_update_retries_when_docker_reports_same_rename_name()
     test_image_proxy_keeps_original_reference_shape()
@@ -178,6 +200,7 @@ def main() -> int:
     test_delete_container_backup_removes_backup_file()
     test_docker_hub_search_results_are_normalized()
     test_failed_update_check_should_not_clear_existing_update_state()
+    test_container_card_uses_repo_tag_when_summary_image_is_digest()
     print("PASS: DockPilot 单元测试全部通过")
     return 0
 

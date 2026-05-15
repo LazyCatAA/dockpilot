@@ -938,7 +938,8 @@ class AppHandler(BaseHTTPRequestHandler):
                 return
             if path == "/api/docker/containers" and self.command == "GET":
                 containers = docker.json("GET", "/containers/json", query={"all": "1", "size": "0"})
-                containers = enrich_containers(containers, STORE.get_container_prefs())
+                images = docker.json("GET", "/images/json", query={"all": "0"})
+                containers = enrich_containers(containers, STORE.get_container_prefs(), build_image_name_lookup(images))
                 self.write_json({"containers": containers})
                 return
             if path == "/api/docker/backups" and self.command == "GET":
@@ -1498,7 +1499,34 @@ def container_key_from_inspect(container: dict[str, Any]) -> str:
     return name or str(container.get("Id", ""))[:12]
 
 
-def enrich_containers(containers: list[dict[str, Any]], prefs: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
+def build_image_name_lookup(images: list[dict[str, Any]]) -> dict[str, str]:
+    lookup: dict[str, str] = {}
+    for image in images:
+        image_id = normalize_image_id(str(image.get("Id") or image.get("ID") or ""))
+        tags = [str(tag) for tag in (image.get("RepoTags") or []) if tag and tag != "<none>:<none>"]
+        if image_id and tags:
+            lookup[image_id] = tags[0]
+        for digest in image.get("RepoDigests") or []:
+            digest_text = str(digest)
+            if "@sha256:" in digest_text and tags:
+                lookup[digest_text.split("@", 1)[1]] = tags[0]
+    return lookup
+
+
+def container_display_image(container: dict[str, Any], image_lookup: dict[str, str]) -> str:
+    image_value = str(container.get("Image", "")).strip()
+    image_id = normalize_image_id(str(container.get("ImageID", "") or image_value))
+    if image_value and not image_value.startswith("sha256:"):
+        return image_value
+    return image_lookup.get(image_id) or image_value
+
+
+def enrich_containers(
+    containers: list[dict[str, Any]],
+    prefs: dict[str, dict[str, Any]],
+    image_lookup: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:
+    lookup = image_lookup or {}
     for container in containers:
         key = container_key_from_summary(container)
         pref = prefs.get(key, {})
@@ -1506,6 +1534,7 @@ def enrich_containers(containers: list[dict[str, Any]], prefs: dict[str, dict[st
             "key": key,
             "color": pref.get("color", color_from_text(key)),
             "icon_data": pref.get("icon_data", ""),
+            "image_name": container_display_image(container, lookup),
             "update_available": bool(pref.get("update_available", False)),
             "update_checked_at": pref.get("update_checked_at"),
         }

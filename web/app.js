@@ -279,6 +279,10 @@ function containerRuntime(container) {
   return zhContainerState(container.State);
 }
 
+function containerImageName(container) {
+  return container.DockPilot?.image_name || container.Image || container.ImageID || "-";
+}
+
 function imageTags(image) {
   const tags = image.RepoTags || [];
   return tags.filter((tag) => tag && tag !== "<none>:<none>");
@@ -1054,7 +1058,7 @@ function renderContainerCards(containers = filteredContainers()) {
                     <strong>${h(containerName(item))}</strong>
                     <span class="state-dot ${h(item.State)}" title="${h(zhContainerState(item.State))}"></span>
                   </div>
-                  <span class="container-image">${h(item.Image)}</span>
+                  <span class="container-image">${h(containerImageName(item))}</span>
                   <span class="container-runtime">${h(containerRuntime(item))}</span>
                   ${item.DockPilot?.update_check_error ? `<span class="container-update-error">${h(zhError(item.DockPilot.update_check_error))}</span>` : ""}
                 </div>

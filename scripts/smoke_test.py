@@ -109,6 +109,7 @@ def main() -> int:
         assert_true("scheduleContainerUpdateChecks" in app_js, "容器页应自动调度更新检测")
         assert_true("renderContainerCardUpdateProgress" in app_js, "更新进度应显示在对应容器卡片上")
         assert_true("update_check_error" in app_js, "更新检测失败时不应静默覆盖更新状态")
+        assert_true("containerImageName" in app_js, "容器卡片应优先显示解析后的镜像名")
         assert_true("镜像库" in app_js, "前端应包含镜像库页面")
         assert_true("imagePullForm" in app_js, "镜像库应支持拉取镜像")
         assert_true("imageRemoteSearchForm" in app_js, "镜像库应支持远程搜索镜像")

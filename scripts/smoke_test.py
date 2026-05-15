@@ -117,6 +117,9 @@ def main() -> int:
         assert_true("cardModal" in app_js, "书签卡片应使用弹窗添加和编辑")
         _, styles_css = client.request("GET", "/styles.css")
         assert_true("container-card-update-progress" in styles_css, "容器更新应提供卡片内进度条样式")
+        assert_true("repeat(4, minmax(0, 1fr))" in styles_css, "桌面端容器卡片应为四列紧凑布局")
+        assert_true("min-height: 116px" in styles_css, "容器卡片高度应压缩为紧凑尺寸")
+        assert_true("min-height: 28px" in styles_css, "容器操作按钮应使用紧凑高度")
         assert_true("bookmark-card" in styles_css, "书签卡片应提供复刻样式")
         _, update_job = client.request("POST", "/api/docker/containers/fake-container/update-job", expect=202)
         job_id = update_job["job"]["id"]

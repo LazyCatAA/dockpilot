@@ -108,9 +108,13 @@ def main() -> int:
         assert_true("containerUpdateJobs" in app_js, "容器更新任务应按容器分别跟踪")
         assert_true("scheduleContainerUpdateChecks" in app_js, "容器页应自动调度更新检测")
         assert_true("renderContainerCardUpdateProgress" in app_js, "更新进度应显示在对应容器卡片上")
+        assert_true("update_check_error" in app_js, "更新检测失败时不应静默覆盖更新状态")
         assert_true("镜像库" in app_js, "前端应包含镜像库页面")
         assert_true("imagePullForm" in app_js, "镜像库应支持拉取镜像")
+        assert_true("imageRemoteSearchForm" in app_js, "镜像库应支持远程搜索镜像")
+        assert_true("pull_mode" in app_js, "镜像库拉取镜像应可选择下载方式")
         assert_true("image_registry_proxy" in app_js, "镜像库应支持镜像代理配置")
+        assert_true("container-backup-delete" in app_js, "容器备份应支持删除")
         assert_true("bookmark-board" in app_js, "首页导航应使用分组书签板")
         assert_true("bookmark-context-menu" in app_js, "书签卡片应支持右键菜单")
         assert_true("cardIconUpload" in app_js, "书签卡片应支持图标上传")
@@ -120,6 +124,8 @@ def main() -> int:
         assert_true("repeat(4, minmax(0, 1fr))" in styles_css, "桌面端容器卡片应为四列紧凑布局")
         assert_true("min-height: 116px" in styles_css, "容器卡片高度应压缩为紧凑尺寸")
         assert_true("min-height: 28px" in styles_css, "容器操作按钮应使用紧凑高度")
+        assert_true("image-search-results" in styles_css, "镜像库应提供搜索结果样式")
+        assert_true("backup-actions" in styles_css, "容器备份应提供恢复和删除操作样式")
         assert_true("bookmark-card" in styles_css, "书签卡片应提供复刻样式")
         _, update_job = client.request("POST", "/api/docker/containers/fake-container/update-job", expect=202)
         job_id = update_job["job"]["id"]
@@ -237,6 +243,18 @@ def main() -> int:
         assert_true(icon_pref["pref"]["icon_data"].startswith("data:image/gif;base64,"), "容器自定义图标应可保存")
         _, backups = client.request("GET", "/api/docker/backups")
         assert_true("backups" in backups, "容器备份列表应可读取")
+        fake_backup = data_dir / "backups" / "containers" / "smoke.json"
+        fake_backup.parent.mkdir(parents=True, exist_ok=True)
+        fake_backup.write_text(
+            json.dumps({"container_name": "smoke", "image": "nginx:latest", "created_at": "20260515-200000"}),
+            encoding="utf-8",
+        )
+        _, backups = client.request("GET", "/api/docker/backups")
+        assert_true(any(item["name"] == "smoke.json" for item in backups["backups"]), "容器备份列表应显示备份文件")
+        client.request("DELETE", "/api/docker/backups/smoke.json")
+        _, backups = client.request("GET", "/api/docker/backups")
+        assert_true(not any(item["name"] == "smoke.json" for item in backups["backups"]), "容器备份应可删除")
+        client.request("GET", "/api/docker/images/search?q=", expect=400)
 
         client.request("DELETE", f"/api/cards/{card_id}")
         print("PASS: DockPilot 冒烟测试全部通过")

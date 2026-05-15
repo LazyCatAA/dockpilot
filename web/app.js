@@ -11,7 +11,7 @@ const state = {
   cardContextMenu: { open: false, x: 0, y: 0, id: null },
   containers: [],
   containerBackups: [],
-  images: { items: [], query: "", pullOutput: "", proxy: "" },
+  images: { items: [], query: "", remoteQuery: "", searchResults: [], pullOutput: "", proxy: "", pullMode: "proxy" },
   containerView: "card",
   containerFilter: "all",
   containerDetail: null,
@@ -211,8 +211,13 @@ function updateContainerCheckState(containerId, data) {
   const item = state.containers.find((container) => container.Id === containerId);
   if (!item) return;
   item.DockPilot = item.DockPilot || {};
-  if (typeof data.update_available === "boolean") item.DockPilot.update_available = data.update_available;
-  item.DockPilot.update_checked_at = Math.floor(Date.now() / 1000);
+  if (data.ok && typeof data.update_available === "boolean") {
+    item.DockPilot.update_available = data.update_available;
+    item.DockPilot.update_checked_at = Math.floor(Date.now() / 1000);
+    item.DockPilot.update_check_error = "";
+  } else if (!data.ok) {
+    item.DockPilot.update_check_error = data.message || "检查更新失败。";
+  }
 }
 
 function filteredContainers() {
@@ -492,6 +497,7 @@ function zhError(message) {
     ["docker image is required", "命令中没有识别到镜像名称。"],
     ["docker pull timed out", "镜像拉取超时。"],
     ["docker tag failed", "镜像代理拉取成功，但打回原始镜像名失败。"],
+    ["image search query is required", "请输入要搜索的镜像关键词。"],
     ["user not found", "用户不存在。"],
     ["refusing to delete a root directory", "不能删除根目录。"],
     ["request body too large", "请求内容太大。"],
@@ -631,7 +637,9 @@ async function checkContainerUpdates(containers, { force = false } = {}) {
     try {
       const data = await api(`/api/docker/containers/${encodeURIComponent(item.Id)}/check-update`, { method: "POST" });
       updateContainerCheckState(item.Id, data);
-    } catch {
+    } catch (error) {
+      item.DockPilot = item.DockPilot || {};
+      item.DockPilot.update_check_error = error.message;
       state.containerUpdateCheck.failed += 1;
     } finally {
       state.containerUpdateCheck.done += 1;
@@ -1048,6 +1056,7 @@ function renderContainerCards(containers = filteredContainers()) {
                   </div>
                   <span class="container-image">${h(item.Image)}</span>
                   <span class="container-runtime">${h(containerRuntime(item))}</span>
+                  ${item.DockPilot?.update_check_error ? `<span class="container-update-error">${h(zhError(item.DockPilot.update_check_error))}</span>` : ""}
                 </div>
               </div>
               <div class="container-card-divider"></div>
@@ -1129,12 +1138,15 @@ function renderContainerBackups() {
               .map(
                 (backup) => `
                 <div class="backup-item">
-                  <div>
+                  <div class="backup-main">
                     <strong>${h(backup.container_name || backup.name)}</strong>
-                    <span>${h(backup.image || "")}</span>
-                    <small>${h(backup.name)} · ${h(backup.created_at || "")}</small>
+                    <span>${h(backup.image || "未记录镜像")}</span>
+                    <small>${h(backup.created_at || "-")} · ${fmtBytes(backup.size || 0)}</small>
                   </div>
-                  <button data-action="container-restore" data-name="${h(backup.name)}">恢复为 Compose</button>
+                  <div class="backup-actions">
+                    <button data-action="container-restore" data-name="${h(backup.name)}">恢复</button>
+                    <button class="danger" data-action="container-backup-delete" data-name="${h(backup.name)}">删除</button>
+                  </div>
                 </div>
               `
               )
@@ -1148,6 +1160,7 @@ function renderContainerBackups() {
 function renderImages() {
   const images = filteredImages();
   const totalSize = state.images.items.reduce((sum, image) => sum + Number(image.Size || 0), 0);
+  const searchResults = state.images.searchResults || [];
   return `
     <section class="panel page-panel image-library">
       <div class="panel-head">
@@ -1164,15 +1177,29 @@ function renderImages() {
       </div>
       <div class="image-tools">
         <label class="field">
-          <span>搜索镜像</span>
+          <span>本地搜索</span>
           <input id="imageSearch" value="${h(state.images.query)}" placeholder="输入镜像名、标签或 ID" />
         </label>
-        <form id="imagePullForm" class="inline-form">
+        <form id="imagePullForm" class="image-pull-form">
           <label class="field">
             <span>拉取镜像</span>
             <input name="image" placeholder="nginx:latest 或 ghcr.io/user/app:latest" required />
           </label>
+          <label class="field">
+            <span>下载方式</span>
+            <select id="imagePullMode" name="pull_mode">
+              <option value="proxy" ${state.images.pullMode !== "direct" ? "selected" : ""}>使用代理</option>
+              <option value="direct" ${state.images.pullMode === "direct" ? "selected" : ""}>直接拉取</option>
+            </select>
+          </label>
           <button class="primary" type="submit">拉取</button>
+        </form>
+        <form id="imageRemoteSearchForm" class="inline-form">
+          <label class="field">
+            <span>远程搜索</span>
+            <input id="imageRemoteSearch" name="q" value="${h(state.images.remoteQuery)}" placeholder="搜索 Docker Hub 镜像" required />
+          </label>
+          <button type="submit">搜索</button>
         </form>
         <form id="imageProxyForm" class="inline-form">
           <label class="field">
@@ -1188,6 +1215,26 @@ function renderImages() {
           : ""
       }
       ${
+        searchResults.length
+          ? `<div class="image-search-results">${searchResults
+              .map(
+                (item) => `
+                <article class="image-search-card">
+                  <div class="image-search-copy">
+                    <strong>${h(item.name)}</strong>
+                    <span>${h(item.description || "暂无描述")}</span>
+                    <small>${item.official ? "官方 · " : ""}${h(String(item.stars || 0))} stars · ${h(String(item.pulls || 0))} pulls</small>
+                  </div>
+                  <button data-action="image-pull-search" data-image="${h(item.pull_name || `${item.name}:latest`)}">拉取 latest</button>
+                </article>
+              `
+              )
+              .join("")}</div>`
+          : state.images.remoteQuery
+            ? `<div class="empty">远程搜索没有结果。</div>`
+            : ""
+      }
+      ${
         images.length
           ? `<div class="image-grid">${images
               .map((image) => {
@@ -1197,7 +1244,6 @@ function renderImages() {
                     <div class="image-mark">IMG</div>
                     <div class="image-info">
                       <strong>${h(imageTitle(image))}</strong>
-                      <span>${h(imageSubtitle(image))}</span>
                       <small>${h(shortId(id))} · ${fmtBytes(image.Size)} · ${h(imageCreatedText(image))}</small>
                     </div>
                     <button class="danger" data-action="image-remove" data-id="${h(id)}">删除</button>
@@ -1524,9 +1570,21 @@ document.addEventListener("submit", async (event) => {
     }
     if (form.id === "imagePullForm") {
       const data = Object.fromEntries(new FormData(form));
-      const result = await api("/api/docker/images/pull", { method: "POST", body: { image: data.image } });
+      state.images.pullMode = data.pull_mode || state.images.pullMode;
+      const result = await api("/api/docker/images/pull", {
+        method: "POST",
+        body: { image: data.image, use_proxy: state.images.pullMode !== "direct" },
+      });
       state.images.pullOutput = result.output || result.message || "";
       await loadImages();
+      render();
+    }
+    if (form.id === "imageRemoteSearchForm") {
+      const data = Object.fromEntries(new FormData(form));
+      state.images.remoteQuery = String(data.q || "").trim();
+      const result = await api(`/api/docker/images/search?q=${encodeURIComponent(state.images.remoteQuery)}`);
+      state.images.searchResults = result.results || [];
+      state.error = state.images.searchResults.length ? `找到 ${state.images.searchResults.length} 个镜像。` : "没有找到匹配镜像。";
       render();
     }
     if (form.id === "imageProxyForm") {
@@ -1704,6 +1762,14 @@ document.addEventListener("click", async (event) => {
         await refreshCurrent();
       }
     }
+    if (action === "container-backup-delete") {
+      if (confirm("确定删除这个容器备份吗？")) {
+        await api(`/api/docker/backups/${encodeURIComponent(button.dataset.name)}`, { method: "DELETE" });
+        state.containerBackups = state.containerBackups.filter((backup) => backup.name !== button.dataset.name);
+        state.error = "备份已删除。";
+        render();
+      }
+    }
     if (action === "container-inspect") {
       const data = await api(`/api/docker/containers/${encodeURIComponent(button.dataset.id)}/inspect`);
       state.containerDetail = data.container;
@@ -1726,6 +1792,16 @@ document.addEventListener("click", async (event) => {
         state.error = "镜像已删除。";
         await refreshCurrent();
       }
+    }
+    if (action === "image-pull-search") {
+      const result = await api("/api/docker/images/pull", {
+        method: "POST",
+        body: { image: button.dataset.image, use_proxy: state.images.pullMode !== "direct" },
+      });
+      state.images.pullOutput = result.output || result.message || "";
+      state.error = `已提交拉取：${button.dataset.image}`;
+      await loadImages();
+      render();
     }
     if (action === "compose-select") {
       await selectCompose(button.dataset.path);
@@ -1860,6 +1936,9 @@ document.addEventListener("contextmenu", (event) => {
 
 document.addEventListener("change", async (event) => {
   try {
+    if (event.target.id === "imagePullMode") {
+      state.images.pullMode = event.target.value;
+    }
     if (event.target.id === "fileRootSelect") {
       state.files.root = event.target.value;
       state.files.path = "";
@@ -1928,6 +2007,9 @@ document.addEventListener("input", (event) => {
   if (event.target.id === "imageSearch") {
     state.images.query = event.target.value;
     render();
+  }
+  if (event.target.id === "imageRemoteSearch") {
+    state.images.remoteQuery = event.target.value;
   }
 });
 

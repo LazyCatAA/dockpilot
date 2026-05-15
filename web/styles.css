@@ -1330,6 +1330,15 @@ a {
   overflow-wrap: anywhere;
 }
 
+.container-update-error {
+  color: #ef4444;
+  font-size: 11px;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .container-card-divider {
   height: 1px;
   background: #eef2f7;
@@ -1440,6 +1449,7 @@ a {
 
 .backup-list {
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 10px;
 }
 
@@ -1480,7 +1490,7 @@ a {
 
 .image-tools {
   display: grid;
-  grid-template-columns: minmax(180px, 0.8fr) minmax(260px, 1.2fr) minmax(240px, 1fr);
+  grid-template-columns: minmax(180px, 0.8fr) minmax(360px, 1.6fr);
   gap: 12px;
   align-items: end;
 }
@@ -1492,37 +1502,89 @@ a {
   align-items: end;
 }
 
+.image-pull-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px auto;
+  gap: 10px;
+  align-items: end;
+}
+
 .image-output {
   max-height: 220px;
 }
 
+.image-search-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.image-search-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  min-height: 72px;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.image-search-copy {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.image-search-copy strong,
+.image-search-copy span,
+.image-search-copy small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.image-search-copy strong {
+  color: #111827;
+  font-size: 14px;
+}
+
+.image-search-copy span,
+.image-search-copy small {
+  color: #64748b;
+  font-size: 12px;
+}
+
 .image-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .image-card {
   display: grid;
-  grid-template-columns: 46px minmax(0, 1fr) auto;
-  gap: 12px;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 9px;
   align-items: center;
-  padding: 14px;
+  min-height: 62px;
+  padding: 10px;
   border: 1px solid #e5e7eb;
-  border-radius: 14px;
+  border-radius: 10px;
   background: #fff;
-  box-shadow: 0 3px 10px rgba(17, 24, 39, 0.07);
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.06);
 }
 
 .image-mark {
-  width: 46px;
-  height: 46px;
+  width: 34px;
+  height: 34px;
   display: grid;
   place-items: center;
-  border-radius: 12px;
+  border-radius: 9px;
   background: linear-gradient(135deg, #0ea5e9, #2563eb);
   color: #fff;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 800;
 }
 
@@ -1543,31 +1605,64 @@ a {
 
 .image-info strong {
   color: #111827;
-  font-size: 15px;
+  font-size: 13px;
 }
 
 .image-info span,
 .image-info small {
   color: #64748b;
+  font-size: 11px;
+}
+
+.image-card .danger {
+  min-height: 28px;
+  padding: 0 9px;
   font-size: 12px;
 }
 
 .backup-item {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) 150px;
   align-items: center;
-  gap: 12px;
-  padding: 12px;
+  gap: 10px;
+  padding: 10px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: var(--panel-soft);
+}
+
+.backup-main {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.backup-main strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .backup-item span,
 .backup-item small {
   display: block;
   color: var(--muted);
-  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.backup-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.backup-actions button {
+  min-height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
 }
 
 .meta-row {
@@ -1957,6 +2052,14 @@ td.actions button {
   .container-cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .image-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .image-tools {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 720px) {
@@ -2110,6 +2213,8 @@ td.actions button {
   }
 
   .inline-form,
+  .image-pull-form,
+  .image-search-card,
   .card-modal-grid,
   .card-modal-options,
   .image-card {

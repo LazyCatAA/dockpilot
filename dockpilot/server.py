@@ -18,7 +18,9 @@ import subprocess
 import sys
 import time
 import threading
+import urllib.error
 import urllib.parse
+import urllib.request
 import uuid
 from http import cookies
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -946,13 +948,22 @@ class AppHandler(BaseHTTPRequestHandler):
                 images = docker.json("GET", "/images/json", query={"all": "0"})
                 self.write_json({"images": images, "image_registry_proxy": STORE.get_setting("image_registry_proxy", "")})
                 return
+            if path == "/api/docker/images/search" and self.command == "GET":
+                query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
+                keyword = query.get("q", [""])[0].strip()
+                if not keyword:
+                    self.write_json({"error": "image search query is required"}, status=400)
+                    return
+                self.write_json({"results": search_docker_hub_images(keyword)})
+                return
             if path == "/api/docker/images/pull" and self.command == "POST":
                 data = self.read_json()
                 image = str(data.get("image", "")).strip()
                 if not image:
                     self.write_json({"error": "docker image is required"}, status=400)
                     return
-                self.write_json(pull_image_with_proxy(image, docker.socket_path))
+                use_proxy = bool(data.get("use_proxy", True))
+                self.write_json(pull_image_with_proxy(image, docker.socket_path, use_proxy=use_proxy))
                 return
             if path == "/api/docker/images/prune" and self.command == "POST":
                 status, data, reason = docker.request("POST", "/images/prune", query={"dangling": "true"}, timeout=120)
@@ -985,6 +996,9 @@ class AppHandler(BaseHTTPRequestHandler):
                 if self.command == "POST":
                     self.write_json({"project": restore_container_backup(backup_name, self.compose_roots())})
                     return
+                if self.command == "DELETE":
+                    self.write_json(delete_container_backup(backup_name))
+                    return
             if len(parts) == 5 and parts[:3] == ["api", "docker", "containers"]:
                 container_id = urllib.parse.unquote(parts[3])
                 action = parts[4]
@@ -1010,7 +1024,8 @@ class AppHandler(BaseHTTPRequestHandler):
                 if self.command == "POST" and action == "check-update":
                     inspect_data = docker.json("GET", f"/containers/{urllib.parse.quote(container_id, safe='')}/json")
                     result = check_container_update(inspect_data, docker.socket_path)
-                    STORE.set_container_pref(container_key_from_inspect(inspect_data), update_available=bool(result["update_available"]))
+                    if should_persist_update_check_result(result):
+                        STORE.set_container_pref(container_key_from_inspect(inspect_data), update_available=bool(result["update_available"]))
                     self.write_json(result)
                     return
                 if self.command == "POST" and action == "update":
@@ -1591,6 +1606,14 @@ def restore_container_backup(backup_name: str, roots: list[Path]) -> dict[str, A
     return compose_project_info(target_file)
 
 
+def delete_container_backup(backup_name: str) -> dict[str, Any]:
+    path = backup_file_path(backup_name)
+    if not path.exists():
+        raise FileNotFoundError("backup not found")
+    path.unlink()
+    return {"ok": True, "name": path.name}
+
+
 def quote_yaml(value: Any) -> str:
     text = str(value)
     if text == "":
@@ -1696,15 +1719,192 @@ def proxied_image_reference(image: str, proxy: str | None = None) -> str:
     return f"{proxy_value}/{source}"
 
 
-def pull_image_with_proxy(image: str, socket_path: str | None = None, timeout: int = 600) -> dict[str, Any]:
+def split_image_reference(image: str) -> tuple[str, str]:
+    source = image.strip()
+    if "@" in source:
+        source = source.split("@", 1)[0]
+    last_slash = source.rfind("/")
+    last_colon = source.rfind(":")
+    if last_colon > last_slash:
+        repo = source[:last_colon]
+        tag = source[last_colon + 1 :] or "latest"
+    else:
+        repo = source
+        tag = "latest"
+    return repo, tag
+
+
+def docker_pull_query(image: str) -> dict[str, str]:
+    source = image.strip()
+    if "@" in source:
+        return {"fromImage": source}
+    repo, tag = split_image_reference(source)
+    return {"fromImage": repo, "tag": tag}
+
+
+def parse_docker_image_inspect_output(output: str) -> dict[str, Any]:
+    text = output.strip()
+    if not text:
+        return {"id": "", "repo_digests": []}
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return {"id": text, "repo_digests": []}
+    return {
+        "id": str(data.get("Id", "")).strip(),
+        "repo_digests": [str(item) for item in (data.get("RepoDigests") or []) if str(item).strip()],
+    }
+
+
+def docker_image_identity_from_api(image: str, socket_path: str | None = None) -> dict[str, Any]:
+    target_socket = socket_path or DEFAULT_DOCKER_SOCKET
+    client = DockerClient(target_socket)
+    ref = urllib.parse.quote(image.strip(), safe="")
+    status, data, reason = client.request("GET", f"/images/{ref}/json", timeout=30)
+    if status >= 400:
+        message = data.decode("utf-8", "replace") or reason
+        raise RuntimeError(message)
+    payload = json.loads(data.decode("utf-8")) if data else {}
+    return {
+        "id": str(payload.get("Id", "")).strip(),
+        "repo_digests": [str(item) for item in (payload.get("RepoDigests") or []) if str(item).strip()],
+    }
+
+
+def docker_image_identity(image: str, socket_path: str | None = None) -> dict[str, Any]:
+    source = image.strip()
+    if not source:
+        return {"id": "", "repo_digests": [], "error": "image name is required"}
+    try:
+        cli_result = run_docker_cli(["image", "inspect", source, "--format", "{{json .}}"], socket_path, timeout=30)
+        if cli_result.returncode == 0:
+            parsed = parse_docker_image_inspect_output(cli_result.stdout)
+            parsed["method"] = "cli"
+            parsed["output"] = cli_result.stdout
+            return parsed
+    except FileNotFoundError:
+        pass
+    except subprocess.TimeoutExpired:
+        return {"id": "", "repo_digests": [], "error": "docker image inspect timed out"}
+    try:
+        payload = docker_image_identity_from_api(source, socket_path)
+        payload["method"] = "api"
+        return payload
+    except Exception as exc:
+        return {"id": "", "repo_digests": [], "error": str(exc)}
+
+
+def docker_pull_with_api(image: str, pull_image: str, socket_path: str | None = None, timeout: int = 600) -> dict[str, Any]:
+    target_socket = socket_path or DEFAULT_DOCKER_SOCKET
+    client = DockerClient(target_socket)
+    source = image.strip()
+    pull_ref = pull_image.strip()
+    try:
+        status, data, reason = client.request("POST", "/images/create", query=docker_pull_query(pull_ref), timeout=timeout)
+    except Exception as exc:
+        return {"ok": False, "image": source, "pull_image": pull_ref, "message": str(exc), "output": ""}
+    output = data.decode("utf-8", "replace") if data else ""
+    if status >= 400:
+        message = output.strip() or reason
+        return {"ok": False, "image": source, "pull_image": pull_ref, "message": message or "docker pull failed", "output": output}
+    stream_error = docker_stream_error(output)
+    if stream_error:
+        return {"ok": False, "image": source, "pull_image": pull_ref, "message": stream_error, "output": output}
+    if pull_ref != source:
+        repo, tag = split_image_reference(source)
+        try:
+            status, tag_data, reason = client.request(
+                "POST",
+                f"/images/{urllib.parse.quote(pull_ref, safe='')}/tag",
+                query={"repo": repo, "tag": tag},
+                timeout=120,
+            )
+        except Exception as exc:
+            return {"ok": False, "image": source, "pull_image": pull_ref, "message": str(exc), "output": output}
+        output += ("\n" if output else "") + (tag_data.decode("utf-8", "replace") if tag_data else "")
+        if status >= 400:
+            message = tag_data.decode("utf-8", "replace") or reason
+            return {"ok": False, "image": source, "pull_image": pull_ref, "message": message or "docker tag failed", "output": output}
+    return {"ok": True, "image": source, "pull_image": pull_ref, "message": "pulled", "output": output, "method": "api"}
+
+
+def docker_stream_error(output: str) -> str:
+    for line in output.splitlines():
+        text = line.strip()
+        if not text:
+            continue
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(payload, dict):
+            if payload.get("error"):
+                detail = payload.get("errorDetail") or {}
+                if isinstance(detail, dict):
+                    return str(detail.get("message") or payload.get("error") or "docker pull failed").strip()
+                return str(payload.get("error") or "docker pull failed").strip()
+    return ""
+
+
+def fetch_json_url(url: str, timeout: int = 10) -> dict[str, Any]:
+    request = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "DockPilot/1.0"})
+    try:
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            raw = response.read()
+    except urllib.error.HTTPError as exc:
+        raw = exc.read()
+        message = raw.decode("utf-8", "replace") or exc.reason
+        raise RuntimeError(message) from exc
+    except urllib.error.URLError as exc:
+        raise RuntimeError(str(exc.reason) if getattr(exc, "reason", "") else str(exc)) from exc
+    payload = json.loads(raw.decode("utf-8")) if raw else {}
+    if not isinstance(payload, dict):
+        raise RuntimeError("unexpected response from Docker Hub")
+    return payload
+
+
+def normalize_docker_hub_search_results(payload: dict[str, Any], limit: int = 12) -> list[dict[str, Any]]:
+    results: list[dict[str, Any]] = []
+    for item in payload.get("results") or []:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("repo_name") or item.get("name") or "").strip()
+        if not name:
+            continue
+        results.append(
+            {
+                "name": name,
+                "pull_name": f"{name}:latest",
+                "description": str(item.get("short_description") or item.get("description") or "").strip(),
+                "stars": int(item.get("star_count") or 0),
+                "pulls": int(item.get("pull_count") or 0),
+                "official": bool(item.get("is_official")),
+                "automated": bool(item.get("is_automated")),
+            }
+        )
+        if len(results) >= limit:
+            break
+    return results
+
+
+def search_docker_hub_images(query: str, limit: int = 12) -> list[dict[str, Any]]:
+    keyword = query.strip()
+    if not keyword:
+        raise ValueError("image search query is required")
+    url = "https://hub.docker.com/v2/search/repositories/?query=" + urllib.parse.quote(keyword) + f"&page_size={max(1, min(limit, 25))}"
+    payload = fetch_json_url(url, timeout=10)
+    return normalize_docker_hub_search_results(payload, limit=limit)
+
+
+def pull_image_with_proxy(image: str, socket_path: str | None = None, timeout: int = 600, use_proxy: bool = True) -> dict[str, Any]:
     source = image.strip()
     if not source:
         return {"ok": False, "image": source, "message": "docker image is required", "output": ""}
-    pull_ref = proxied_image_reference(source)
+    pull_ref = proxied_image_reference(source) if use_proxy else source
     try:
         pull = run_docker_cli(["pull", pull_ref], socket_path, timeout=timeout)
     except FileNotFoundError:
-        return {"ok": False, "image": source, "pull_image": pull_ref, "message": "docker CLI not found in PATH", "output": ""}
+        return docker_pull_with_api(source, pull_ref, socket_path, timeout=timeout)
     except subprocess.TimeoutExpired as exc:
         return {
             "ok": False,
@@ -1714,6 +1914,9 @@ def pull_image_with_proxy(image: str, socket_path: str | None = None, timeout: i
             "output": str(exc.stdout or ""),
         }
     if pull.returncode != 0:
+        api_result = docker_pull_with_api(source, pull_ref, socket_path, timeout=timeout)
+        if api_result.get("ok"):
+            return api_result
         return {"ok": False, "image": source, "pull_image": pull_ref, "message": "docker pull failed", "output": pull.stdout}
     output = pull.stdout
     if pull_ref != source:
@@ -1721,7 +1924,7 @@ def pull_image_with_proxy(image: str, socket_path: str | None = None, timeout: i
         output += "\n" + tag.stdout
         if tag.returncode != 0:
             return {"ok": False, "image": source, "pull_image": pull_ref, "message": "docker tag failed", "output": output}
-    return {"ok": True, "image": source, "pull_image": pull_ref, "message": "pulled", "output": output}
+    return {"ok": True, "image": source, "pull_image": pull_ref, "message": "pulled", "output": output, "method": "cli"}
 
 
 def check_container_update(inspect_data: dict[str, Any], socket_path: str | None = None) -> dict[str, Any]:
@@ -1730,19 +1933,17 @@ def check_container_update(inspect_data: dict[str, Any], socket_path: str | None
         return {"ok": False, "update_available": False, "message": "image name is not checkable"}
     container_image_id = str(inspect_data.get("Image", "")).strip()
     try:
-        before = run_docker_cli(["image", "inspect", image, "--format", "{{.Id}}"], socket_path, timeout=30)
+        before = docker_image_identity(image, socket_path)
         pull_result = pull_image_with_proxy(image, socket_path, timeout=600)
-        after = run_docker_cli(["image", "inspect", image, "--format", "{{.Id}}"], socket_path, timeout=30)
-    except FileNotFoundError:
-        return {"ok": False, "update_available": False, "message": "docker CLI not found in PATH"}
+        after = docker_image_identity(image, socket_path)
     except subprocess.TimeoutExpired:
         return {"ok": False, "update_available": False, "message": "update check timed out"}
     if not pull_result.get("ok"):
         return {"ok": False, "update_available": False, "message": pull_result.get("output") or pull_result.get("message") or "docker pull failed"}
-    if after.returncode != 0:
-        return {"ok": False, "update_available": False, "message": after.stdout.strip()}
-    before_id = before.stdout.strip() if before.returncode == 0 else ""
-    latest_id = after.stdout.strip()
+    before_id = str(before.get("id", "")).strip()
+    latest_id = str(after.get("id", "")).strip()
+    if not latest_id:
+        return {"ok": False, "update_available": False, "message": after.get("error") or "failed to inspect latest image"}
     update_available = bool(container_image_id and latest_id and normalize_image_id(container_image_id) != normalize_image_id(latest_id))
     return {
         "ok": True,
@@ -1751,14 +1952,22 @@ def check_container_update(inspect_data: dict[str, Any], socket_path: str | None
         "container_image_id": container_image_id,
         "previous_local_image_id": before_id,
         "latest_image_id": latest_id,
+        "previous_repo_digests": before.get("repo_digests", []),
+        "latest_repo_digests": after.get("repo_digests", []),
         "pull_output": pull_result.get("output", ""),
         "pull_image": pull_result.get("pull_image", image),
+        "pull_method": pull_result.get("method", "cli"),
+        "inspect_method": after.get("method", "cli"),
     }
 
 
 def normalize_image_id(value: str) -> str:
     text = value.strip()
     return text[7:] if text.startswith("sha256:") else text
+
+
+def should_persist_update_check_result(result: dict[str, Any]) -> bool:
+    return bool(result.get("ok") and isinstance(result.get("update_available"), bool))
 
 
 def update_container_image(docker: DockerClient, container_id: str, progress: ProgressCallback | None = None) -> dict[str, Any]:

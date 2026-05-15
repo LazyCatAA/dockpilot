@@ -16,6 +16,7 @@ from dockpilot.server import (
     enrich_containers,
     normalize_image_search_query,
     normalize_network_proxy_url,
+    normalize_registry_mirrors,
     proxied_image_reference,
     recreate_standalone_container,
     repair_compose_content,
@@ -80,6 +81,15 @@ def test_image_proxy_keeps_original_reference_shape() -> None:
         proxied_image_reference("ghcr.io/user/app:latest", "https://mirror.example.com/")
         == "mirror.example.com/ghcr.io/user/app:latest",
         "带 registry 的镜像应保留完整原始路径并清理代理协议",
+    )
+
+
+def test_registry_mirrors_support_multiple_sources() -> None:
+    mirrors = normalize_registry_mirrors("https://docker.1ms.run\ndocker.1panel.live")
+    assert_true(mirrors == ["docker.1ms.run", "docker.1panel.live"], "镜像加速源应支持多行配置")
+    assert_true(
+        proxied_image_reference("nginx:latest", mirrors[1]) == "docker.1panel.live/library/nginx:latest",
+        "应可选择指定镜像加速源拉取",
     )
 
 
@@ -241,9 +251,17 @@ def test_compose_repair_fixes_common_yaml_format_issues() -> None:
     assert_true('"8080:80"' in result["content"], "端口映射应自动加引号")
 
 
+def test_compose_repair_uses_compose_error_context() -> None:
+    content = "services:\n  app:\n    image: nginx\n    ports:\n      - 8080:80\n"
+    error = "services.app.ports.0 must be a string"
+    result = repair_compose_content(content, error)
+    assert_true('"8080:80"' in result["content"], "Compose 报端口类型错误时应自动加引号")
+
+
 def main() -> int:
     test_standalone_update_retries_when_docker_reports_same_rename_name()
     test_image_proxy_keeps_original_reference_shape()
+    test_registry_mirrors_support_multiple_sources()
     test_pull_image_can_skip_configured_proxy()
     test_check_update_uses_docker_api_when_cli_is_unavailable()
     test_delete_container_backup_removes_backup_file()
@@ -254,6 +272,7 @@ def main() -> int:
     test_remote_image_search_strips_tag_from_full_reference()
     test_network_proxy_url_is_normalized_for_lan_proxy()
     test_compose_repair_fixes_common_yaml_format_issues()
+    test_compose_repair_uses_compose_error_context()
     print("PASS: DockPilot 单元测试全部通过")
     return 0
 

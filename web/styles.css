@@ -1506,6 +1506,9 @@ a {
 .image-library {
   display: grid;
   gap: 18px;
+  padding: 18px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f8fbff, #eef4fb);
 }
 
 .image-summary {
@@ -1538,11 +1541,49 @@ a {
   font-weight: 700;
 }
 
-.image-tools {
+.image-sections {
   display: grid;
-  grid-template-columns: minmax(180px, 0.8fr) minmax(360px, 1.6fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
-  align-items: end;
+  align-items: stretch;
+}
+
+.image-tool-card {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+}
+
+.image-tool-card h4 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 15px;
+}
+
+.image-tool-card.accent-blue {
+  border-top: 4px solid #0ea5e9;
+}
+
+.image-tool-card.accent-green {
+  border-top: 4px solid #22c55e;
+}
+
+.image-tool-card.accent-purple {
+  border-top: 4px solid #8b5cf6;
+}
+
+.image-tool-card.accent-orange {
+  border-top: 4px solid #f59e0b;
+}
+
+.image-tool-card textarea {
+  min-height: 92px;
 }
 
 .inline-form {
@@ -1554,9 +1595,15 @@ a {
 
 .image-pull-form {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 120px auto;
+  grid-template-columns: 1fr;
   gap: 10px;
   align-items: end;
+}
+
+.proxy-test-result {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.35;
 }
 
 .image-output {
@@ -2181,7 +2228,7 @@ td.actions button {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .image-tools {
+  .image-sections {
     grid-template-columns: 1fr;
   }
 }
@@ -2345,7 +2392,7 @@ td.actions button {
   .widget-form,
   .bookmark-grid,
   .image-summary,
-  .image-tools,
+  .image-sections,
   .image-grid,
   .detail-grid {
     grid-template-columns: 1fr;

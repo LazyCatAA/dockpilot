@@ -11,7 +11,7 @@ const state = {
   cardContextMenu: { open: false, x: 0, y: 0, id: null },
   containers: [],
   containerBackups: [],
-  images: { items: [], query: "", remoteQuery: "", searchResults: [], pullOutput: "", proxy: "", networkProxy: "", pullMode: "proxy" },
+  images: { items: [], query: "", remoteQuery: "", searchResults: [], pullOutput: "", proxy: "", registryMirrors: [], networkProxy: "", proxyTest: "", pullMode: "proxy" },
   imagePullJob: null,
   containerView: "card",
   containerFilter: "all",
@@ -589,6 +589,7 @@ async function loadImages() {
   const data = await api("/api/docker/images");
   state.images.items = data.images || [];
   state.images.proxy = data.image_registry_proxy || state.images.proxy || "";
+  state.images.registryMirrors = data.registry_mirrors || (state.images.proxy ? [state.images.proxy] : []);
   state.images.networkProxy = data.network_proxy || state.images.networkProxy || "";
 }
 
@@ -1214,8 +1215,9 @@ function renderImages() {
   const images = filteredImages();
   const totalSize = state.images.items.reduce((sum, image) => sum + Number(image.Size || 0), 0);
   const searchResults = state.images.searchResults || [];
+  const mirrorText = (state.images.registryMirrors || []).join("\n");
   return `
-    <section class="panel page-panel image-library">
+    <section class="image-library">
       <div class="panel-head">
         <div>
           <h3>镜像库</h3>
@@ -1228,12 +1230,10 @@ function renderImages() {
         <div><strong>${fmtBytes(totalSize)}</strong><span>占用空间</span></div>
         <div><strong>${h(state.images.proxy || "未设置")}</strong><span>镜像代理</span></div>
       </div>
-      <div class="image-tools">
-        <label class="field">
-          <span>本地搜索</span>
-          <input id="imageSearch" value="${h(state.images.query)}" placeholder="输入镜像名、标签或 ID" />
-        </label>
-        <form id="imagePullForm" class="image-pull-form">
+      <div class="image-sections">
+        <section class="image-tool-card accent-blue">
+          <h4>镜像拉取</h4>
+          <form id="imagePullForm" class="image-pull-form">
           <label class="field">
             <span>拉取镜像</span>
             <input name="image" placeholder="nginx:latest 或 ghcr.io/user/app:latest" required />
@@ -1246,28 +1246,44 @@ function renderImages() {
             </select>
           </label>
           <button class="primary" type="submit">拉取</button>
-        </form>
-        <form id="imageRemoteSearchForm" class="inline-form">
+          </form>
+        </section>
+        <section class="image-tool-card accent-green">
+          <h4>搜索</h4>
+          <label class="field">
+            <span>本地搜索</span>
+            <input id="imageSearch" value="${h(state.images.query)}" placeholder="输入镜像名、标签或 ID" />
+          </label>
+          <form id="imageRemoteSearchForm" class="inline-form">
           <label class="field">
             <span>远程搜索</span>
             <input id="imageRemoteSearch" name="q" value="${h(state.images.remoteQuery)}" placeholder="搜索 Docker Hub 镜像" required />
           </label>
           <button type="submit">搜索</button>
-        </form>
-        <form id="imageProxyForm" class="inline-form">
+          </form>
+        </section>
+        <section class="image-tool-card accent-purple">
+          <h4>镜像加速源</h4>
+          <form id="imageMirrorsForm" class="form-stack">
           <label class="field">
-            <span>镜像代理</span>
-            <input name="image_registry_proxy" value="${h(state.images.proxy)}" placeholder="例如 docker.1ms.run" />
+            <span>每行一个加速源</span>
+            <textarea name="registry_mirrors" placeholder="docker.1ms.run&#10;docker.1panel.live">${h(mirrorText)}</textarea>
           </label>
-          <button type="submit">保存代理</button>
-        </form>
-        <form id="imageNetworkProxyForm" class="inline-form">
+          <button type="submit">保存加速源</button>
+          </form>
+        </section>
+        <section class="image-tool-card accent-orange">
+          <h4>镜像代理</h4>
+          <form id="imageNetworkProxyForm" class="inline-form">
           <label class="field">
-            <span>局域网网络代理</span>
+            <span>代理地址</span>
             <input name="network_proxy" value="${h(state.images.networkProxy)}" placeholder="例如 192.168.1.2:7890" />
           </label>
           <button type="submit">保存</button>
-        </form>
+          </form>
+          <button data-action="image-proxy-test">连通检测</button>
+          ${state.images.proxyTest ? `<small class="proxy-test-result">${h(state.images.proxyTest)}</small>` : ""}
+        </section>
       </div>
       ${renderImagePullProgress()}
       ${
@@ -1641,7 +1657,7 @@ document.addEventListener("submit", async (event) => {
         method: "PUT",
         body: {
           docker_socket: data.docker_socket,
-          image_registry_proxy: data.image_registry_proxy,
+          registry_mirrors: data.image_registry_proxy,
           network_proxy: data.network_proxy,
           compose_roots: data.compose_roots.split("\n").map((line) => line.trim()).filter(Boolean),
           file_roots: data.file_roots
@@ -1672,22 +1688,23 @@ document.addEventListener("submit", async (event) => {
       state.error = state.images.searchResults.length ? `找到 ${state.images.searchResults.length} 个镜像。` : "没有找到匹配镜像。";
       render();
     }
-    if (form.id === "imageProxyForm") {
+    if (form.id === "imageMirrorsForm") {
       const data = Object.fromEntries(new FormData(form));
       const settings = state.settings || (await api("/api/settings"));
       await api("/api/settings", {
         method: "PUT",
         body: {
           docker_socket: settings.docker_socket || "/var/run/docker.sock",
-          image_registry_proxy: data.image_registry_proxy,
+          registry_mirrors: data.registry_mirrors,
           network_proxy: state.images.networkProxy || settings.network_proxy || "",
           compose_roots: settings.compose_roots || [],
           file_roots: settings.file_roots || [],
         },
       });
-      state.images.proxy = data.image_registry_proxy || "";
-      state.settings = { ...settings, image_registry_proxy: state.images.proxy };
-      state.error = "镜像代理已保存。";
+      state.images.registryMirrors = data.registry_mirrors.split("\n").map((line) => line.trim()).filter(Boolean);
+      state.images.proxy = state.images.registryMirrors[0] || "";
+      state.settings = { ...settings, registry_mirrors: state.images.registryMirrors, image_registry_proxy: state.images.proxy };
+      state.error = "镜像加速源已保存。";
       render();
     }
     if (form.id === "imageNetworkProxyForm") {
@@ -1697,7 +1714,7 @@ document.addEventListener("submit", async (event) => {
         method: "PUT",
         body: {
           docker_socket: settings.docker_socket || "/var/run/docker.sock",
-          image_registry_proxy: state.images.proxy || settings.image_registry_proxy || "",
+          registry_mirrors: state.images.registryMirrors || settings.registry_mirrors || [],
           network_proxy: data.network_proxy,
           compose_roots: settings.compose_roots || [],
           file_roots: settings.file_roots || [],
@@ -1909,6 +1926,12 @@ document.addEventListener("click", async (event) => {
       state.error = `已提交拉取：${button.dataset.image}`;
       await startImagePull(button.dataset.image, state.images.pullMode !== "direct");
     }
+    if (action === "image-proxy-test") {
+      const input = document.querySelector('#imageNetworkProxyForm input[name="network_proxy"]');
+      const result = await api("/api/docker/proxy/test", { method: "POST", body: { network_proxy: input?.value || state.images.networkProxy } });
+      state.images.proxyTest = result.message || (result.ok ? "镜像代理连通正常。" : "镜像代理不可用。");
+      render();
+    }
     if (action === "compose-select") {
       await selectCompose(button.dataset.path);
       render();
@@ -1922,7 +1945,20 @@ document.addEventListener("click", async (event) => {
     }
     if (action === "compose-repair") {
       const editor = document.getElementById("composeEditor");
-      const result = await api("/api/compose/repair", { method: "POST", body: { content: editor.value } });
+      let errorText = "";
+      if (state.compose.selected) {
+        await api("/api/compose/file", {
+          method: "PUT",
+          body: { path: state.compose.selected, content: editor.value },
+        });
+        const checked = await api("/api/compose/action", {
+          method: "POST",
+          body: { path: state.compose.selected, action: "config" },
+        });
+        if (!checked.ok) errorText = checked.output || "";
+        state.compose.output = `$ ${checked.command}\n\n${checked.output || ""}`;
+      }
+      const result = await api("/api/compose/repair", { method: "POST", body: { content: editor.value, error: errorText } });
       state.compose.repair = result;
       if (result.changed) {
         state.compose.content = result.content;

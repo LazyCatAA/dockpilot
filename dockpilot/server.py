@@ -256,6 +256,7 @@ class Store:
                 "docker_socket": DEFAULT_DOCKER_SOCKET,
                 "compose_roots": json_dumps([str(DATA_DIR / "stacks")]),
                 "image_registry_proxy": "",
+                "registry_mirrors": "",
                 "network_proxy": "",
                 "dashboard_widgets": json_dumps(DEFAULT_DASHBOARD_WIDGETS),
                 "file_roots": json_dumps(
@@ -1001,6 +1002,7 @@ class AppHandler(BaseHTTPRequestHandler):
                     {
                         "images": images,
                         "image_registry_proxy": STORE.get_setting("image_registry_proxy", ""),
+                        "registry_mirrors": normalize_registry_mirrors(STORE.get_setting("registry_mirrors", STORE.get_setting("image_registry_proxy", ""))),
                         "network_proxy": STORE.get_setting("network_proxy", ""),
                     }
                 )
@@ -1012,6 +1014,10 @@ class AppHandler(BaseHTTPRequestHandler):
                     self.write_json({"error": "image search query is required"}, status=400)
                     return
                 self.write_json({"results": search_docker_hub_images(keyword)})
+                return
+            if path == "/api/docker/proxy/test" and self.command == "POST":
+                proxy = normalize_network_proxy_url(str(self.read_json().get("network_proxy", "")))
+                self.write_json(test_network_proxy(proxy))
                 return
             if path == "/api/docker/images/pull" and self.command == "POST":
                 data = self.read_json()
@@ -1210,7 +1216,7 @@ class AppHandler(BaseHTTPRequestHandler):
                 return
             if path == "/api/compose/repair" and self.command == "POST":
                 data = self.read_json()
-                self.write_json(repair_compose_content(str(data.get("content", ""))))
+                self.write_json(repair_compose_content(str(data.get("content", "")), str(data.get("error", ""))))
                 return
         except FileExistsError:
             self.write_json({"error": "project already exists"}, status=409)
@@ -1333,6 +1339,7 @@ class AppHandler(BaseHTTPRequestHandler):
                     "compose_roots": [str(path) for path in self.compose_roots()],
                     "file_roots": self.file_roots_public(),
                     "image_registry_proxy": STORE.get_setting("image_registry_proxy", ""),
+                    "registry_mirrors": normalize_registry_mirrors(STORE.get_setting("registry_mirrors", STORE.get_setting("image_registry_proxy", ""))),
                     "network_proxy": STORE.get_setting("network_proxy", ""),
                 }
             )
@@ -1342,7 +1349,8 @@ class AppHandler(BaseHTTPRequestHandler):
             docker_socket = str(data.get("docker_socket", DEFAULT_DOCKER_SOCKET)).strip() or DEFAULT_DOCKER_SOCKET
             compose_roots = normalize_paths(data.get("compose_roots", []))
             file_roots = normalize_file_roots(data.get("file_roots", []))
-            image_registry_proxy = normalize_image_registry_proxy(str(data.get("image_registry_proxy", "")))
+            registry_mirrors = normalize_registry_mirrors(data.get("registry_mirrors", data.get("image_registry_proxy", "")))
+            image_registry_proxy = registry_mirrors[0] if registry_mirrors else ""
             network_proxy = normalize_network_proxy_url(str(data.get("network_proxy", "")))
             for path_value in compose_roots:
                 Path(path_value).expanduser().mkdir(parents=True, exist_ok=True)
@@ -1352,6 +1360,7 @@ class AppHandler(BaseHTTPRequestHandler):
             STORE.set_setting("compose_roots", json_dumps(compose_roots))
             STORE.set_setting("file_roots", json_dumps(file_roots))
             STORE.set_setting("image_registry_proxy", image_registry_proxy)
+            STORE.set_setting("registry_mirrors", "\n".join(registry_mirrors))
             STORE.set_setting("network_proxy", network_proxy)
             self.write_json({"ok": True})
             return
@@ -1735,8 +1744,9 @@ def quote_yaml(value: Any) -> str:
     return json.dumps(text, ensure_ascii=False)
 
 
-def repair_compose_content(content: str) -> dict[str, Any]:
+def repair_compose_content(content: str, error: str = "") -> dict[str, Any]:
     original = str(content or "")
+    error_text = str(error or "")
     lines = original.replace("\r\n", "\n").replace("\r", "\n").split("\n")
     fixed_lines: list[str] = []
     changes: list[str] = []
@@ -1746,6 +1756,9 @@ def repair_compose_content(content: str) -> dict[str, Any]:
         if re.match(r"^\s*-\s+\d+:\d+(?:/\w+)?\s*$", fixed):
             indent, value = fixed.split("-", 1)
             fixed = f"{indent}- \"{value.strip()}\""
+        if ("ports" in error_text.lower() or "must be a string" in error_text.lower()) and re.match(r"^\s*-\s+\d+:\d+.*$", fixed):
+            indent, value = fixed.split("-", 1)
+            fixed = f"{indent}- \"{value.strip().strip(chr(34))}\""
         env_match = re.match(r"^(\s*-\s*)([A-Za-z_][A-Za-z0-9_]*=.*[#:&{}\\[\\],].*)$", fixed)
         if env_match and not env_match.group(2).strip().startswith(("'", '"')):
             fixed = f"{env_match.group(1)}{json.dumps(env_match.group(2).strip(), ensure_ascii=False)}"
@@ -1756,6 +1769,8 @@ def repair_compose_content(content: str) -> dict[str, Any]:
     if "services:" not in fixed_content:
         fixed_content = "services:\n" + "\n".join(f"  {line}" if line.strip() else line for line in fixed_content.splitlines()) + "\n"
         changes.append("补充了缺失的 services 根节点。")
+    if error_text and not changes:
+        changes.append("已读取 Compose 检查错误，但没有匹配到可安全自动修正的规则。")
     unique_changes = list(dict.fromkeys(changes))
     return {"ok": True, "content": fixed_content, "changed": fixed_content != original, "changes": unique_changes}
 
@@ -1864,6 +1879,19 @@ def normalize_image_registry_proxy(value: str) -> str:
     return proxy.strip("/")
 
 
+def normalize_registry_mirrors(value: Any) -> list[str]:
+    if isinstance(value, list):
+        raw_items = value
+    else:
+        raw_items = str(value or "").replace(",", "\n").splitlines()
+    mirrors: list[str] = []
+    for item in raw_items:
+        mirror = normalize_image_registry_proxy(str(item))
+        if mirror and mirror not in mirrors:
+            mirrors.append(mirror)
+    return mirrors
+
+
 def image_reference_has_registry(image: str) -> bool:
     if "/" not in image:
         return False
@@ -1873,7 +1901,11 @@ def image_reference_has_registry(image: str) -> bool:
 
 def proxied_image_reference(image: str, proxy: str | None = None) -> str:
     source = image.strip()
-    proxy_value = normalize_image_registry_proxy(proxy if proxy is not None else STORE.get_setting("image_registry_proxy", ""))
+    if proxy is not None:
+        proxy_value = normalize_image_registry_proxy(proxy)
+    else:
+        mirrors = normalize_registry_mirrors(STORE.get_setting("registry_mirrors", STORE.get_setting("image_registry_proxy", "")))
+        proxy_value = mirrors[0] if mirrors else ""
     if not source or not proxy_value:
         return source
     if image_reference_has_registry(source):
@@ -2082,6 +2114,20 @@ def fetch_json_url(url: str, timeout: int = 10) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise RuntimeError("unexpected response from Docker Hub")
     return payload
+
+
+def test_network_proxy(proxy: str) -> dict[str, Any]:
+    if not proxy:
+        return {"ok": False, "message": "请先填写镜像代理地址。"}
+    old_get_setting = STORE.get_setting
+    try:
+        STORE.get_setting = lambda key, fallback="": proxy if key == "network_proxy" else old_get_setting(key, fallback)
+        fetch_json_url("https://hub.docker.com/v2/", timeout=8)
+        return {"ok": True, "message": "镜像代理连通正常。"}
+    except Exception as exc:
+        return {"ok": False, "message": translate_docker_error(str(exc))}
+    finally:
+        STORE.get_setting = old_get_setting
 
 
 def normalize_docker_hub_search_results(payload: dict[str, Any], limit: int = 12) -> list[dict[str, Any]]:

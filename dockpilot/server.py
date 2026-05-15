@@ -1602,6 +1602,50 @@ def update_compose_managed_container(
     }
 
 
+def docker_error_message(data: bytes, reason: str = "") -> str:
+    text = data.decode("utf-8", "replace").strip()
+    if text:
+        try:
+            payload = json.loads(text)
+            if isinstance(payload, dict) and payload.get("message"):
+                return str(payload["message"])
+        except json.JSONDecodeError:
+            pass
+        return text
+    return reason or "Docker request failed"
+
+
+def make_standalone_backup_container_name(original_name: str, container_id: str, nonce: str | None = None) -> str:
+    base = safe_name(original_name, "container")
+    suffix = nonce or f"{time.strftime('%Y%m%d-%H%M%S')}-{container_id[:8]}"
+    backup_name = safe_name(f"{base}-old-{suffix}", "old-container")
+    if backup_name == base:
+        backup_name = safe_name(f"{base}-old-{uuid.uuid4().hex[:8]}", "old-container")
+    return backup_name
+
+
+def rename_standalone_container_for_update(docker: DockerClient, container_id: str, backup_name: str) -> str:
+    status, data, reason = docker.request(
+        "POST",
+        f"/containers/{urllib.parse.quote(container_id, safe='')}/rename",
+        query={"name": backup_name},
+    )
+    if status in (200, 204):
+        return backup_name
+    message = docker_error_message(data, reason)
+    if "same name as its current name" in message:
+        retry_name = make_standalone_backup_container_name(backup_name, container_id, uuid.uuid4().hex[:8])
+        status, data, reason = docker.request(
+            "POST",
+            f"/containers/{urllib.parse.quote(container_id, safe='')}/rename",
+            query={"name": retry_name},
+        )
+        if status in (200, 204):
+            return retry_name
+        message = docker_error_message(data, reason)
+    raise RuntimeError(f"旧容器改名失败：{message}")
+
+
 def recreate_standalone_container(
     docker: DockerClient,
     inspect_data: dict[str, Any],
@@ -1609,7 +1653,7 @@ def recreate_standalone_container(
 ) -> dict[str, Any]:
     container_id = str(inspect_data.get("Id", ""))
     original_name = container_key_from_inspect(inspect_data)
-    backup_name = safe_name(f"{original_name}-old-{time.strftime('%Y%m%d-%H%M%S')}-{container_id[:8]}", "old-container")
+    backup_name = make_standalone_backup_container_name(original_name, container_id)
     was_running = bool((inspect_data.get("State") or {}).get("Running"))
     new_id = ""
     try:
@@ -1624,13 +1668,7 @@ def recreate_standalone_container(
             if status not in (200, 204, 304):
                 raise RuntimeError(data.decode("utf-8", "replace") or reason)
         emit_progress(progress, 82, "保留旧容器", "正在保留旧容器用于回滚。")
-        status, data, reason = docker.request(
-            "POST",
-            f"/containers/{urllib.parse.quote(container_id, safe='')}/rename",
-            query={"name": backup_name},
-        )
-        if status not in (200, 204):
-            raise RuntimeError(data.decode("utf-8", "replace") or reason)
+        backup_name = rename_standalone_container_for_update(docker, container_id, backup_name)
         create_body = container_create_body_from_inspect(inspect_data)
         emit_progress(progress, 88, "创建新容器", "正在使用新镜像创建容器。")
         created = docker.json("POST", "/containers/create", query={"name": original_name}, body=create_body)

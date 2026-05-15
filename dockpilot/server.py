@@ -35,6 +35,11 @@ SESSION_COOKIE = "dockpilot_session"
 SESSION_TTL_SECONDS = 60 * 60 * 24 * 14
 MAX_JSON_BYTES = 25 * 1024 * 1024
 TEXT_PREVIEW_LIMIT = 2 * 1024 * 1024
+DEFAULT_DASHBOARD_WIDGETS = [
+    {"id": "host", "type": "host", "title": "主机状态", "visible": True},
+    {"id": "docker", "type": "docker", "title": "Docker 状态", "visible": True},
+    {"id": "containers", "type": "containers", "title": "容器监控", "visible": True},
+]
 
 
 def now_ts() -> int:
@@ -74,11 +79,30 @@ def normalize_card_url(value: str) -> str:
     return url
 
 
-def normalize_color(value: str) -> str:
-    color = value.strip() or "#2563eb"
+def normalize_color(value: str, fallback: str = "#2563eb") -> str:
+    color = value.strip() or fallback
     if not re.fullmatch(r"#[0-9A-Fa-f]{3}(?:[0-9A-Fa-f]{3})?(?:[0-9A-Fa-f]{2})?", color):
-        return "#2563eb"
+        return fallback
     return color
+
+
+def normalize_optional_card_url(value: str) -> str:
+    url = value.strip()
+    return normalize_card_url(url) if url else ""
+
+
+def normalize_card_size(value: Any) -> str:
+    size = str(value or "medium").strip().lower()
+    return size if size in {"small", "medium", "large"} else "medium"
+
+
+def normalize_card_style(value: Any) -> str:
+    style = str(value or "default").strip().lower()
+    return style if style in {"default", "soft", "outline"} else "default"
+
+
+def normalize_card_description(value: Any) -> str:
+    return str(value or "").strip()[:2000]
 
 
 def read_json_setting(value: str | None, fallback: Any) -> Any:
@@ -88,6 +112,54 @@ def read_json_setting(value: str | None, fallback: Any) -> Any:
         return json.loads(value)
     except json.JSONDecodeError:
         return fallback
+
+
+def normalize_dashboard_widgets(value: Any) -> list[dict[str, Any]]:
+    widgets = value if isinstance(value, list) else []
+    normalized: list[dict[str, Any]] = []
+    allowed = {"host", "docker", "containers"}
+    for index, item in enumerate(widgets):
+        if not isinstance(item, dict):
+            continue
+        widget_type = str(item.get("type", "")).strip()
+        if widget_type not in allowed:
+            continue
+        widget_id = safe_name(str(item.get("id", "")) or f"{widget_type}-{index}", f"{widget_type}-{index}")
+        title = str(item.get("title", "")).strip() or {"host": "主机状态", "docker": "Docker 状态", "containers": "容器监控"}[widget_type]
+        normalized.append({"id": widget_id, "type": widget_type, "title": title, "visible": bool(item.get("visible", True))})
+    return normalized or [dict(item) for item in DEFAULT_DASHBOARD_WIDGETS]
+
+
+def dashboard_widgets() -> list[dict[str, Any]]:
+    return normalize_dashboard_widgets(read_json_setting(STORE.get_setting("dashboard_widgets", "[]"), []))
+
+
+def host_status() -> dict[str, Any]:
+    load1 = load5 = load15 = 0.0
+    try:
+        load1, load5, load15 = os.getloadavg()
+    except OSError:
+        pass
+    memory_total = 0
+    memory_available = 0
+    meminfo = Path("/proc/meminfo")
+    if meminfo.exists():
+        for line in meminfo.read_text(encoding="utf-8", errors="ignore").splitlines():
+            key, _, raw_value = line.partition(":")
+            if key in {"MemTotal", "MemAvailable"}:
+                amount = int((raw_value.strip().split() or ["0"])[0]) * 1024
+                if key == "MemTotal":
+                    memory_total = amount
+                else:
+                    memory_available = amount
+    disk = shutil.disk_usage(DATA_DIR)
+    return {
+        "load": [round(load1, 2), round(load5, 2), round(load15, 2)],
+        "memory_total": memory_total,
+        "memory_used": max(memory_total - memory_available, 0) if memory_total else 0,
+        "disk_total": disk.total,
+        "disk_used": disk.used,
+    }
 
 
 class Store:
@@ -132,9 +204,16 @@ class Store:
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     title TEXT NOT NULL,
                     url TEXT NOT NULL,
+                    internal_url TEXT NOT NULL DEFAULT '',
+                    description TEXT NOT NULL DEFAULT '',
                     group_name TEXT NOT NULL DEFAULT 'Apps',
                     icon TEXT NOT NULL DEFAULT '',
                     color TEXT NOT NULL DEFAULT '#2563eb',
+                    title_color TEXT NOT NULL DEFAULT '#111827',
+                    card_color TEXT NOT NULL DEFAULT '#ffffff',
+                    size TEXT NOT NULL DEFAULT 'medium',
+                    style TEXT NOT NULL DEFAULT 'default',
+                    icon_data TEXT NOT NULL DEFAULT '',
                     sort_order INTEGER NOT NULL DEFAULT 0,
                     created_at INTEGER NOT NULL,
                     updated_at INTEGER NOT NULL
@@ -155,9 +234,27 @@ class Store:
             }
             if "icon_data" not in existing_columns:
                 conn.execute("ALTER TABLE container_prefs ADD COLUMN icon_data TEXT NOT NULL DEFAULT ''")
+            card_columns = {
+                str(row["name"])
+                for row in conn.execute("PRAGMA table_info(cards)").fetchall()
+            }
+            card_migrations = {
+                "internal_url": "ALTER TABLE cards ADD COLUMN internal_url TEXT NOT NULL DEFAULT ''",
+                "description": "ALTER TABLE cards ADD COLUMN description TEXT NOT NULL DEFAULT ''",
+                "title_color": "ALTER TABLE cards ADD COLUMN title_color TEXT NOT NULL DEFAULT '#111827'",
+                "card_color": "ALTER TABLE cards ADD COLUMN card_color TEXT NOT NULL DEFAULT '#ffffff'",
+                "size": "ALTER TABLE cards ADD COLUMN size TEXT NOT NULL DEFAULT 'medium'",
+                "style": "ALTER TABLE cards ADD COLUMN style TEXT NOT NULL DEFAULT 'default'",
+                "icon_data": "ALTER TABLE cards ADD COLUMN icon_data TEXT NOT NULL DEFAULT ''",
+            }
+            for column, statement in card_migrations.items():
+                if column not in card_columns:
+                    conn.execute(statement)
             defaults = {
                 "docker_socket": DEFAULT_DOCKER_SOCKET,
                 "compose_roots": json_dumps([str(DATA_DIR / "stacks")]),
+                "image_registry_proxy": "",
+                "dashboard_widgets": json_dumps(DEFAULT_DASHBOARD_WIDGETS),
                 "file_roots": json_dumps(
                     [
                         {"name": "files", "path": str(DATA_DIR / "files")},
@@ -263,23 +360,63 @@ class Store:
         if not title:
             raise ValueError("title and url are required")
         url = normalize_card_url(str(data.get("url", "")))
+        internal_url = normalize_optional_card_url(str(data.get("internal_url", "")))
+        description = normalize_card_description(data.get("description", ""))
         group_name = str(data.get("group_name", "Apps")).strip() or "Apps"
         icon = str(data.get("icon", "")).strip()
         color = normalize_color(str(data.get("color", "#2563eb")))
+        title_color = normalize_color(str(data.get("title_color", "#111827")), "#111827")
+        card_color = normalize_color(str(data.get("card_color", "#ffffff")), "#ffffff")
+        size = normalize_card_size(data.get("size"))
+        style = normalize_card_style(data.get("style"))
+        icon_data = ""
+        if data.get("icon_content_base64"):
+            icon_data = normalize_container_icon(str(data.get("icon_content_base64", "")), str(data.get("icon_mime", "")))
         with self.connect() as conn:
             row = conn.execute("SELECT COALESCE(MAX(sort_order),0)+10 AS next_order FROM cards").fetchone()
             cursor = conn.execute(
                 """
-                INSERT INTO cards(title,url,group_name,icon,color,sort_order,created_at,updated_at)
-                VALUES(?,?,?,?,?,?,?,?)
+                INSERT INTO cards(
+                  title,url,internal_url,description,group_name,icon,color,title_color,card_color,size,style,icon_data,sort_order,created_at,updated_at
+                )
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
-                (title, url, group_name, icon, color, int(row["next_order"]), now_ts(), now_ts()),
+                (
+                    title,
+                    url,
+                    internal_url,
+                    description,
+                    group_name,
+                    icon,
+                    color,
+                    title_color,
+                    card_color,
+                    size,
+                    style,
+                    icon_data,
+                    int(row["next_order"]),
+                    now_ts(),
+                    now_ts(),
+                ),
             )
             created = conn.execute("SELECT * FROM cards WHERE id=?", (cursor.lastrowid,)).fetchone()
             return dict(created)
 
     def update_card(self, card_id: int, data: dict[str, Any]) -> dict[str, Any]:
-        allowed = ["title", "url", "group_name", "icon", "color", "sort_order"]
+        allowed = [
+            "title",
+            "url",
+            "internal_url",
+            "description",
+            "group_name",
+            "icon",
+            "color",
+            "title_color",
+            "card_color",
+            "size",
+            "style",
+            "sort_order",
+        ]
         updates = []
         values: list[Any] = []
         for key in allowed:
@@ -288,12 +425,30 @@ class Store:
                     raise ValueError("title and url are required")
                 if key == "url":
                     data[key] = normalize_card_url(str(data[key]))
+                if key == "internal_url":
+                    data[key] = normalize_optional_card_url(str(data[key]))
+                if key == "description":
+                    data[key] = normalize_card_description(data[key])
                 if key == "color":
                     data[key] = normalize_color(str(data[key]))
+                if key == "title_color":
+                    data[key] = normalize_color(str(data[key]), "#111827")
+                if key == "card_color":
+                    data[key] = normalize_color(str(data[key]), "#ffffff")
+                if key == "size":
+                    data[key] = normalize_card_size(data[key])
+                if key == "style":
+                    data[key] = normalize_card_style(data[key])
                 if key == "sort_order":
                     data[key] = int(data[key])
                 updates.append(f"{key}=?")
                 values.append(data[key])
+        if data.get("clear_icon"):
+            updates.append("icon_data=?")
+            values.append("")
+        elif data.get("icon_content_base64"):
+            updates.append("icon_data=?")
+            values.append(normalize_container_icon(str(data.get("icon_content_base64", "")), str(data.get("icon_mime", ""))))
         if not updates:
             raise ValueError("no fields to update")
         updates.append("updated_at=?")
@@ -643,6 +798,9 @@ class AppHandler(BaseHTTPRequestHandler):
         if path == "/api/overview" and self.command == "GET":
             self.api_overview()
             return
+        if path == "/api/dashboard/widgets":
+            self.api_dashboard_widgets()
+            return
         if path.startswith("/api/cards"):
             self.api_cards(path)
             return
@@ -714,11 +872,24 @@ class AppHandler(BaseHTTPRequestHandler):
         self.write_json(
             {
                 "docker": docker_status,
+                "host": host_status(),
                 "containers": {"total": len(containers), "running": running, "stopped": max(len(containers) - running, 0)},
                 "cards": len(STORE.list_cards()),
                 "compose_projects": len(discover_compose_projects(self.compose_roots(), containers)),
+                "dashboard_widgets": dashboard_widgets(),
             }
         )
+
+    def api_dashboard_widgets(self) -> None:
+        if self.command == "GET":
+            self.write_json({"widgets": dashboard_widgets()})
+            return
+        if self.command == "PUT":
+            widgets = normalize_dashboard_widgets(self.read_json().get("widgets", []))
+            STORE.set_setting("dashboard_widgets", json_dumps(widgets))
+            self.write_json({"widgets": widgets})
+            return
+        self.write_json({"error": "method not allowed"}, status=405)
 
     def api_cards(self, path: str) -> None:
         parts = path.strip("/").split("/")
@@ -773,7 +944,34 @@ class AppHandler(BaseHTTPRequestHandler):
                 return
             if path == "/api/docker/images" and self.command == "GET":
                 images = docker.json("GET", "/images/json", query={"all": "0"})
-                self.write_json({"images": images})
+                self.write_json({"images": images, "image_registry_proxy": STORE.get_setting("image_registry_proxy", "")})
+                return
+            if path == "/api/docker/images/pull" and self.command == "POST":
+                data = self.read_json()
+                image = str(data.get("image", "")).strip()
+                if not image:
+                    self.write_json({"error": "docker image is required"}, status=400)
+                    return
+                self.write_json(pull_image_with_proxy(image, docker.socket_path))
+                return
+            if path == "/api/docker/images/prune" and self.command == "POST":
+                status, data, reason = docker.request("POST", "/images/prune", query={"dangling": "true"}, timeout=120)
+                if status >= 400:
+                    raise RuntimeError(docker_error_message(data, reason))
+                self.write_json(json.loads(data.decode("utf-8")) if data else {"ImagesDeleted": [], "SpaceReclaimed": 0})
+                return
+            if len(parts) == 5 and parts[:3] == ["api", "docker", "images"] and parts[4] == "remove" and self.command == "DELETE":
+                image_id = urllib.parse.unquote(parts[3])
+                force = self.query_bool("force")
+                status, data, reason = docker.request(
+                    "DELETE",
+                    f"/images/{urllib.parse.quote(image_id, safe='')}",
+                    query={"force": "1" if force else "0", "noprune": "0"},
+                    timeout=120,
+                )
+                if status >= 400:
+                    raise RuntimeError(docker_error_message(data, reason))
+                self.write_json({"ok": True, "deleted": json.loads(data.decode("utf-8")) if data else []})
                 return
             if len(parts) == 4 and parts[:3] == ["api", "docker", "jobs"] and self.command == "GET":
                 job = get_job(urllib.parse.unquote(parts[3]))
@@ -1049,6 +1247,7 @@ class AppHandler(BaseHTTPRequestHandler):
                     "docker_socket": STORE.get_setting("docker_socket", DEFAULT_DOCKER_SOCKET),
                     "compose_roots": [str(path) for path in self.compose_roots()],
                     "file_roots": self.file_roots_public(),
+                    "image_registry_proxy": STORE.get_setting("image_registry_proxy", ""),
                 }
             )
             return
@@ -1057,6 +1256,7 @@ class AppHandler(BaseHTTPRequestHandler):
             docker_socket = str(data.get("docker_socket", DEFAULT_DOCKER_SOCKET)).strip() or DEFAULT_DOCKER_SOCKET
             compose_roots = normalize_paths(data.get("compose_roots", []))
             file_roots = normalize_file_roots(data.get("file_roots", []))
+            image_registry_proxy = normalize_image_registry_proxy(str(data.get("image_registry_proxy", "")))
             for path_value in compose_roots:
                 Path(path_value).expanduser().mkdir(parents=True, exist_ok=True)
             for root in file_roots:
@@ -1064,6 +1264,7 @@ class AppHandler(BaseHTTPRequestHandler):
             STORE.set_setting("docker_socket", docker_socket)
             STORE.set_setting("compose_roots", json_dumps(compose_roots))
             STORE.set_setting("file_roots", json_dumps(file_roots))
+            STORE.set_setting("image_registry_proxy", image_registry_proxy)
             self.write_json({"ok": True})
             return
         self.write_json({"error": "method not allowed"}, status=405)
@@ -1470,6 +1671,59 @@ def run_docker_cli(args: list[str], socket_path: str | None = None, timeout: int
     )
 
 
+def normalize_image_registry_proxy(value: str) -> str:
+    proxy = value.strip().rstrip("/")
+    proxy = re.sub(r"^https?://", "", proxy)
+    return proxy.strip("/")
+
+
+def image_reference_has_registry(image: str) -> bool:
+    if "/" not in image:
+        return False
+    first = image.split("/", 1)[0]
+    return "." in first or ":" in first or first == "localhost"
+
+
+def proxied_image_reference(image: str, proxy: str | None = None) -> str:
+    source = image.strip()
+    proxy_value = normalize_image_registry_proxy(proxy if proxy is not None else STORE.get_setting("image_registry_proxy", ""))
+    if not source or not proxy_value:
+        return source
+    if image_reference_has_registry(source):
+        return f"{proxy_value}/{source}"
+    if "/" not in source:
+        return f"{proxy_value}/library/{source}"
+    return f"{proxy_value}/{source}"
+
+
+def pull_image_with_proxy(image: str, socket_path: str | None = None, timeout: int = 600) -> dict[str, Any]:
+    source = image.strip()
+    if not source:
+        return {"ok": False, "image": source, "message": "docker image is required", "output": ""}
+    pull_ref = proxied_image_reference(source)
+    try:
+        pull = run_docker_cli(["pull", pull_ref], socket_path, timeout=timeout)
+    except FileNotFoundError:
+        return {"ok": False, "image": source, "pull_image": pull_ref, "message": "docker CLI not found in PATH", "output": ""}
+    except subprocess.TimeoutExpired as exc:
+        return {
+            "ok": False,
+            "image": source,
+            "pull_image": pull_ref,
+            "message": "docker pull timed out",
+            "output": str(exc.stdout or ""),
+        }
+    if pull.returncode != 0:
+        return {"ok": False, "image": source, "pull_image": pull_ref, "message": "docker pull failed", "output": pull.stdout}
+    output = pull.stdout
+    if pull_ref != source:
+        tag = run_docker_cli(["tag", pull_ref, source], socket_path, timeout=120)
+        output += "\n" + tag.stdout
+        if tag.returncode != 0:
+            return {"ok": False, "image": source, "pull_image": pull_ref, "message": "docker tag failed", "output": output}
+    return {"ok": True, "image": source, "pull_image": pull_ref, "message": "pulled", "output": output}
+
+
 def check_container_update(inspect_data: dict[str, Any], socket_path: str | None = None) -> dict[str, Any]:
     image = str((inspect_data.get("Config") or {}).get("Image", "")).strip()
     if not image or image.startswith("sha256:"):
@@ -1477,14 +1731,14 @@ def check_container_update(inspect_data: dict[str, Any], socket_path: str | None
     container_image_id = str(inspect_data.get("Image", "")).strip()
     try:
         before = run_docker_cli(["image", "inspect", image, "--format", "{{.Id}}"], socket_path, timeout=30)
-        pull = run_docker_cli(["pull", image], socket_path, timeout=600)
+        pull_result = pull_image_with_proxy(image, socket_path, timeout=600)
         after = run_docker_cli(["image", "inspect", image, "--format", "{{.Id}}"], socket_path, timeout=30)
     except FileNotFoundError:
         return {"ok": False, "update_available": False, "message": "docker CLI not found in PATH"}
     except subprocess.TimeoutExpired:
         return {"ok": False, "update_available": False, "message": "update check timed out"}
-    if pull.returncode != 0:
-        return {"ok": False, "update_available": False, "message": pull.stdout.strip() or "docker pull failed"}
+    if not pull_result.get("ok"):
+        return {"ok": False, "update_available": False, "message": pull_result.get("output") or pull_result.get("message") or "docker pull failed"}
     if after.returncode != 0:
         return {"ok": False, "update_available": False, "message": after.stdout.strip()}
     before_id = before.stdout.strip() if before.returncode == 0 else ""
@@ -1497,7 +1751,8 @@ def check_container_update(inspect_data: dict[str, Any], socket_path: str | None
         "container_image_id": container_image_id,
         "previous_local_image_id": before_id,
         "latest_image_id": latest_id,
-        "pull_output": pull.stdout,
+        "pull_output": pull_result.get("output", ""),
+        "pull_image": pull_result.get("pull_image", image),
     }
 
 
@@ -1520,39 +1775,20 @@ def update_container_image(docker: DockerClient, container_id: str, progress: Pr
     if compose_result:
         compose_result.update({"container_key": container_key, "backup": backup})
         return compose_result
-    try:
-        emit_progress(progress, 38, "拉取镜像", f"正在拉取最新镜像：{image}")
-        pull = run_docker_cli(["pull", image], docker.socket_path, timeout=600)
-    except FileNotFoundError:
+    emit_progress(progress, 38, "拉取镜像", f"正在拉取最新镜像：{image}")
+    pull_result = pull_image_with_proxy(image, docker.socket_path, timeout=600)
+    if not pull_result.get("ok"):
         return {
             "ok": False,
             "container_key": container_key,
             "backup": backup,
             "method": "standalone",
-            "output": "",
-            "message": "docker CLI not found in PATH",
-        }
-    except subprocess.TimeoutExpired as exc:
-        return {
-            "ok": False,
-            "container_key": container_key,
-            "backup": backup,
-            "method": "standalone",
-            "output": str(exc.stdout or ""),
-            "message": "container update timed out",
-        }
-    if pull.returncode != 0:
-        return {
-            "ok": False,
-            "container_key": container_key,
-            "backup": backup,
-            "method": "standalone",
-            "output": pull.stdout,
-            "message": "docker pull failed",
+            "output": pull_result.get("output", ""),
+            "message": pull_result.get("message", "docker pull failed"),
         }
     emit_progress(progress, 72, "重建容器", "镜像拉取完成，正在重建容器。")
     result = recreate_standalone_container(docker, inspect_data, progress=progress)
-    result.update({"container_key": container_key, "backup": backup, "pull_output": pull.stdout})
+    result.update({"container_key": container_key, "backup": backup, "pull_output": pull_result.get("output", "")})
     emit_progress(progress, 96, "更新完成", "容器重建完成，正在刷新状态。")
     return result
 

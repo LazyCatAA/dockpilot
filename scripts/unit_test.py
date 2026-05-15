@@ -6,7 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from dockpilot.server import recreate_standalone_container
+from dockpilot.server import proxied_image_reference, recreate_standalone_container
 
 
 def assert_true(value: bool, message: str) -> None:
@@ -53,8 +53,26 @@ def test_standalone_update_retries_when_docker_reports_same_rename_name() -> Non
     assert_true(docker.rename_calls[0] != docker.rename_calls[1], "重试时应使用新的备份名")
 
 
+def test_image_proxy_keeps_original_reference_shape() -> None:
+    assert_true(
+        proxied_image_reference("nginx:latest", "mirror.example.com") == "mirror.example.com/library/nginx:latest",
+        "单段 Docker Hub 镜像应自动补 library 命名空间",
+    )
+    assert_true(
+        proxied_image_reference("linuxserver/qbittorrent:latest", "mirror.example.com")
+        == "mirror.example.com/linuxserver/qbittorrent:latest",
+        "带命名空间的 Docker Hub 镜像应追加到代理前缀后",
+    )
+    assert_true(
+        proxied_image_reference("ghcr.io/user/app:latest", "https://mirror.example.com/")
+        == "mirror.example.com/ghcr.io/user/app:latest",
+        "带 registry 的镜像应保留完整原始路径并清理代理协议",
+    )
+
+
 def main() -> int:
     test_standalone_update_retries_when_docker_reports_same_rename_name()
+    test_image_proxy_keeps_original_reference_shape()
     print("PASS: DockPilot 单元测试全部通过")
     return 0
 

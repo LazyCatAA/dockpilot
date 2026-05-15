@@ -94,10 +94,16 @@ DOCKER_HOST=unix:///var/run/docker.sock
 检查更新时会：
 
 1. 读取容器当前 `Image` ID。
-2. 执行 `docker pull 镜像名`。
+2. 执行镜像拉取；如果配置了镜像代理，会先通过代理前缀拉取，再标记回原镜像名。
 3. 执行 `docker image inspect 镜像名 --format {{.Id}}`。
 4. 对比容器当前镜像 ID 和最新本地镜像 ID。
 5. 不同则标记为有更新。
+
+镜像代理规则在 `proxied_image_reference()` 中维护：
+
+- `nginx:latest` 会补全为 `代理/library/nginx:latest`。
+- `linuxserver/qbittorrent:latest` 会变为 `代理/linuxserver/qbittorrent:latest`。
+- `ghcr.io/user/app:latest` 会保留原 registry 路径并追加到代理后。
 
 ## 一键更新逻辑
 

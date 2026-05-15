@@ -4,14 +4,19 @@ const state = {
   error: "",
   loading: false,
   overview: null,
+  dashboardWidgets: [],
   cards: [],
   editingCard: null,
+  cardModal: { open: false, iconMime: "", iconBase64: "", clearIcon: false },
+  cardContextMenu: { open: false, x: 0, y: 0, id: null },
   containers: [],
   containerBackups: [],
+  images: { items: [], query: "", pullOutput: "", proxy: "" },
   containerView: "card",
   containerFilter: "all",
   containerDetail: null,
-  containerUpdateJob: null,
+  containerUpdateJobs: {},
+  containerUpdateCheck: { active: false, done: 0, total: 0, failed: 0 },
   sidebarCollapsed: false,
   logs: { id: "", text: "" },
   compose: { projects: [], selected: "", content: "", output: "" },
@@ -19,12 +24,14 @@ const state = {
   settings: null,
 };
 
-let containerUpdatePollTimer = null;
-let containerUpdateClearTimer = null;
+const containerUpdatePollTimers = {};
+const containerUpdateClearTimers = {};
+const containerAutoChecked = new Set();
 
 const tabs = [
   ["dashboard", "总览"],
   ["containers", "容器"],
+  ["images", "镜像"],
   ["compose", "Compose"],
   ["files", "文件"],
   ["settings", "设置"],
@@ -32,7 +39,7 @@ const tabs = [
 
 const navGroups = [
   { title: "发现", items: [["dashboard", "首页导航", "⌂"]] },
-  { title: "Docker", items: [["containers", "容器管理", "▦"], ["compose", "Compose管理", "◇"]] },
+  { title: "Docker", items: [["containers", "容器管理", "▦"], ["images", "镜像库", "◉"], ["compose", "Compose管理", "◇"]] },
   { title: "系统", items: [["files", "文件管理", "≡"], ["settings", "系统设置", "⚙"]] },
 ];
 
@@ -154,8 +161,12 @@ function containerStats() {
 }
 
 function isContainerUpdating(containerId) {
-  const job = state.containerUpdateJob;
-  return Boolean(job && job.container_id === containerId && ["queued", "running"].includes(job.status));
+  const job = state.containerUpdateJobs[containerId];
+  return Boolean(job && ["queued", "running"].includes(job.status));
+}
+
+function containerUpdateJob(containerId) {
+  return state.containerUpdateJobs[containerId] || null;
 }
 
 function updateJobStatusText(status) {
@@ -168,24 +179,40 @@ function updateJobStatusText(status) {
   return map[status] || "更新任务";
 }
 
-function renderContainerUpdateProgress() {
-  const job = state.containerUpdateJob;
+function renderContainerCardUpdateProgress(containerId) {
+  const job = containerUpdateJob(containerId);
   if (!job) return "";
   const progress = Math.max(0, Math.min(100, Number(job.progress || 0)));
   const status = String(job.status || "queued");
   return `
-    <div class="container-update-progress ${h(status)}">
-      <div class="container-update-progress-head">
+    <div class="container-card-update-progress ${h(status)}">
+      <div class="container-card-update-progress-head">
         <div>
           <strong>${h(updateJobStatusText(status))}</strong>
           <span>${h(job.step || "容器更新")}</span>
         </div>
         <b>${progress}%</b>
       </div>
-      <div class="container-update-track"><i style="width:${progress}%"></i></div>
+      <div class="container-card-update-track"><i style="width:${progress}%"></i></div>
       <p>${h(job.message || "正在处理容器更新任务。")}</p>
     </div>
   `;
+}
+
+function shouldAutoCheckContainerUpdate(container) {
+  const key = containerKey(container);
+  if (!key || containerAutoChecked.has(key)) return false;
+  const checkedAt = Number(container.DockPilot?.update_checked_at || 0);
+  if (!checkedAt) return true;
+  return Date.now() / 1000 - checkedAt > 12 * 60 * 60;
+}
+
+function updateContainerCheckState(containerId, data) {
+  const item = state.containers.find((container) => container.Id === containerId);
+  if (!item) return;
+  item.DockPilot = item.DockPilot || {};
+  if (typeof data.update_available === "boolean") item.DockPilot.update_available = data.update_available;
+  item.DockPilot.update_checked_at = Math.floor(Date.now() / 1000);
 }
 
 function filteredContainers() {
@@ -245,6 +272,132 @@ function containerRuntime(container) {
   }
   if (stateValue === "exited") return "已停止";
   return zhContainerState(container.State);
+}
+
+function imageTags(image) {
+  const tags = image.RepoTags || [];
+  return tags.filter((tag) => tag && tag !== "<none>:<none>");
+}
+
+function imageTitle(image) {
+  const tags = imageTags(image);
+  if (tags.length) return tags[0];
+  return shortId(image.Id || image.ID || "");
+}
+
+function imageSubtitle(image) {
+  const tags = imageTags(image);
+  if (tags.length > 1) return tags.slice(1, 3).join(" / ");
+  const digests = image.RepoDigests || [];
+  return digests[0] || "未命名镜像";
+}
+
+function imageCreatedText(image) {
+  const created = Number(image.Created || 0);
+  if (!created) return "-";
+  return new Date(created * 1000).toLocaleDateString("zh-CN");
+}
+
+function dashboardWidgetValue(widget, overview) {
+  if (widget.type === "host") {
+    const host = overview.host || {};
+    return {
+      value: host.memory_total ? `${Math.round((host.memory_used / host.memory_total) * 100)}%` : `${(host.load || [0])[0] || 0}`,
+      detail: host.memory_total ? `内存 ${fmtBytes(host.memory_used)} / ${fmtBytes(host.memory_total)}` : "主机负载",
+      tone: "blue",
+    };
+  }
+  if (widget.type === "docker") {
+    const docker = overview.docker || {};
+    return {
+      value: docker.available ? "在线" : "离线",
+      detail: docker.available ? "Docker 引擎可用" : zhError(docker.message || "连接失败"),
+      tone: docker.available ? "green" : "red",
+    };
+  }
+  const containers = overview.containers || {};
+  return {
+    value: `${containers.running || 0}/${containers.total || 0}`,
+    detail: "运行中 / 总容器",
+    tone: "orange",
+  };
+}
+
+async function saveDashboardWidgets(widgets) {
+  const data = await api("/api/dashboard/widgets", { method: "PUT", body: { widgets } });
+  state.dashboardWidgets = data.widgets || [];
+}
+
+function filteredImages() {
+  const query = state.images.query.trim().toLowerCase();
+  if (!query) return state.images.items;
+  return state.images.items.filter((image) => {
+    const haystack = [image.Id, ...(image.RepoTags || []), ...(image.RepoDigests || [])].join(" ").toLowerCase();
+    return haystack.includes(query);
+  });
+}
+
+function cardGroups() {
+  const groups = state.cards.reduce((acc, card) => {
+    const key = card.group_name || "应用";
+    acc[key] = acc[key] || [];
+    acc[key].push(card);
+    return acc;
+  }, {});
+  const entries = Object.entries(groups);
+  return entries.length ? entries : [["Docker", []]];
+}
+
+function cardById(id) {
+  return state.cards.find((item) => item.id === Number(id)) || null;
+}
+
+function cardDefaultUrl(card) {
+  return card.internal_url || card.url || "";
+}
+
+function cardSize(card) {
+  return ["small", "medium", "large"].includes(card.size) ? card.size : "medium";
+}
+
+function cardStyle(card) {
+  return ["default", "soft", "outline"].includes(card.style) ? card.style : "default";
+}
+
+function cardIconMarkup(card) {
+  if (card.icon_data) return `<img src="${h(card.icon_data)}" alt="" />`;
+  const label = (card.icon || card.title.slice(0, 2).toUpperCase()).slice(0, 4);
+  return `<span>${h(label)}</span>`;
+}
+
+function openCardModal(card = null, groupName = "Docker") {
+  state.editingCard = card
+    ? { ...card }
+    : {
+        title: "",
+        url: "",
+        internal_url: "",
+        description: "",
+        group_name: groupName || "Docker",
+        icon: "",
+        color: "#2f80ed",
+        title_color: "#111827",
+        card_color: "#ffffff",
+        size: "medium",
+        style: "default",
+        icon_data: "",
+      };
+  state.cardModal = { open: true, iconMime: "", iconBase64: "", clearIcon: false };
+  state.cardContextMenu = { open: false, x: 0, y: 0, id: null };
+}
+
+function closeCardModal() {
+  state.editingCard = null;
+  state.cardModal = { open: false, iconMime: "", iconBase64: "", clearIcon: false };
+}
+
+function closeCardContextMenu() {
+  state.cardContextMenu = { open: false, x: 0, y: 0, id: null };
 }
 
 function renderNav() {
@@ -337,6 +490,8 @@ function zhError(message) {
     ["command is required", "请输入部署命令。"],
     ["command must start with docker run", "命令必须以 docker run 开头。"],
     ["docker image is required", "命令中没有识别到镜像名称。"],
+    ["docker pull timed out", "镜像拉取超时。"],
+    ["docker tag failed", "镜像代理拉取成功，但打回原始镜像名失败。"],
     ["user not found", "用户不存在。"],
     ["refusing to delete a root directory", "不能删除根目录。"],
     ["request body too large", "请求内容太大。"],
@@ -386,6 +541,7 @@ async function refreshCurrent() {
   try {
     if (state.tab === "dashboard") await loadDashboard();
     if (state.tab === "containers") await loadContainers();
+    if (state.tab === "images") await loadImages();
     if (state.tab === "compose") await loadCompose();
     if (state.tab === "files") await loadFiles();
     if (state.tab === "settings") await loadSettings();
@@ -400,6 +556,7 @@ async function refreshCurrent() {
 async function loadDashboard() {
   const [overview, cards] = await Promise.all([api("/api/overview"), api("/api/cards")]);
   state.overview = overview;
+  state.dashboardWidgets = overview.dashboard_widgets || [];
   state.cards = cards.cards || [];
 }
 
@@ -407,38 +564,47 @@ async function loadContainers() {
   const [data, backups] = await Promise.all([api("/api/docker/containers"), api("/api/docker/backups")]);
   state.containers = data.containers || [];
   state.containerBackups = backups.backups || [];
+  scheduleContainerUpdateChecks();
+}
+
+async function loadImages() {
+  const data = await api("/api/docker/images");
+  state.images.items = data.images || [];
+  state.images.proxy = data.image_registry_proxy || state.images.proxy || "";
 }
 
 async function startContainerUpdate(containerId) {
-  if (containerUpdateClearTimer) clearTimeout(containerUpdateClearTimer);
+  if (containerUpdateClearTimers[containerId]) clearTimeout(containerUpdateClearTimers[containerId]);
   const data = await api(`/api/docker/containers/${encodeURIComponent(containerId)}/update-job`, { method: "POST" });
-  state.containerUpdateJob = data.job;
+  state.containerUpdateJobs = { ...state.containerUpdateJobs, [containerId]: data.job };
   state.error = "容器更新任务已开始。";
   render();
-  pollContainerUpdateJob(data.job.id);
+  pollContainerUpdateJob(containerId, data.job.id);
 }
 
-async function pollContainerUpdateJob(jobId) {
-  if (containerUpdatePollTimer) clearTimeout(containerUpdatePollTimer);
+async function pollContainerUpdateJob(containerId, jobId) {
+  if (containerUpdatePollTimers[containerId]) clearTimeout(containerUpdatePollTimers[containerId]);
   try {
     const data = await api(`/api/docker/jobs/${encodeURIComponent(jobId)}`);
-    state.containerUpdateJob = data.job;
+    state.containerUpdateJobs = { ...state.containerUpdateJobs, [containerId]: data.job };
     const status = String(data.job.status || "");
     render();
     if (["queued", "running"].includes(status)) {
-      containerUpdatePollTimer = setTimeout(() => pollContainerUpdateJob(jobId), 1000);
+      containerUpdatePollTimers[containerId] = setTimeout(() => pollContainerUpdateJob(containerId, jobId), 1000);
       return;
     }
-    await refreshCurrent();
-    state.containerUpdateJob = data.job;
+    await reloadContainersQuietly();
+    state.containerUpdateJobs = { ...state.containerUpdateJobs, [containerId]: data.job };
     state.error =
       status === "success"
         ? data.job.message || "容器更新完成。"
         : zhError(data.job.error || data.job.message || "容器更新失败。");
     render();
-    containerUpdateClearTimer = setTimeout(() => {
-      if (state.containerUpdateJob?.id === jobId) {
-        state.containerUpdateJob = null;
+    containerUpdateClearTimers[containerId] = setTimeout(() => {
+      if (state.containerUpdateJobs[containerId]?.id === jobId) {
+        const nextJobs = { ...state.containerUpdateJobs };
+        delete nextJobs[containerId];
+        state.containerUpdateJobs = nextJobs;
         render();
       }
     }, status === "success" ? 5000 : 12000);
@@ -446,6 +612,44 @@ async function pollContainerUpdateJob(jobId) {
     state.error = error.message;
     render();
   }
+}
+
+async function reloadContainersQuietly() {
+  const [data, backups] = await Promise.all([api("/api/docker/containers"), api("/api/docker/backups")]);
+  state.containers = data.containers || [];
+  state.containerBackups = backups.backups || [];
+}
+
+async function checkContainerUpdates(containers, { force = false } = {}) {
+  const targets = force ? containers : containers.filter(shouldAutoCheckContainerUpdate);
+  if (!targets.length || state.containerUpdateCheck.active) return;
+  state.containerUpdateCheck = { active: true, done: 0, total: targets.length, failed: 0 };
+  render();
+  for (const item of targets) {
+    const key = containerKey(item);
+    if (key) containerAutoChecked.add(key);
+    try {
+      const data = await api(`/api/docker/containers/${encodeURIComponent(item.Id)}/check-update`, { method: "POST" });
+      updateContainerCheckState(item.Id, data);
+    } catch {
+      state.containerUpdateCheck.failed += 1;
+    } finally {
+      state.containerUpdateCheck.done += 1;
+      render();
+    }
+  }
+  state.containerUpdateCheck.active = false;
+  state.error = state.containerUpdateCheck.failed
+    ? `更新检测完成，${state.containerUpdateCheck.failed} 个容器检测失败。`
+    : "更新检测完成。";
+  render();
+}
+
+function scheduleContainerUpdateChecks() {
+  if (state.tab !== "containers") return;
+  const targets = state.containers.filter(shouldAutoCheckContainerUpdate);
+  if (!targets.length) return;
+  setTimeout(() => checkContainerUpdates(state.containers), 300);
 }
 
 async function loadCompose() {
@@ -554,6 +758,7 @@ function renderAuth() {
 function renderCurrent() {
   if (state.tab === "dashboard") return renderDashboard();
   if (state.tab === "containers") return renderContainers();
+  if (state.tab === "images") return renderImages();
   if (state.tab === "compose") return renderCompose();
   if (state.tab === "files") return renderFiles();
   if (state.tab === "settings") return renderSettings();
@@ -561,89 +766,219 @@ function renderCurrent() {
 }
 
 function renderDashboard() {
-  const overview = state.overview || {};
-  const docker = overview.docker || {};
-  const containers = overview.containers || {};
-  const editing = state.editingCard;
   return `
-    <section class="hero-panel">
-      <div>
-        <p class="eyebrow">DockPilot</p>
-        <h3>私有 NAS 与 Docker 管理面板</h3>
-        <span>本机容器、Compose 项目、文件根目录和服务导航都在这里统一管理。</span>
-      </div>
-      <div class="hero-status ${docker.available ? "ok" : "bad"}">
-        <strong>${docker.available ? "Docker 已连接" : "Docker 未连接"}</strong>
-        <small>${h(zhError(docker.message || "等待检测"))}</small>
-      </div>
-    </section>
-    <section class="metrics">
-      ${renderMetric("Docker", docker.available ? "在线" : "离线", docker.available ? "本机引擎可用" : "请检查 socket", docker.available ? "green" : "red")}
-      ${renderMetric("容器", `${containers.running || 0}/${containers.total || 0}`, "运行中 / 总数", "blue")}
-      ${renderMetric("编排", overview.compose_projects || 0, "已发现项目", "purple")}
-      ${renderMetric("导航", overview.cards || 0, "常用服务卡片", "orange")}
-    </section>
-    <section class="grid two">
-      <div class="panel main-panel">
-        <div class="panel-head"><h3>导航</h3><span class="muted">${h(zhError(docker.message || ""))}</span></div>
-        ${renderCards()}
-      </div>
-      <div class="panel">
-        <div class="panel-head"><h3>${editing ? "编辑导航卡片" : "添加导航卡片"}</h3></div>
-        <form id="cardForm" class="form-stack">
-          <div class="field"><label>标题</label><input name="title" value="${h(editing?.title || "")}" required /></div>
-          <div class="field"><label>访问地址</label><input name="url" value="${h(editing?.url || "")}" placeholder="https://service.local" required /></div>
-          <div class="field"><label>分组</label><input name="group_name" value="${h(editing?.group_name || "应用")}" /></div>
-          <div class="field"><label>短标识</label><input name="icon" value="${h(editing?.icon || "")}" maxlength="4" placeholder="APP" /></div>
-          <div class="field"><label>颜色</label><input name="color" value="${h(editing?.color || "#1f6feb")}" /></div>
-          <div class="form-actions">
-            <button class="primary" type="submit">${editing ? "保存卡片" : "添加卡片"}</button>
-            ${editing ? `<button type="button" data-action="card-cancel">取消</button>` : ""}
-          </div>
+    ${renderDashboardWidgets()}
+    ${renderCards()}
+    ${renderCardContextMenu()}
+    ${renderCardModal()}
+  `;
+}
+
+function renderDashboardWidgets() {
+  const overview = state.overview || {};
+  const visible = state.dashboardWidgets.filter((widget) => widget.visible);
+  const hidden = state.dashboardWidgets.filter((widget) => !widget.visible);
+  return `
+    <section class="dashboard-widget-panel">
+      <div class="panel-head">
+        <div>
+          <h3>状态小卡片</h3>
+          <span class="muted">可自定义显示主机状态、Docker 状态或容器监控。</span>
+        </div>
+        <form id="dashboardWidgetForm" class="widget-form">
+          <input name="title" placeholder="小卡片标题" />
+          <select name="type">
+            <option value="host">物理机运行状态</option>
+            <option value="docker">Docker 状态</option>
+            <option value="containers">容器监控</option>
+          </select>
+          <button type="submit">添加</button>
         </form>
       </div>
+      ${
+        visible.length
+          ? `<div class="dashboard-widget-grid">${visible
+              .map((widget) => {
+                const info = dashboardWidgetValue(widget, overview);
+                return `
+                  <article class="dashboard-widget ${h(info.tone)}">
+                    <div>
+                      <span>${h(widget.title)}</span>
+                      <strong>${h(info.value)}</strong>
+                      <small>${h(info.detail)}</small>
+                    </div>
+                    <button data-action="dashboard-widget-hide" data-id="${h(widget.id)}">隐藏</button>
+                  </article>
+                `;
+              })
+              .join("")}</div>`
+          : `<div class="empty">状态小卡片已全部隐藏。</div>`
+      }
+      ${
+        hidden.length
+          ? `<div class="hidden-widgets">${hidden
+              .map(
+                (widget) =>
+                  `<button data-action="dashboard-widget-show" data-id="${h(widget.id)}">显示 ${h(widget.title)}</button>`
+              )
+              .join("")}</div>`
+          : ""
+      }
     </section>
   `;
 }
 
 function renderCards() {
-  if (!state.cards.length) return `<div class="empty">还没有导航卡片。可以把常用服务地址添加进来。</div>`;
-  const groups = state.cards.reduce((acc, card) => {
-    const key = card.group_name || "应用";
-    acc[key] = acc[key] || [];
-    acc[key].push(card);
-    return acc;
-  }, {});
-  return Object.entries(groups)
-    .map(
-      ([group, cards]) => `
-      <div class="grid">
-        <div class="panel-head"><h3>${h(group)}</h3></div>
-        <div class="cards">
-          ${cards
-            .map(
-              (card) => `
-              <div class="card app-card">
-                <div class="card-actions">
-                  <a href="${h(card.url)}" target="_blank" rel="noreferrer">
-                    <div class="badge" style="background:${h(card.color)}">${h(card.icon || card.title.slice(0, 2).toUpperCase())}</div>
-                  </a>
-                  <div class="mini-actions">
-                    <button data-action="card-edit" data-id="${card.id}">编辑</button>
-                    <button class="danger" data-action="card-delete" data-id="${card.id}">删除</button>
-                  </div>
-                </div>
-                <a href="${h(card.url)}" target="_blank" rel="noreferrer"><strong>${h(card.title)}</strong></a>
-                <span class="muted">${h(card.url)}</span>
+  return `
+    <section class="bookmark-board">
+      ${cardGroups()
+        .map(
+          ([group, cards]) => `
+            <div class="bookmark-group">
+              <div class="bookmark-group-head">
+                <h3>${h(group)}</h3>
+                <button class="bookmark-round" title="添加书签" data-action="card-add" data-group="${h(group)}">＋</button>
+                <button class="bookmark-round" title="分组设置" data-action="card-group-settings" data-group="${h(group)}">⚙</button>
               </div>
-            `
-            )
-            .join("")}
+              ${
+                cards.length
+                  ? `<div class="bookmark-grid">${cards.map(renderBookmarkCard).join("")}</div>`
+                  : `<div class="bookmark-empty">这个分组还没有书签。</div>`
+              }
+            </div>
+          `
+        )
+        .join("")}
+      <input class="hidden-input" id="cardIconUpload" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+    </section>
+  `;
+}
+
+function renderBookmarkCard(card) {
+  const description = String(card.description || "").split("\n").filter(Boolean).slice(0, 2).join(" / ");
+  return `
+    <button
+      class="bookmark-card ${h(cardSize(card))} ${h(cardStyle(card))}"
+      data-card-id="${h(card.id)}"
+      data-action="card-open-default"
+      style="--bookmark-card-bg:${h(card.card_color || "#ffffff")};--bookmark-title-color:${h(card.title_color || "#111827")};--bookmark-accent:${h(card.color || "#2f80ed")}"
+      title="${h(card.title)}"
+    >
+      <span class="bookmark-icon">${cardIconMarkup(card)}</span>
+      <span class="bookmark-card-copy">
+        <strong>${h(card.title)}</strong>
+        ${cardSize(card) === "large" && description ? `<small>${h(description)}</small>` : ""}
+      </span>
+    </button>
+  `;
+}
+
+function renderCardContextMenu() {
+  if (!state.cardContextMenu.open) return "";
+  const card = cardById(state.cardContextMenu.id);
+  if (!card) return "";
+  return `
+    <div
+      class="bookmark-context-menu"
+      style="left:${Math.max(8, state.cardContextMenu.x)}px;top:${Math.max(8, state.cardContextMenu.y)}px"
+      role="menu"
+    >
+      ${card.internal_url ? `<button class="green" data-action="card-open-internal" data-id="${h(card.id)}">◎ <span>内网访问</span></button>` : ""}
+      <button class="blue" data-action="card-open-external" data-id="${h(card.id)}">🔗 <span>外网访问</span></button>
+      <button data-action="card-edit" data-id="${h(card.id)}">✎ <span>编辑卡片</span></button>
+      <button class="red" data-action="card-delete" data-id="${h(card.id)}">⌫ <span>删除卡片</span></button>
+    </div>
+  `;
+}
+
+function renderCardModal() {
+  if (!state.cardModal.open || !state.editingCard) return "";
+  const card = state.editingCard;
+  const title = card.id ? "修改项目" : "添加项目";
+  return `
+    <div class="card-modal-backdrop" id="cardModal">
+      <form id="cardForm" class="card-modal">
+        <div class="card-modal-head">
+          <h3>${title}</h3>
+          <div class="card-modal-head-tools">
+            <input name="group_name" value="${h(card.group_name || "Docker")}" placeholder="分组" />
+            <span></span>
+            <label class="switch-label">公开 <input type="checkbox" checked disabled /><i></i></label>
+            <button type="button" data-action="card-cancel">×</button>
+          </div>
         </div>
-      </div>
-    `
-    )
-    .join("");
+        <div class="card-modal-body">
+          <div class="card-modal-grid">
+            <label class="field wide">
+              <span>标题 *</span>
+              <input name="title" value="${h(card.title || "")}" required />
+            </label>
+            <label class="field">
+              <span>标题颜色</span>
+              <input name="title_color" type="color" value="${h(card.title_color || "#111827")}" />
+            </label>
+            <label class="field wide">
+              <span>描述（每行对应一行文字）</span>
+              <textarea name="description" placeholder="第一行（上）&#10;第二行（中）&#10;第三行（下）">${h(card.description || "")}</textarea>
+            </label>
+            <label class="field wide">
+              <span>外网链接 *</span>
+              <input name="url" value="${h(card.url || "")}" placeholder="https://example.com" required />
+            </label>
+            <label class="field wide">
+              <span>内网链接</span>
+              <input name="internal_url" value="${h(card.internal_url || "")}" placeholder="http://192.168.1.200:9838" />
+            </label>
+          </div>
+          <div class="card-modal-options">
+            <label class="field">
+              <span>图标文字 / Emoji</span>
+              <input name="icon" value="${h(card.icon || "")}" maxlength="4" placeholder="QB" />
+            </label>
+            <label class="field">
+              <span>图标底色</span>
+              <input name="color" type="color" value="${h(card.color || "#2f80ed")}" />
+            </label>
+            <label class="field">
+              <span>卡片颜色</span>
+              <input name="card_color" type="color" value="${h(card.card_color || "#ffffff")}" />
+            </label>
+            <label class="field">
+              <span>尺寸</span>
+              <select name="size">
+                <option value="small" ${cardSize(card) === "small" ? "selected" : ""}>小</option>
+                <option value="medium" ${cardSize(card) === "medium" ? "selected" : ""}>中</option>
+                <option value="large" ${cardSize(card) === "large" ? "selected" : ""}>大</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>样式</span>
+              <select name="style">
+                <option value="default" ${cardStyle(card) === "default" ? "selected" : ""}>默认</option>
+                <option value="soft" ${cardStyle(card) === "soft" ? "selected" : ""}>柔和</option>
+                <option value="outline" ${cardStyle(card) === "outline" ? "selected" : ""}>描边</option>
+              </select>
+            </label>
+          </div>
+          <div class="card-icon-editor">
+            <div>
+              <h4>图标样式</h4>
+              <p>支持上传图片，也可以只使用文字或 Emoji。</p>
+              <div class="mini-actions">
+                <button type="button" data-action="card-icon-pick">上传图片</button>
+                <button type="button" data-action="card-icon-clear">清除图片</button>
+              </div>
+            </div>
+            <div class="card-icon-preview">${cardIconMarkup(card)}</div>
+          </div>
+        </div>
+        <div class="card-modal-foot">
+          <button type="button" data-action="card-cancel">取消</button>
+          <button class="primary" type="submit">${card.id ? "保存修改" : "添加项目"}</button>
+        </div>
+      </form>
+    </div>
+  `;
 }
 
 function renderContainers() {
@@ -657,18 +992,24 @@ function renderContainers() {
           <p>管理您的 Docker 容器，包括启动、停止、重启等操作</p>
         </div>
         <div class="container-title-actions">
-          <button class="bulk-button" data-action="container-bulk-check">批量操作</button>
+          <button class="bulk-button" data-action="container-bulk-check">检查更新</button>
           <button class="refresh-button" data-action="refresh"><span>↻</span>刷新</button>
         </div>
       </div>
-      ${renderContainerUpdateProgress()}
       <div class="container-statbar">
         <button class="container-stat ${state.containerFilter === "all" ? "active" : ""}" data-action="container-filter" data-filter="all"><strong>${stats.total}</strong><span>总容器</span></button>
         <button class="container-stat ${state.containerFilter === "running" ? "active" : ""}" data-action="container-filter" data-filter="running"><strong class="green">${stats.running}</strong><span>运行中</span></button>
         <button class="container-stat ${state.containerFilter === "stopped" ? "active" : ""}" data-action="container-filter" data-filter="stopped"><strong class="red">${stats.stopped}</strong><span>已停止</span></button>
         <button class="container-stat ${state.containerFilter === "updates" ? "active" : ""}" data-action="container-filter" data-filter="updates"><strong class="orange">${stats.updates}</strong><span>有更新</span></button>
       </div>
-      <div class="container-filter-label">${h(containerFilterTitle())} · ${visibleContainers.length} 个</div>
+      <div class="container-filter-label">
+        ${h(containerFilterTitle())} · ${visibleContainers.length} 个
+        ${
+          state.containerUpdateCheck.active
+            ? `<span>正在检测更新 ${state.containerUpdateCheck.done}/${state.containerUpdateCheck.total}</span>`
+            : ""
+        }
+      </div>
       ${
         state.containers.length
           ? state.containerView === "table"
@@ -710,6 +1051,7 @@ function renderContainerCards(containers = filteredContainers()) {
                 </div>
               </div>
               <div class="container-card-divider"></div>
+              ${renderContainerCardUpdateProgress(item.Id)}
               <div class="container-action-row">
                 <button class="container-action stop" data-action="container-command" data-command="${running ? "stop" : "start"}" data-id="${h(item.Id)}">
                   <span>□</span>${running ? "停止" : "启动"}
@@ -798,6 +1140,72 @@ function renderContainerBackups() {
               )
               .join("")}</div>`
           : `<div class="empty">还没有容器备份。</div>`
+      }
+    </section>
+  `;
+}
+
+function renderImages() {
+  const images = filteredImages();
+  const totalSize = state.images.items.reduce((sum, image) => sum + Number(image.Size || 0), 0);
+  return `
+    <section class="panel page-panel image-library">
+      <div class="panel-head">
+        <div>
+          <h3>镜像库</h3>
+          <span class="muted">管理本地 Docker 镜像，支持搜索、拉取、删除和清理悬空镜像。</span>
+        </div>
+        <button data-action="image-prune">清理悬空镜像</button>
+      </div>
+      <div class="image-summary">
+        <div><strong>${state.images.items.length}</strong><span>本地镜像</span></div>
+        <div><strong>${fmtBytes(totalSize)}</strong><span>占用空间</span></div>
+        <div><strong>${h(state.images.proxy || "未设置")}</strong><span>镜像代理</span></div>
+      </div>
+      <div class="image-tools">
+        <label class="field">
+          <span>搜索镜像</span>
+          <input id="imageSearch" value="${h(state.images.query)}" placeholder="输入镜像名、标签或 ID" />
+        </label>
+        <form id="imagePullForm" class="inline-form">
+          <label class="field">
+            <span>拉取镜像</span>
+            <input name="image" placeholder="nginx:latest 或 ghcr.io/user/app:latest" required />
+          </label>
+          <button class="primary" type="submit">拉取</button>
+        </form>
+        <form id="imageProxyForm" class="inline-form">
+          <label class="field">
+            <span>镜像代理</span>
+            <input name="image_registry_proxy" value="${h(state.images.proxy)}" placeholder="例如 docker.1ms.run" />
+          </label>
+          <button type="submit">保存代理</button>
+        </form>
+      </div>
+      ${
+        state.images.pullOutput
+          ? `<pre class="console image-output">${h(state.images.pullOutput)}</pre>`
+          : ""
+      }
+      ${
+        images.length
+          ? `<div class="image-grid">${images
+              .map((image) => {
+                const id = image.Id || image.ID || "";
+                return `
+                  <article class="image-card">
+                    <div class="image-mark">IMG</div>
+                    <div class="image-info">
+                      <strong>${h(imageTitle(image))}</strong>
+                      <span>${h(imageSubtitle(image))}</span>
+                      <small>${h(shortId(id))} · ${fmtBytes(image.Size)} · ${h(imageCreatedText(image))}</small>
+                    </div>
+                    <button class="danger" data-action="image-remove" data-id="${h(id)}">删除</button>
+                  </article>
+                `;
+              })
+              .join("")}</div>`
+          : `<div class="empty">没有匹配的镜像。</div>`
       }
     </section>
   `;
@@ -1015,6 +1423,10 @@ function renderSettings() {
           <label>文件根目录，格式为 名称=/绝对路径</label>
           <textarea name="file_roots">${h(fileRoots)}</textarea>
         </div>
+        <div class="field">
+          <label>镜像代理前缀</label>
+          <input name="image_registry_proxy" value="${h(settings.image_registry_proxy || "")}" placeholder="例如 docker.1ms.run" />
+        </div>
         <button class="primary" type="submit">保存设置</button>
       </form>
     </section>
@@ -1048,9 +1460,18 @@ document.addEventListener("submit", async (event) => {
     }
     if (form.id === "cardForm") {
       const data = Object.fromEntries(new FormData(form));
+      if (state.cardModal.iconBase64) {
+        data.icon_mime = state.cardModal.iconMime;
+        data.icon_content_base64 = state.cardModal.iconBase64;
+      }
+      if (state.cardModal.clearIcon) data.clear_icon = true;
       if (state.editingCard) {
-        await api(`/api/cards/${state.editingCard.id}`, { method: "PUT", body: data });
-        state.editingCard = null;
+        if (state.editingCard.id) {
+          await api(`/api/cards/${state.editingCard.id}`, { method: "PUT", body: data });
+        } else {
+          await api("/api/cards", { method: "POST", body: data });
+        }
+        closeCardModal();
       } else {
         await api("/api/cards", { method: "POST", body: data });
       }
@@ -1084,6 +1505,7 @@ document.addEventListener("submit", async (event) => {
         method: "PUT",
         body: {
           docker_socket: data.docker_socket,
+          image_registry_proxy: data.image_registry_proxy,
           compose_roots: data.compose_roots.split("\n").map((line) => line.trim()).filter(Boolean),
           file_roots: data.file_roots
             .split("\n")
@@ -1099,6 +1521,30 @@ document.addEventListener("submit", async (event) => {
       });
       state.files.roots = [];
       await refreshCurrent();
+    }
+    if (form.id === "imagePullForm") {
+      const data = Object.fromEntries(new FormData(form));
+      const result = await api("/api/docker/images/pull", { method: "POST", body: { image: data.image } });
+      state.images.pullOutput = result.output || result.message || "";
+      await loadImages();
+      render();
+    }
+    if (form.id === "imageProxyForm") {
+      const data = Object.fromEntries(new FormData(form));
+      const settings = state.settings || (await api("/api/settings"));
+      await api("/api/settings", {
+        method: "PUT",
+        body: {
+          docker_socket: settings.docker_socket || "/var/run/docker.sock",
+          image_registry_proxy: data.image_registry_proxy,
+          compose_roots: settings.compose_roots || [],
+          file_roots: settings.file_roots || [],
+        },
+      });
+      state.images.proxy = data.image_registry_proxy || "";
+      state.settings = { ...settings, image_registry_proxy: state.images.proxy };
+      state.error = "镜像代理已保存。";
+      render();
     }
     if (form.id === "passwordForm") {
       const data = Object.fromEntries(new FormData(form));
@@ -1116,7 +1562,13 @@ document.addEventListener("submit", async (event) => {
 
 document.addEventListener("click", async (event) => {
   const button = event.target.closest("[data-action]");
-  if (!button) return;
+  if (!button) {
+    if (state.cardContextMenu.open) {
+      closeCardContextMenu();
+      render();
+    }
+    return;
+  }
   const action = button.dataset.action;
   try {
     if (action === "nav") {
@@ -1139,17 +1591,7 @@ document.addEventListener("click", async (event) => {
     if (action === "container-bulk-check") {
       if (!state.containers.length) return;
       if (confirm("批量操作会依次检查所有容器镜像是否有更新，继续吗？")) {
-        let failed = 0;
-        for (const item of state.containers) {
-          try {
-            await api(`/api/docker/containers/${encodeURIComponent(item.Id)}/check-update`, { method: "POST" });
-          } catch {
-            failed += 1;
-          }
-        }
-        await refreshCurrent();
-        state.error = failed ? `批量检查完成，${failed} 个容器检查失败。` : "批量检查完成。";
-        render();
+        await checkContainerUpdates(state.containers, { force: true });
       }
     }
     if (action === "logout") {
@@ -1157,22 +1599,61 @@ document.addEventListener("click", async (event) => {
       state.session = await api("/api/session");
       render();
     }
+    if (action === "card-add") {
+      openCardModal(null, button.dataset.group || "Docker");
+      render();
+    }
+    if (action === "card-open-default") {
+      const card = cardById(button.dataset.cardId || button.dataset.id);
+      const url = card ? cardDefaultUrl(card) : "";
+      if (url) window.open(url, "_blank", "noreferrer");
+      closeCardContextMenu();
+    }
+    if (action === "card-open-internal" || action === "card-open-external") {
+      const card = cardById(button.dataset.id);
+      const url = action === "card-open-internal" ? card?.internal_url : card?.url;
+      if (url) window.open(url, "_blank", "noreferrer");
+      closeCardContextMenu();
+      render();
+    }
     if (action === "card-delete") {
       if (confirm("确定删除这个导航卡片吗？")) {
         await api(`/api/cards/${button.dataset.id}`, { method: "DELETE" });
         if (state.editingCard?.id === Number(button.dataset.id)) state.editingCard = null;
+        closeCardContextMenu();
         await refreshCurrent();
       }
     }
     if (action === "card-edit") {
       const card = state.cards.find((item) => item.id === Number(button.dataset.id));
       if (card) {
-        state.editingCard = { ...card };
+        openCardModal(card, card.group_name);
         render();
       }
     }
+    if (action === "card-group-settings") {
+      const oldGroup = button.dataset.group || "Docker";
+      const nextGroup = prompt("修改分组名称", oldGroup);
+      if (nextGroup && nextGroup.trim() && nextGroup.trim() !== oldGroup) {
+        const targets = state.cards.filter((card) => (card.group_name || "应用") === oldGroup);
+        for (const card of targets) {
+          await api(`/api/cards/${card.id}`, { method: "PUT", body: { group_name: nextGroup.trim() } });
+        }
+        await refreshCurrent();
+      }
+    }
     if (action === "card-cancel") {
-      state.editingCard = null;
+      closeCardModal();
+      render();
+    }
+    if (action === "card-icon-pick") {
+      document.getElementById("cardIconUpload")?.click();
+    }
+    if (action === "card-icon-clear") {
+      if (state.editingCard) state.editingCard.icon_data = "";
+      state.cardModal.clearIcon = true;
+      state.cardModal.iconMime = "";
+      state.cardModal.iconBase64 = "";
       render();
     }
     if (action === "container-command") {
@@ -1186,12 +1667,12 @@ document.addEventListener("click", async (event) => {
     }
     if (action === "container-check-update") {
       const data = await api(`/api/docker/containers/${encodeURIComponent(button.dataset.id)}/check-update`, { method: "POST" });
+      updateContainerCheckState(button.dataset.id, data);
       const message = data.ok
         ? data.update_available
           ? "发现可更新镜像。"
           : "当前镜像没有检测到更新。"
         : zhError(data.message || "检查更新失败。");
-      await refreshCurrent();
       state.error = message;
       render();
     }
@@ -1231,6 +1712,20 @@ document.addEventListener("click", async (event) => {
     if (action === "container-detail-close") {
       state.containerDetail = null;
       render();
+    }
+    if (action === "image-prune") {
+      if (confirm("确定清理未使用的悬空镜像吗？")) {
+        const data = await api("/api/docker/images/prune", { method: "POST" });
+        state.error = `清理完成，释放 ${fmtBytes(data.SpaceReclaimed || 0)}。`;
+        await refreshCurrent();
+      }
+    }
+    if (action === "image-remove") {
+      if (confirm("确定删除这个镜像吗？如果镜像正在被容器使用，Docker 会拒绝删除。")) {
+        await api(`/api/docker/images/${encodeURIComponent(button.dataset.id)}/remove`, { method: "DELETE" });
+        state.error = "镜像已删除。";
+        await refreshCurrent();
+      }
     }
     if (action === "compose-select") {
       await selectCompose(button.dataset.path);
@@ -1350,6 +1845,19 @@ document.addEventListener("click", async (event) => {
   }
 });
 
+document.addEventListener("contextmenu", (event) => {
+  const cardNode = event.target.closest("[data-card-id]");
+  if (!cardNode || state.tab !== "dashboard") return;
+  event.preventDefault();
+  state.cardContextMenu = {
+    open: true,
+    x: Math.min(event.clientX, window.innerWidth - 190),
+    y: Math.min(event.clientY, window.innerHeight - 210),
+    id: Number(cardNode.dataset.cardId),
+  };
+  render();
+});
+
 document.addEventListener("change", async (event) => {
   try {
     if (event.target.id === "fileRootSelect") {
@@ -1391,6 +1899,18 @@ document.addEventListener("change", async (event) => {
       state.error = "容器图标已更新。";
       render();
     }
+    if (event.target.id === "cardIconUpload") {
+      const file = event.target.files[0];
+      if (!file || !state.editingCard) return;
+      const buffer = await file.arrayBuffer();
+      const base64 = bytesToBase64(buffer);
+      state.cardModal.iconMime = file.type;
+      state.cardModal.iconBase64 = base64;
+      state.cardModal.clearIcon = false;
+      state.editingCard.icon_data = `data:${file.type};base64,${base64}`;
+      event.target.value = "";
+      render();
+    }
     if (event.target.dataset.action === "container-color") {
       await api(`/api/docker/containers/${encodeURIComponent(event.target.dataset.id)}/pref`, {
         method: "POST",
@@ -1400,6 +1920,13 @@ document.addEventListener("change", async (event) => {
     }
   } catch (error) {
     state.error = error.message;
+    render();
+  }
+});
+
+document.addEventListener("input", (event) => {
+  if (event.target.id === "imageSearch") {
+    state.images.query = event.target.value;
     render();
   }
 });

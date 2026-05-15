@@ -49,7 +49,14 @@ dockpilot_session
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/api/overview` | Docker 状态、容器数量、导航卡片数量、Compose 项目数量 |
+| GET | `/api/overview` | Docker 状态、主机状态、容器数量、导航卡片数量、Compose 项目数量、首页小卡片配置 |
+
+首页状态小卡片：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/dashboard/widgets` | 获取首页小卡片配置 |
+| PUT | `/api/dashboard/widgets` | 保存首页小卡片配置 |
 
 ## 首页导航卡片
 
@@ -66,11 +73,28 @@ dockpilot_session
 {
   "title": "媒体库",
   "url": "http://192.168.1.10:8096",
+  "internal_url": "http://192.168.1.200:8096",
+  "description": "家庭媒体库",
   "group_name": "媒体",
   "icon": "JM",
-  "color": "#2f80ed"
+  "color": "#2f80ed",
+  "title_color": "#111827",
+  "card_color": "#ffffff",
+  "size": "medium",
+  "style": "default"
 }
 ```
+
+图标上传字段：
+
+```json
+{
+  "icon_mime": "image/png",
+  "icon_content_base64": "..."
+}
+```
+
+支持 `image/png`、`image/jpeg`、`image/webp`、`image/gif`，最大 6MB。
 
 ## Docker 容器
 
@@ -78,7 +102,6 @@ dockpilot_session
 | --- | --- | --- |
 | GET | `/api/docker/status` | Docker socket 状态 |
 | GET | `/api/docker/containers` | 容器列表 |
-| GET | `/api/docker/images` | 镜像列表 |
 | GET | `/api/docker/containers/{id}/inspect` | 容器详情 |
 | GET | `/api/docker/containers/{id}/logs` | 容器日志 |
 | POST | `/api/docker/containers/{id}/start` | 启动容器 |
@@ -125,6 +148,25 @@ dockpilot_session
 | --- | --- | --- |
 | POST | `/api/docker/containers/{id}/check-update` | 拉取镜像并检查是否有更新 |
 | POST | `/api/docker/containers/{id}/update` | 自动备份并更新容器 |
+| POST | `/api/docker/containers/{id}/update-job` | 创建后台更新任务 |
+| GET | `/api/docker/jobs/{id}` | 获取后台任务状态 |
+
+镜像库：
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/api/docker/images` | 镜像列表，并返回当前镜像代理配置 |
+| POST | `/api/docker/images/pull` | 拉取镜像，自动应用镜像代理配置 |
+| POST | `/api/docker/images/prune` | 清理悬空镜像 |
+| DELETE | `/api/docker/images/{id}/remove` | 删除镜像 |
+
+拉取镜像示例：
+
+```json
+{
+  "image": "nginx:latest"
+}
+```
 
 备份恢复：
 
@@ -201,6 +243,7 @@ Compose 动作：
 ```json
 {
   "docker_socket": "/var/run/docker.sock",
+  "image_registry_proxy": "docker.1ms.run",
   "compose_roots": ["/volume1/docker/dockpilot/data/stacks"],
   "file_roots": [
     {

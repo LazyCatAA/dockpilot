@@ -105,8 +105,19 @@ def main() -> int:
         _, app_js = client.request("GET", "/app.js")
         assert_true("首页导航" in app_js, "前端脚本应为中文界面")
         assert_true("update-job" in app_js, "容器更新应使用后台任务接口")
+        assert_true("containerUpdateJobs" in app_js, "容器更新任务应按容器分别跟踪")
+        assert_true("scheduleContainerUpdateChecks" in app_js, "容器页应自动调度更新检测")
+        assert_true("renderContainerCardUpdateProgress" in app_js, "更新进度应显示在对应容器卡片上")
+        assert_true("镜像库" in app_js, "前端应包含镜像库页面")
+        assert_true("imagePullForm" in app_js, "镜像库应支持拉取镜像")
+        assert_true("image_registry_proxy" in app_js, "镜像库应支持镜像代理配置")
+        assert_true("bookmark-board" in app_js, "首页导航应使用分组书签板")
+        assert_true("bookmark-context-menu" in app_js, "书签卡片应支持右键菜单")
+        assert_true("cardIconUpload" in app_js, "书签卡片应支持图标上传")
+        assert_true("cardModal" in app_js, "书签卡片应使用弹窗添加和编辑")
         _, styles_css = client.request("GET", "/styles.css")
-        assert_true("container-update-progress" in styles_css, "容器更新应提供进度条样式")
+        assert_true("container-card-update-progress" in styles_css, "容器更新应提供卡片内进度条样式")
+        assert_true("bookmark-card" in styles_css, "书签卡片应提供复刻样式")
         _, update_job = client.request("POST", "/api/docker/containers/fake-container/update-job", expect=202)
         job_id = update_job["job"]["id"]
         _, job_state = client.request("GET", f"/api/docker/jobs/{job_id}")
@@ -118,13 +129,36 @@ def main() -> int:
         _, created_card = client.request(
             "POST",
             "/api/cards",
-            {"title": "测试服务", "url": "http://127.0.0.1", "group_name": "应用", "icon": "测", "color": "#2f80ed"},
+            {
+                "title": "测试服务",
+                "url": "http://127.0.0.1",
+                "internal_url": "http://192.168.1.200:8080",
+                "description": "第一行\n第二行",
+                "group_name": "应用",
+                "icon": "测",
+                "color": "#2f80ed",
+                "title_color": "#111827",
+                "card_color": "#ffffff",
+                "size": "large",
+                "style": "soft",
+                "icon_mime": "image/gif",
+                "icon_content_base64": "R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==",
+            },
             expect=201,
         )
         card_id = created_card["card"]["id"]
-        client.request("PUT", f"/api/cards/{card_id}", {"title": "测试服务2", "sort_order": 5})
+        assert_true(created_card["card"]["internal_url"] == "http://192.168.1.200:8080", "导航卡片应保存内网地址")
+        assert_true(created_card["card"]["description"] == "第一行\n第二行", "导航卡片应保存描述")
+        assert_true(created_card["card"]["title_color"] == "#111827", "导航卡片应保存标题颜色")
+        assert_true(created_card["card"]["card_color"] == "#ffffff", "导航卡片应保存卡片颜色")
+        assert_true(created_card["card"]["size"] == "large", "导航卡片应保存尺寸")
+        assert_true(created_card["card"]["style"] == "soft", "导航卡片应保存样式")
+        assert_true(created_card["card"]["icon_data"].startswith("data:image/gif;base64,"), "导航卡片应保存上传图标")
+        client.request("PUT", f"/api/cards/{card_id}", {"title": "测试服务2", "sort_order": 5, "size": "small", "clear_icon": True})
         _, cards = client.request("GET", "/api/cards")
         assert_true(cards["cards"][0]["title"] == "测试服务2", "导航卡片应可编辑")
+        assert_true(cards["cards"][0]["size"] == "small", "导航卡片尺寸应可编辑")
+        assert_true(cards["cards"][0]["icon_data"] == "", "导航卡片图标应可清除")
 
         _, project = client.request("POST", "/api/compose/projects", {"name": "demo"}, expect=201)
         compose_path = urllib.parse.quote(project["project"]["path"], safe="")
@@ -177,6 +211,11 @@ def main() -> int:
             assert_true("Docker socket not found" in docker_status["error"], "无 Docker 环境时应返回明确错误")
         else:
             assert_true("containers" in docker_status, "有 Docker 环境时应返回容器列表")
+        image_code, image_status = client.request("GET", "/api/docker/images", expect=(200, 502))
+        if image_code == 502:
+            assert_true("Docker socket not found" in image_status["error"], "无 Docker 环境时镜像库应返回明确错误")
+        else:
+            assert_true("images" in image_status, "有 Docker 环境时应返回镜像列表")
         _, pref = client.request(
             "POST",
             "/api/docker/containers/fake-container/pref",

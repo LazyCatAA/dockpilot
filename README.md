@@ -5,9 +5,13 @@ DockPilot 是一个面向 NAS 和私有服务器的 Docker 管理面板。当前
 项目特点：
 
 - 中文界面，首次启动创建管理员账号。
+- 首页支持状态小卡片，可显示主机、Docker 和容器运行概况。
+- 首页导航复刻分组书签板样式，支持右键菜单、内外网地址、弹窗编辑、卡片尺寸/样式/颜色和自定义图标上传。
 - 容器卡片管理：启动、停止、重启、日志、详情、备份、恢复、更新检查、一键更新。
 - 容器顶部统计支持点击筛选：总容器、运行中、已停止、有更新。
+- 容器页会自动调度更新检测，更新任务进度显示在对应容器卡片内。
 - 容器图标支持上传，单个图标最大 6MB。
+- 镜像库支持搜索、拉取、删除、清理悬空镜像，并可配置镜像代理前缀。
 - Compose 管理：发现项目、在线编辑、部署、停止、重启、拉取、检查配置、查看日志。
 - 支持把 `docker run` 命令转换为 Compose 项目，并可直接部署。
 - 桌面端左侧菜单可隐藏，手机端自动切换为底部导航。
@@ -77,6 +81,7 @@ ghcr.io/lazycataa/dockpilot:sha-提交短哈希
 ```bash
 python3 -m py_compile dockpilot/server.py scripts/smoke_test.py
 node --check web/app.js
+python3 scripts/unit_test.py
 python3 scripts/smoke_test.py
 ```
 

@@ -544,14 +544,68 @@ a {
   flex-wrap: wrap;
 }
 
+.nav-home {
+  display: grid;
+  gap: 18px;
+  padding: 22px;
+  border: 1px solid #dbe3ef;
+  border-radius: 28px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.96), rgba(248,250,252,0.92)),
+    linear-gradient(135deg, #0f172a, #1d4ed8);
+  box-shadow: 0 22px 56px rgba(15, 23, 42, 0.12);
+}
+
+.nav-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 112px;
+  padding: 26px 28px;
+  border-radius: 22px;
+  background:
+    linear-gradient(135deg, rgba(15, 23, 42, 0.88), rgba(29, 78, 216, 0.72)),
+    url("data:image/svg+xml,%3Csvg width='160' height='80' viewBox='0 0 160 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' stroke='rgba(255,255,255,0.2)' stroke-width='1'%3E%3Cpath d='M0 40h160M40 0v80M80 0v80M120 0v80'/%3E%3C/g%3E%3C/svg%3E");
+  color: #fff;
+  overflow: hidden;
+}
+
+.nav-hero span {
+  display: block;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.nav-hero h2 {
+  max-width: 720px;
+  margin: 8px 0 0;
+  color: #fff;
+  font-size: 34px;
+  line-height: 1.16;
+}
+
+.nav-hero-add {
+  min-height: 44px;
+  border: 0;
+  border-radius: 12px;
+  background: #fff;
+  color: #0f172a;
+  padding: 0 18px;
+  font-weight: 800;
+}
+
+.nav-section {
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.86);
+}
+
 .dashboard-widget-panel {
   display: grid;
   gap: 14px;
-  margin-bottom: 16px;
   padding: 16px;
-  border: 1px solid #dbeafe;
-  border-radius: 14px;
-  background: #f8fbff;
+  border: 1px solid #e2e8f0;
 }
 
 .widget-form {
@@ -605,13 +659,10 @@ a {
 .bookmark-board {
   position: relative;
   display: grid;
-  gap: 28px;
-  padding: 34px 40px;
-  border-radius: 24px;
-  background:
-    radial-gradient(circle at 10% 10%, rgba(255, 255, 255, 0.1), transparent 24%),
-    linear-gradient(135deg, #27315f 0%, #263f98 48%, #1d75bd 100%);
-  box-shadow: 0 20px 52px rgba(20, 45, 110, 0.22);
+  gap: 22px;
+  padding: 22px;
+  border: 1px solid #e2e8f0;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.72);
 }
 
 .bookmark-group {
@@ -628,10 +679,9 @@ a {
 
 .bookmark-group-head h3 {
   margin: 0;
-  color: #fff;
-  font-size: 25px;
+  color: #0f172a;
+  font-size: 20px;
   font-weight: 800;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
 }
 
 .bookmark-round {
@@ -640,8 +690,8 @@ a {
   height: 38px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.13);
-  color: #fff;
+  background: #eef2ff;
+  color: #1d4ed8;
   padding: 0;
   font-size: 21px;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
@@ -649,28 +699,28 @@ a {
 
 .bookmark-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 16px 18px;
+  grid-template-columns: repeat(auto-fill, minmax(188px, 1fr));
+  gap: 12px;
 }
 
 .bookmark-empty {
-  color: rgba(255, 255, 255, 0.78);
+  color: #64748b;
   padding: 16px 0;
 }
 
 .bookmark-card {
   min-width: 0;
-  min-height: 82px;
+  min-height: 72px;
   display: flex;
   align-items: center;
-  gap: 18px;
-  border: 0;
-  border-radius: 18px;
-  padding: 14px 22px;
+  gap: 13px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  padding: 12px 14px;
   background: var(--bookmark-card-bg, #fff);
   color: var(--bookmark-title-color, #111827);
   text-align: left;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
   transition:
     transform 0.18s ease,
     box-shadow 0.18s ease;
@@ -682,14 +732,14 @@ a {
 }
 
 .bookmark-card.small {
-  min-height: 64px;
-  padding: 10px 16px;
-  border-radius: 14px;
+  min-height: 58px;
+  padding: 8px 12px;
+  border-radius: 12px;
 }
 
 .bookmark-card.large {
   grid-column: span 2;
-  min-height: 96px;
+  min-height: 88px;
 }
 
 .bookmark-card.soft {
@@ -701,9 +751,9 @@ a {
 }
 
 .bookmark-icon {
-  width: 58px;
-  height: 58px;
-  flex: 0 0 58px;
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
   display: grid;
   place-items: center;
   overflow: hidden;
@@ -738,7 +788,7 @@ a {
   min-width: 0;
   overflow: hidden;
   color: var(--bookmark-title-color, #111827);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1513,6 +1563,61 @@ a {
   max-height: 220px;
 }
 
+.image-pull-progress {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  background: #eff6ff;
+}
+
+.image-pull-progress.error {
+  border-color: #fecaca;
+  background: #fff1f2;
+}
+
+.image-pull-progress-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.image-pull-progress strong,
+.image-pull-progress b {
+  color: #0f172a;
+}
+
+.image-pull-progress p {
+  margin: 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.image-pull-track {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #dbeafe;
+}
+
+.image-pull-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #0ea5e9;
+  transition: width 0.2s ease;
+}
+
+.image-pull-progress.error .image-pull-track {
+  background: #fee2e2;
+}
+
+.image-pull-progress.error .image-pull-track i {
+  background: #ef4444;
+}
+
 .image-search-results {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -1662,6 +1767,25 @@ a {
 .backup-actions button {
   min-height: 30px;
   padding: 0 10px;
+  font-size: 12px;
+}
+
+.compose-repair-note {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  background: #f0fdf4;
+}
+
+.compose-repair-note strong {
+  color: #166534;
+}
+
+.compose-repair-note span {
+  color: #64748b;
   font-size: 12px;
 }
 
@@ -2141,6 +2265,21 @@ td.actions button {
   .top-actions {
     width: 100%;
     justify-content: flex-end;
+  }
+
+  .nav-home {
+    padding: 12px;
+    border-radius: 20px;
+  }
+
+  .nav-hero {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 20px;
+  }
+
+  .nav-hero h2 {
+    font-size: 25px;
   }
 
   .hero-status {

@@ -256,6 +256,7 @@ class Store:
                 "docker_socket": DEFAULT_DOCKER_SOCKET,
                 "compose_roots": json_dumps([str(DATA_DIR / "stacks")]),
                 "image_registry_proxy": "",
+                "network_proxy": "",
                 "dashboard_widgets": json_dumps(DEFAULT_DASHBOARD_WIDGETS),
                 "file_roots": json_dumps(
                     [
@@ -623,13 +624,14 @@ def public_job(job: dict[str, Any]) -> dict[str, Any]:
     if isinstance(result, dict):
         result = {
             key: result.get(key)
-            for key in ("ok", "method", "message", "backup", "container_key", "old_container", "new_container_id")
+            for key in ("ok", "method", "message", "backup", "container_key", "old_container", "new_container_id", "image", "pull_image")
             if key in result
         }
     return {
         "id": job.get("id", ""),
         "type": job.get("type", ""),
         "container_id": job.get("container_id", ""),
+        "image": job.get("image", ""),
         "status": job.get("status", "queued"),
         "progress": int(job.get("progress") or 0),
         "step": job.get("step", ""),
@@ -656,6 +658,7 @@ def create_job(job_type: str, container_id: str) -> dict[str, Any]:
         "id": job_id,
         "type": job_type,
         "container_id": container_id,
+        "image": "",
         "status": "queued",
         "progress": 0,
         "step": "排队中",
@@ -670,6 +673,17 @@ def create_job(job_type: str, container_id: str) -> dict[str, Any]:
         prune_jobs_locked()
         JOBS[job_id] = job
         return public_job(job)
+
+
+def create_image_job(job_type: str, image: str) -> dict[str, Any]:
+    job = create_job(job_type, "")
+    with JOB_LOCK:
+        stored = JOBS.get(str(job["id"]))
+        if stored:
+            stored["image"] = image
+            stored["message"] = f"准备拉取镜像：{image}"
+            return public_job(stored)
+    return job
 
 
 def update_job(job_id: str, **values: Any) -> dict[str, Any] | None:
@@ -728,6 +742,39 @@ def start_container_update_job(socket_path: str, container_id: str) -> dict[str,
             update_job(job_id, status="error", step="更新失败", message=str(exc), error=str(exc))
 
     thread = threading.Thread(target=worker, name=f"dockpilot-update-{container_id[:12]}", daemon=True)
+    thread.start()
+    return get_job(job_id) or job
+
+
+def start_image_pull_job(socket_path: str, image: str, use_proxy: bool = True) -> dict[str, Any]:
+    source = image.strip()
+    job = create_image_job("image-pull", source)
+    job_id = str(job["id"])
+
+    def progress(percent: int, step: str, message: str) -> None:
+        update_job(job_id, status="running", progress=percent, step=step, message=message, error="")
+
+    def worker() -> None:
+        try:
+            progress(5, "准备拉取", f"正在准备拉取镜像：{source}")
+            result = pull_image_with_proxy(source, socket_path, timeout=600, use_proxy=use_proxy, progress=progress)
+            if result.get("ok"):
+                update_job(
+                    job_id,
+                    status="success",
+                    progress=100,
+                    step="拉取完成",
+                    message=f"镜像拉取完成：{source}",
+                    result=result,
+                    error="",
+                )
+                return
+            message = str(result.get("message") or "docker pull failed")
+            update_job(job_id, status="error", step="拉取失败", message=message, result=result, error=message)
+        except Exception as exc:
+            update_job(job_id, status="error", step="拉取失败", message=str(exc), error=str(exc))
+
+    thread = threading.Thread(target=worker, name=f"dockpilot-image-pull-{job_id[:8]}", daemon=True)
     thread.start()
     return get_job(job_id) or job
 
@@ -945,9 +992,18 @@ class AppHandler(BaseHTTPRequestHandler):
             if path == "/api/docker/backups" and self.command == "GET":
                 self.write_json({"backups": list_container_backups()})
                 return
+            if path == "/api/docker/backups/clear" and self.command == "DELETE":
+                self.write_json(clear_container_backups())
+                return
             if path == "/api/docker/images" and self.command == "GET":
                 images = docker.json("GET", "/images/json", query={"all": "0"})
-                self.write_json({"images": images, "image_registry_proxy": STORE.get_setting("image_registry_proxy", "")})
+                self.write_json(
+                    {
+                        "images": images,
+                        "image_registry_proxy": STORE.get_setting("image_registry_proxy", ""),
+                        "network_proxy": STORE.get_setting("network_proxy", ""),
+                    }
+                )
                 return
             if path == "/api/docker/images/search" and self.command == "GET":
                 query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
@@ -965,6 +1021,15 @@ class AppHandler(BaseHTTPRequestHandler):
                     return
                 use_proxy = bool(data.get("use_proxy", True))
                 self.write_json(pull_image_with_proxy(image, docker.socket_path, use_proxy=use_proxy))
+                return
+            if path == "/api/docker/images/pull-job" and self.command == "POST":
+                data = self.read_json()
+                image = str(data.get("image", "")).strip()
+                if not image:
+                    self.write_json({"error": "docker image is required"}, status=400)
+                    return
+                use_proxy = bool(data.get("use_proxy", True))
+                self.write_json({"job": start_image_pull_job(docker.socket_path, image, use_proxy=use_proxy)}, status=202)
                 return
             if path == "/api/docker/images/prune" and self.command == "POST":
                 status, data, reason = docker.request("POST", "/images/prune", query={"dangling": "true"}, timeout=120)
@@ -1143,6 +1208,10 @@ class AppHandler(BaseHTTPRequestHandler):
                 action = str(data.get("action", "")).strip()
                 self.write_json(run_compose_action(file_path, action))
                 return
+            if path == "/api/compose/repair" and self.command == "POST":
+                data = self.read_json()
+                self.write_json(repair_compose_content(str(data.get("content", ""))))
+                return
         except FileExistsError:
             self.write_json({"error": "project already exists"}, status=409)
             return
@@ -1264,6 +1333,7 @@ class AppHandler(BaseHTTPRequestHandler):
                     "compose_roots": [str(path) for path in self.compose_roots()],
                     "file_roots": self.file_roots_public(),
                     "image_registry_proxy": STORE.get_setting("image_registry_proxy", ""),
+                    "network_proxy": STORE.get_setting("network_proxy", ""),
                 }
             )
             return
@@ -1273,6 +1343,7 @@ class AppHandler(BaseHTTPRequestHandler):
             compose_roots = normalize_paths(data.get("compose_roots", []))
             file_roots = normalize_file_roots(data.get("file_roots", []))
             image_registry_proxy = normalize_image_registry_proxy(str(data.get("image_registry_proxy", "")))
+            network_proxy = normalize_network_proxy_url(str(data.get("network_proxy", "")))
             for path_value in compose_roots:
                 Path(path_value).expanduser().mkdir(parents=True, exist_ok=True)
             for root in file_roots:
@@ -1281,6 +1352,7 @@ class AppHandler(BaseHTTPRequestHandler):
             STORE.set_setting("compose_roots", json_dumps(compose_roots))
             STORE.set_setting("file_roots", json_dumps(file_roots))
             STORE.set_setting("image_registry_proxy", image_registry_proxy)
+            STORE.set_setting("network_proxy", network_proxy)
             self.write_json({"ok": True})
             return
         self.write_json({"error": "method not allowed"}, status=405)
@@ -1643,6 +1715,17 @@ def delete_container_backup(backup_name: str) -> dict[str, Any]:
     return {"ok": True, "name": path.name}
 
 
+def clear_container_backups() -> dict[str, Any]:
+    deleted = 0
+    for path in backup_dir().glob("*.json"):
+        try:
+            path.unlink()
+            deleted += 1
+        except OSError:
+            continue
+    return {"ok": True, "deleted": deleted}
+
+
 def quote_yaml(value: Any) -> str:
     text = str(value)
     if text == "":
@@ -1650,6 +1733,31 @@ def quote_yaml(value: Any) -> str:
     if re.fullmatch(r"[A-Za-z0-9_.:/@+-]+", text):
         return text
     return json.dumps(text, ensure_ascii=False)
+
+
+def repair_compose_content(content: str) -> dict[str, Any]:
+    original = str(content or "")
+    lines = original.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    fixed_lines: list[str] = []
+    changes: list[str] = []
+    for line in lines:
+        fixed = line.replace("\t", "  ").replace("：", ": ")
+        fixed = re.sub(r":\s{2,}", ": ", fixed)
+        if re.match(r"^\s*-\s+\d+:\d+(?:/\w+)?\s*$", fixed):
+            indent, value = fixed.split("-", 1)
+            fixed = f"{indent}- \"{value.strip()}\""
+        env_match = re.match(r"^(\s*-\s*)([A-Za-z_][A-Za-z0-9_]*=.*[#:&{}\\[\\],].*)$", fixed)
+        if env_match and not env_match.group(2).strip().startswith(("'", '"')):
+            fixed = f"{env_match.group(1)}{json.dumps(env_match.group(2).strip(), ensure_ascii=False)}"
+        fixed_lines.append(fixed.rstrip())
+        if fixed != line:
+            changes.append("修正了缩进、中文标点或需要引号的值。")
+    fixed_content = "\n".join(fixed_lines).strip() + "\n"
+    if "services:" not in fixed_content:
+        fixed_content = "services:\n" + "\n".join(f"  {line}" if line.strip() else line for line in fixed_content.splitlines()) + "\n"
+        changes.append("补充了缺失的 services 根节点。")
+    unique_changes = list(dict.fromkeys(changes))
+    return {"ok": True, "content": fixed_content, "changed": fixed_content != original, "changes": unique_changes}
 
 
 def compose_from_container_inspect(inspect_data: dict[str, Any]) -> str:
@@ -1707,6 +1815,7 @@ def docker_cli_env(socket_path: str | None = None) -> dict[str, str]:
     env = os.environ.copy()
     if socket_path:
         env["DOCKER_HOST"] = f"unix://{socket_path}"
+    env.update(network_proxy_env())
     return env
 
 
@@ -1721,6 +1830,32 @@ def run_docker_cli(args: list[str], socket_path: str | None = None, timeout: int
         timeout=timeout,
         check=False,
     )
+
+
+def normalize_network_proxy_url(value: str) -> str:
+    proxy = value.strip().rstrip("/")
+    if not proxy:
+        return ""
+    if not re.match(r"^[A-Za-z][A-Za-z0-9+.-]*://", proxy):
+        proxy = "http://" + proxy
+    parsed = urllib.parse.urlparse(proxy)
+    if parsed.scheme not in {"http", "https", "socks5", "socks5h"} or not parsed.netloc:
+        raise ValueError("invalid network proxy")
+    return proxy
+
+
+def network_proxy_env() -> dict[str, str]:
+    proxy = STORE.get_setting("network_proxy", "")
+    if not proxy:
+        return {}
+    return {
+        "HTTP_PROXY": proxy,
+        "HTTPS_PROXY": proxy,
+        "ALL_PROXY": proxy,
+        "http_proxy": proxy,
+        "https_proxy": proxy,
+        "all_proxy": proxy,
+    }
 
 
 def normalize_image_registry_proxy(value: str) -> str:
@@ -1823,7 +1958,34 @@ def docker_image_identity(image: str, socket_path: str | None = None) -> dict[st
         return {"id": "", "repo_digests": [], "error": str(exc)}
 
 
-def docker_pull_with_api(image: str, pull_image: str, socket_path: str | None = None, timeout: int = 600) -> dict[str, Any]:
+def parse_pull_progress(output: str) -> int:
+    progresses: list[int] = []
+    for line in output.splitlines():
+        text = line.strip()
+        if not text:
+            continue
+        try:
+            payload = json.loads(text)
+        except json.JSONDecodeError:
+            continue
+        detail = payload.get("progressDetail") if isinstance(payload, dict) else None
+        if isinstance(detail, dict):
+            current = int(detail.get("current") or 0)
+            total = int(detail.get("total") or 0)
+            if total > 0:
+                progresses.append(max(0, min(100, int(current * 100 / total))))
+    if not progresses:
+        return 0
+    return int(sum(progresses) / len(progresses))
+
+
+def docker_pull_with_api(
+    image: str,
+    pull_image: str,
+    socket_path: str | None = None,
+    timeout: int = 600,
+    progress: ProgressCallback | None = None,
+) -> dict[str, Any]:
     target_socket = socket_path or DEFAULT_DOCKER_SOCKET
     client = DockerClient(target_socket)
     source = image.strip()
@@ -1831,15 +1993,19 @@ def docker_pull_with_api(image: str, pull_image: str, socket_path: str | None = 
     try:
         status, data, reason = client.request("POST", "/images/create", query=docker_pull_query(pull_ref), timeout=timeout)
     except Exception as exc:
-        return {"ok": False, "image": source, "pull_image": pull_ref, "message": str(exc), "output": ""}
+        return {"ok": False, "image": source, "pull_image": pull_ref, "message": translate_docker_error(str(exc)), "output": ""}
     output = data.decode("utf-8", "replace") if data else ""
+    pull_progress = parse_pull_progress(output)
+    if pull_progress:
+        emit_progress(progress, min(90, max(12, pull_progress)), "拉取镜像", f"正在拉取镜像：{pull_ref}")
     if status >= 400:
         message = output.strip() or reason
-        return {"ok": False, "image": source, "pull_image": pull_ref, "message": message or "docker pull failed", "output": output}
+        return {"ok": False, "image": source, "pull_image": pull_ref, "message": translate_docker_error(message or "docker pull failed"), "output": output}
     stream_error = docker_stream_error(output)
     if stream_error:
-        return {"ok": False, "image": source, "pull_image": pull_ref, "message": stream_error, "output": output}
+        return {"ok": False, "image": source, "pull_image": pull_ref, "message": translate_docker_error(stream_error), "output": output}
     if pull_ref != source:
+        emit_progress(progress, 92, "标记镜像", f"正在标记为原始镜像名：{source}")
         repo, tag = split_image_reference(source)
         try:
             status, tag_data, reason = client.request(
@@ -1849,11 +2015,11 @@ def docker_pull_with_api(image: str, pull_image: str, socket_path: str | None = 
                 timeout=120,
             )
         except Exception as exc:
-            return {"ok": False, "image": source, "pull_image": pull_ref, "message": str(exc), "output": output}
+            return {"ok": False, "image": source, "pull_image": pull_ref, "message": translate_docker_error(str(exc)), "output": output}
         output += ("\n" if output else "") + (tag_data.decode("utf-8", "replace") if tag_data else "")
         if status >= 400:
             message = tag_data.decode("utf-8", "replace") or reason
-            return {"ok": False, "image": source, "pull_image": pull_ref, "message": message or "docker tag failed", "output": output}
+            return {"ok": False, "image": source, "pull_image": pull_ref, "message": translate_docker_error(message or "docker tag failed"), "output": output}
     return {"ok": True, "image": source, "pull_image": pull_ref, "message": "pulled", "output": output, "method": "api"}
 
 
@@ -1875,17 +2041,43 @@ def docker_stream_error(output: str) -> str:
     return ""
 
 
+def translate_docker_error(message: str) -> str:
+    text = str(message or "").strip()
+    rules = [
+        ("Network is unreachable", "网络不可达，请检查 DockPilot 容器网络、网关或局域网代理配置。"),
+        ("Temporary failure in name resolution", "DNS 解析失败，请检查 DNS 或局域网代理配置。"),
+        ("connection refused", "连接被拒绝，请检查镜像代理或局域网代理地址和端口。"),
+        ("i/o timeout", "连接超时，请检查网络、镜像代理或局域网代理。"),
+        ("TLS handshake timeout", "TLS 握手超时，请检查网络质量或代理配置。"),
+        ("no such host", "域名解析失败，请检查 DNS、代理或镜像地址。"),
+        ("pull access denied", "镜像无权限或不存在，请检查镜像名、tag 或登录权限。"),
+        ("manifest unknown", "镜像 tag 不存在，请检查 tag 是否正确。"),
+        ("not found", "镜像或资源不存在，请检查镜像名。"),
+        ("unauthorized", "镜像仓库需要登录或无权限访问。"),
+        ("toomanyrequests", "Docker Hub 拉取次数受限，请配置镜像代理或登录账号。"),
+    ]
+    lower = text.lower()
+    for key, zh in rules:
+        if key.lower() in lower:
+            return f"{zh}\n原始错误：{text}"
+    return text
+
+
 def fetch_json_url(url: str, timeout: int = 10) -> dict[str, Any]:
     request = urllib.request.Request(url, headers={"Accept": "application/json", "User-Agent": "DockPilot/1.0"})
+    opener = urllib.request.build_opener()
+    network_proxy = STORE.get_setting("network_proxy", "")
+    if network_proxy:
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({"http": network_proxy, "https": network_proxy}))
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with opener.open(request, timeout=timeout) as response:
             raw = response.read()
     except urllib.error.HTTPError as exc:
         raw = exc.read()
         message = raw.decode("utf-8", "replace") or exc.reason
         raise RuntimeError(message) from exc
     except urllib.error.URLError as exc:
-        raise RuntimeError(str(exc.reason) if getattr(exc, "reason", "") else str(exc)) from exc
+        raise RuntimeError(translate_docker_error(str(exc.reason) if getattr(exc, "reason", "") else str(exc))) from exc
     payload = json.loads(raw.decode("utf-8")) if raw else {}
     if not isinstance(payload, dict):
         raise RuntimeError("unexpected response from Docker Hub")
@@ -1916,24 +2108,76 @@ def normalize_docker_hub_search_results(payload: dict[str, Any], limit: int = 12
     return results
 
 
-def search_docker_hub_images(query: str, limit: int = 12) -> list[dict[str, Any]]:
+def normalize_image_search_query(query: str) -> str:
     keyword = query.strip()
+    if "@" in keyword:
+        keyword = keyword.split("@", 1)[0]
+    last_slash = keyword.rfind("/")
+    last_colon = keyword.rfind(":")
+    if last_colon > last_slash:
+        keyword = keyword[:last_colon]
+    return keyword
+
+
+def looks_like_image_reference(value: str) -> bool:
+    text = value.strip()
+    return bool(text and ("/" in text or ":" in text or "@" in text))
+
+
+def direct_image_search_result(value: str) -> dict[str, Any]:
+    image = value.strip()
+    if not image:
+        raise ValueError("image search query is required")
+    pull_name = image if (":" in image.rsplit("/", 1)[-1] or "@" in image) else f"{image}:latest"
+    return {
+        "name": normalize_image_search_query(image),
+        "pull_name": pull_name,
+        "description": "直接拉取此镜像。远程搜索不可用时也可以使用。",
+        "stars": 0,
+        "pulls": 0,
+        "official": False,
+        "direct": True,
+    }
+
+
+def search_docker_hub_images(query: str, limit: int = 12) -> list[dict[str, Any]]:
+    source = query.strip()
+    keyword = normalize_image_search_query(source)
     if not keyword:
         raise ValueError("image search query is required")
     url = "https://hub.docker.com/v2/search/repositories/?query=" + urllib.parse.quote(keyword) + f"&page_size={max(1, min(limit, 25))}"
-    payload = fetch_json_url(url, timeout=10)
-    return normalize_docker_hub_search_results(payload, limit=limit)
+    results: list[dict[str, Any]] = []
+    if looks_like_image_reference(source):
+        results.append(direct_image_search_result(source))
+    try:
+        payload = fetch_json_url(url, timeout=10)
+        for item in normalize_docker_hub_search_results(payload, limit=limit):
+            if item["name"] not in {result["name"] for result in results}:
+                results.append(item)
+    except Exception as exc:
+        if results:
+            results[0]["description"] = f"远程搜索暂不可用，可直接拉取。{translate_docker_error(str(exc))}"
+            return results
+        raise
+    return results[:limit]
 
 
-def pull_image_with_proxy(image: str, socket_path: str | None = None, timeout: int = 600, use_proxy: bool = True) -> dict[str, Any]:
+def pull_image_with_proxy(
+    image: str,
+    socket_path: str | None = None,
+    timeout: int = 600,
+    use_proxy: bool = True,
+    progress: ProgressCallback | None = None,
+) -> dict[str, Any]:
     source = image.strip()
     if not source:
         return {"ok": False, "image": source, "message": "docker image is required", "output": ""}
     pull_ref = proxied_image_reference(source) if use_proxy else source
+    emit_progress(progress, 10, "拉取镜像", f"正在拉取镜像：{pull_ref}")
     try:
         pull = run_docker_cli(["pull", pull_ref], socket_path, timeout=timeout)
     except FileNotFoundError:
-        return docker_pull_with_api(source, pull_ref, socket_path, timeout=timeout)
+        return docker_pull_with_api(source, pull_ref, socket_path, timeout=timeout, progress=progress)
     except subprocess.TimeoutExpired as exc:
         return {
             "ok": False,
@@ -1943,16 +2187,18 @@ def pull_image_with_proxy(image: str, socket_path: str | None = None, timeout: i
             "output": str(exc.stdout or ""),
         }
     if pull.returncode != 0:
-        api_result = docker_pull_with_api(source, pull_ref, socket_path, timeout=timeout)
+        api_result = docker_pull_with_api(source, pull_ref, socket_path, timeout=timeout, progress=progress)
         if api_result.get("ok"):
             return api_result
-        return {"ok": False, "image": source, "pull_image": pull_ref, "message": "docker pull failed", "output": pull.stdout}
+        return {"ok": False, "image": source, "pull_image": pull_ref, "message": translate_docker_error(api_result.get("message") or pull.stdout or "docker pull failed"), "output": pull.stdout}
     output = pull.stdout
     if pull_ref != source:
+        emit_progress(progress, 92, "标记镜像", f"正在标记为原始镜像名：{source}")
         tag = run_docker_cli(["tag", pull_ref, source], socket_path, timeout=120)
         output += "\n" + tag.stdout
         if tag.returncode != 0:
-            return {"ok": False, "image": source, "pull_image": pull_ref, "message": "docker tag failed", "output": output}
+            return {"ok": False, "image": source, "pull_image": pull_ref, "message": translate_docker_error("docker tag failed"), "output": output}
+    emit_progress(progress, 96, "拉取完成", f"镜像已拉取：{source}")
     return {"ok": True, "image": source, "pull_image": pull_ref, "message": "pulled", "output": output, "method": "cli"}
 
 

@@ -11,7 +11,8 @@ const state = {
   cardContextMenu: { open: false, x: 0, y: 0, id: null },
   containers: [],
   containerBackups: [],
-  images: { items: [], query: "", remoteQuery: "", searchResults: [], pullOutput: "", proxy: "", pullMode: "proxy" },
+  images: { items: [], query: "", remoteQuery: "", searchResults: [], pullOutput: "", proxy: "", networkProxy: "", pullMode: "proxy" },
+  imagePullJob: null,
   containerView: "card",
   containerFilter: "all",
   containerDetail: null,
@@ -19,7 +20,7 @@ const state = {
   containerUpdateCheck: { active: false, done: 0, total: 0, failed: 0 },
   sidebarCollapsed: false,
   logs: { id: "", text: "" },
-  compose: { projects: [], selected: "", content: "", output: "" },
+  compose: { projects: [], selected: "", content: "", output: "", repair: null },
   files: { roots: [], root: "", path: "", items: [], editPath: "", content: "" },
   settings: null,
 };
@@ -27,6 +28,7 @@ const state = {
 const containerUpdatePollTimers = {};
 const containerUpdateClearTimers = {};
 const containerAutoChecked = new Set();
+let imagePullPollTimer = null;
 
 const tabs = [
   ["dashboard", "总览"],
@@ -307,6 +309,12 @@ function imageCreatedText(image) {
   return new Date(created * 1000).toLocaleDateString("zh-CN");
 }
 
+function jobProgressText(job) {
+  if (!job) return "";
+  const statusMap = { queued: "等待中", running: "进行中", success: "已完成", error: "失败" };
+  return statusMap[job.status] || "任务";
+}
+
 function dashboardWidgetValue(widget, overview) {
   if (widget.type === "host") {
     const host = overview.host || {};
@@ -581,6 +589,7 @@ async function loadImages() {
   const data = await api("/api/docker/images");
   state.images.items = data.images || [];
   state.images.proxy = data.image_registry_proxy || state.images.proxy || "";
+  state.images.networkProxy = data.network_proxy || state.images.networkProxy || "";
 }
 
 async function startContainerUpdate(containerId) {
@@ -628,6 +637,36 @@ async function reloadContainersQuietly() {
   const [data, backups] = await Promise.all([api("/api/docker/containers"), api("/api/docker/backups")]);
   state.containers = data.containers || [];
   state.containerBackups = backups.backups || [];
+}
+
+async function startImagePull(image, useProxy) {
+  if (imagePullPollTimer) clearTimeout(imagePullPollTimer);
+  const data = await api("/api/docker/images/pull-job", { method: "POST", body: { image, use_proxy: useProxy } });
+  state.imagePullJob = data.job;
+  state.images.pullOutput = "";
+  render();
+  pollImagePullJob(data.job.id);
+}
+
+async function pollImagePullJob(jobId) {
+  if (imagePullPollTimer) clearTimeout(imagePullPollTimer);
+  try {
+    const data = await api(`/api/docker/jobs/${encodeURIComponent(jobId)}`);
+    state.imagePullJob = data.job;
+    const status = String(data.job.status || "");
+    render();
+    if (["queued", "running"].includes(status)) {
+      imagePullPollTimer = setTimeout(() => pollImagePullJob(jobId), 1000);
+      return;
+    }
+    state.images.pullOutput = data.job.error || data.job.message || "";
+    if (status === "success") await loadImages();
+    state.error = status === "success" ? data.job.message || "镜像拉取完成。" : zhError(data.job.error || data.job.message || "镜像拉取失败。");
+    render();
+  } catch (error) {
+    state.error = error.message;
+    render();
+  }
 }
 
 async function checkContainerUpdates(containers, { force = false } = {}) {
@@ -779,10 +818,19 @@ function renderCurrent() {
 
 function renderDashboard() {
   return `
-    ${renderDashboardWidgets()}
-    ${renderCards()}
-    ${renderCardContextMenu()}
-    ${renderCardModal()}
+    <section class="nav-home">
+      <div class="nav-hero">
+        <div>
+          <span>DockPilot 导航中心</span>
+          <h2>服务入口和主机状态集中管理</h2>
+        </div>
+        <button class="nav-hero-add" data-action="card-add" data-group="Docker">添加入口</button>
+      </div>
+      ${renderDashboardWidgets()}
+      ${renderCards()}
+      ${renderCardContextMenu()}
+      ${renderCardModal()}
+    </section>
   `;
 }
 
@@ -791,7 +839,7 @@ function renderDashboardWidgets() {
   const visible = state.dashboardWidgets.filter((widget) => widget.visible);
   const hidden = state.dashboardWidgets.filter((widget) => !widget.visible);
   return `
-    <section class="dashboard-widget-panel">
+    <section class="dashboard-widget-panel nav-section">
       <div class="panel-head">
         <div>
           <h3>状态小卡片</h3>
@@ -842,7 +890,7 @@ function renderDashboardWidgets() {
 
 function renderCards() {
   return `
-    <section class="bookmark-board">
+    <section class="bookmark-board nav-section">
       ${cardGroups()
         .map(
           ([group, cards]) => `
@@ -1135,6 +1183,7 @@ function renderContainerBackups() {
           <h3>容器备份</h3>
           <span class="muted">备份会保存容器配置和可恢复的 compose.yml。恢复时创建新 Compose 项目，不会覆盖原容器。</span>
         </div>
+        <button class="danger" data-action="container-backups-clear">一键清理</button>
       </div>
       ${
         state.containerBackups.length
@@ -1212,7 +1261,15 @@ function renderImages() {
           </label>
           <button type="submit">保存代理</button>
         </form>
+        <form id="imageNetworkProxyForm" class="inline-form">
+          <label class="field">
+            <span>局域网网络代理</span>
+            <input name="network_proxy" value="${h(state.images.networkProxy)}" placeholder="例如 192.168.1.2:7890" />
+          </label>
+          <button type="submit">保存</button>
+        </form>
       </div>
+      ${renderImagePullProgress()}
       ${
         state.images.pullOutput
           ? `<pre class="console image-output">${h(state.images.pullOutput)}</pre>`
@@ -1258,6 +1315,22 @@ function renderImages() {
           : `<div class="empty">没有匹配的镜像。</div>`
       }
     </section>
+  `;
+}
+
+function renderImagePullProgress() {
+  const job = state.imagePullJob;
+  if (!job) return "";
+  const progress = Math.max(0, Math.min(100, Number(job.progress || 0)));
+  return `
+    <div class="image-pull-progress ${h(job.status || "")}">
+      <div class="image-pull-progress-head">
+        <strong>${h(jobProgressText(job))} · ${h(job.step || "镜像拉取")}</strong>
+        <b>${progress}%</b>
+      </div>
+      <div class="image-pull-track"><i style="width:${progress}%"></i></div>
+      <p>${h(zhError(job.error || job.message || "正在处理镜像拉取任务。"))}</p>
+    </div>
   `;
 }
 
@@ -1365,6 +1438,7 @@ function renderCompose() {
           </div>
           <div class="top-actions">
             <button data-action="compose-action" data-command="config">检查</button>
+            <button data-action="compose-repair">检查并修正</button>
             <button data-action="compose-action" data-command="pull">拉取</button>
             <button data-action="compose-action" data-command="up" class="primary">部署</button>
             <button data-action="compose-action" data-command="restart">重启</button>
@@ -1377,6 +1451,14 @@ function renderCompose() {
           <textarea id="composeEditor" class="code-input" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off">${h(state.compose.content)}</textarea>
         </div>
         <div class="toolbar"><button data-action="compose-save" class="primary">保存 compose.yml</button></div>
+        ${
+          state.compose.repair
+            ? `<div class="compose-repair-note">
+                <strong>${state.compose.repair.changed ? "已生成修正内容" : "未发现可自动修正的问题"}</strong>
+                <span>${h((state.compose.repair.changes || []).join("；") || "可继续使用检查功能确认配置。")}</span>
+              </div>`
+            : ""
+        }
         ${state.compose.output ? `<pre class="console">${h(state.compose.output)}</pre>` : ""}
       </section>
     </div>
@@ -1477,6 +1559,10 @@ function renderSettings() {
           <label>镜像代理前缀</label>
           <input name="image_registry_proxy" value="${h(settings.image_registry_proxy || "")}" placeholder="例如 docker.1ms.run" />
         </div>
+        <div class="field">
+          <label>局域网网络代理</label>
+          <input name="network_proxy" value="${h(settings.network_proxy || "")}" placeholder="例如 192.168.1.2:7890 或 socks5://192.168.1.2:7890" />
+        </div>
         <button class="primary" type="submit">保存设置</button>
       </form>
     </section>
@@ -1556,6 +1642,7 @@ document.addEventListener("submit", async (event) => {
         body: {
           docker_socket: data.docker_socket,
           image_registry_proxy: data.image_registry_proxy,
+          network_proxy: data.network_proxy,
           compose_roots: data.compose_roots.split("\n").map((line) => line.trim()).filter(Boolean),
           file_roots: data.file_roots
             .split("\n")
@@ -1575,13 +1662,7 @@ document.addEventListener("submit", async (event) => {
     if (form.id === "imagePullForm") {
       const data = Object.fromEntries(new FormData(form));
       state.images.pullMode = data.pull_mode || state.images.pullMode;
-      const result = await api("/api/docker/images/pull", {
-        method: "POST",
-        body: { image: data.image, use_proxy: state.images.pullMode !== "direct" },
-      });
-      state.images.pullOutput = result.output || result.message || "";
-      await loadImages();
-      render();
+      await startImagePull(data.image, state.images.pullMode !== "direct");
     }
     if (form.id === "imageRemoteSearchForm") {
       const data = Object.fromEntries(new FormData(form));
@@ -1599,6 +1680,7 @@ document.addEventListener("submit", async (event) => {
         body: {
           docker_socket: settings.docker_socket || "/var/run/docker.sock",
           image_registry_proxy: data.image_registry_proxy,
+          network_proxy: state.images.networkProxy || settings.network_proxy || "",
           compose_roots: settings.compose_roots || [],
           file_roots: settings.file_roots || [],
         },
@@ -1606,6 +1688,24 @@ document.addEventListener("submit", async (event) => {
       state.images.proxy = data.image_registry_proxy || "";
       state.settings = { ...settings, image_registry_proxy: state.images.proxy };
       state.error = "镜像代理已保存。";
+      render();
+    }
+    if (form.id === "imageNetworkProxyForm") {
+      const data = Object.fromEntries(new FormData(form));
+      const settings = state.settings || (await api("/api/settings"));
+      await api("/api/settings", {
+        method: "PUT",
+        body: {
+          docker_socket: settings.docker_socket || "/var/run/docker.sock",
+          image_registry_proxy: state.images.proxy || settings.image_registry_proxy || "",
+          network_proxy: data.network_proxy,
+          compose_roots: settings.compose_roots || [],
+          file_roots: settings.file_roots || [],
+        },
+      });
+      state.images.networkProxy = data.network_proxy || "";
+      state.settings = { ...settings, network_proxy: state.images.networkProxy };
+      state.error = "局域网网络代理已保存。";
       render();
     }
     if (form.id === "passwordForm") {
@@ -1774,6 +1874,14 @@ document.addEventListener("click", async (event) => {
         render();
       }
     }
+    if (action === "container-backups-clear") {
+      if (confirm("确定清理全部容器更新备份吗？此操作不可恢复。")) {
+        const data = await api("/api/docker/backups/clear", { method: "DELETE" });
+        state.containerBackups = [];
+        state.error = `已清理 ${data.deleted || 0} 个容器备份。`;
+        render();
+      }
+    }
     if (action === "container-inspect") {
       const data = await api(`/api/docker/containers/${encodeURIComponent(button.dataset.id)}/inspect`);
       state.containerDetail = data.container;
@@ -1798,14 +1906,8 @@ document.addEventListener("click", async (event) => {
       }
     }
     if (action === "image-pull-search") {
-      const result = await api("/api/docker/images/pull", {
-        method: "POST",
-        body: { image: button.dataset.image, use_proxy: state.images.pullMode !== "direct" },
-      });
-      state.images.pullOutput = result.output || result.message || "";
       state.error = `已提交拉取：${button.dataset.image}`;
-      await loadImages();
-      render();
+      await startImagePull(button.dataset.image, state.images.pullMode !== "direct");
     }
     if (action === "compose-select") {
       await selectCompose(button.dataset.path);
@@ -1817,6 +1919,20 @@ document.addEventListener("click", async (event) => {
         body: { path: state.compose.selected, content: document.getElementById("composeEditor").value },
       });
       await refreshCurrent();
+    }
+    if (action === "compose-repair") {
+      const editor = document.getElementById("composeEditor");
+      const result = await api("/api/compose/repair", { method: "POST", body: { content: editor.value } });
+      state.compose.repair = result;
+      if (result.changed) {
+        state.compose.content = result.content;
+        editor.value = result.content;
+        syncComposeHighlight();
+        state.error = "已修正编辑器内容，请检查后再保存或部署。";
+      } else {
+        state.error = "未发现可自动修正的问题。";
+      }
+      render();
     }
     if (action === "compose-action") {
       if (!state.compose.selected) throw new Error("请先选择一个 Compose 项目。");

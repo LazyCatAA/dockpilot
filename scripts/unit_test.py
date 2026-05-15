@@ -9,7 +9,17 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from dockpilot import server
-from dockpilot.server import build_image_name_lookup, enrich_containers, proxied_image_reference, recreate_standalone_container
+from dockpilot.server import (
+    build_image_name_lookup,
+    direct_image_search_result,
+    clear_container_backups,
+    enrich_containers,
+    normalize_image_search_query,
+    normalize_network_proxy_url,
+    proxied_image_reference,
+    recreate_standalone_container,
+    repair_compose_content,
+)
 
 
 def assert_true(value: bool, message: str) -> None:
@@ -141,6 +151,18 @@ def test_delete_container_backup_removes_backup_file() -> None:
     server.DATA_DIR = original_data_dir
 
 
+def test_clear_container_backups_removes_all_backup_files() -> None:
+    original_data_dir = server.DATA_DIR
+    with tempfile.TemporaryDirectory() as tmp:
+        server.DATA_DIR = Path(tmp)
+        server.backup_file_path("one.json").write_text("{}", encoding="utf-8")
+        server.backup_file_path("two.json").write_text("{}", encoding="utf-8")
+        result = clear_container_backups()
+        assert_true(result["deleted"] == 2, "一键清理应删除所有容器备份")
+        assert_true(server.list_container_backups() == [], "一键清理后备份列表应为空")
+    server.DATA_DIR = original_data_dir
+
+
 def test_docker_hub_search_results_are_normalized() -> None:
     payload = {
         "results": [
@@ -192,15 +214,46 @@ def test_container_card_uses_repo_tag_when_summary_image_is_digest() -> None:
     )
 
 
+def test_remote_image_search_strips_tag_from_full_reference() -> None:
+    assert_true(
+        normalize_image_search_query("shenxianmq/symedia:latest") == "shenxianmq/symedia",
+        "远程搜索完整镜像引用时应去掉 tag",
+    )
+    direct = direct_image_search_result("shenxianmq/symedia:latest")
+    assert_true(direct["pull_name"] == "shenxianmq/symedia:latest", "完整镜像引用应保留为可直接拉取结果")
+
+
+def test_network_proxy_url_is_normalized_for_lan_proxy() -> None:
+    assert_true(
+        normalize_network_proxy_url("192.168.1.2:7890") == "http://192.168.1.2:7890",
+        "局域网代理未写协议时应默认补 http",
+    )
+    assert_true(
+        normalize_network_proxy_url("socks5://192.168.1.2:7890") == "socks5://192.168.1.2:7890",
+        "SOCKS5 代理应保留协议",
+    )
+
+
+def test_compose_repair_fixes_common_yaml_format_issues() -> None:
+    result = repair_compose_content("app：\n\timage: nginx\n\tports:\n\t\t- 8080:80\n")
+    assert_true(result["changed"] is True, "Compose 修正应报告内容变化")
+    assert_true("services:" in result["content"], "缺少 services 时应补充根节点")
+    assert_true('"8080:80"' in result["content"], "端口映射应自动加引号")
+
+
 def main() -> int:
     test_standalone_update_retries_when_docker_reports_same_rename_name()
     test_image_proxy_keeps_original_reference_shape()
     test_pull_image_can_skip_configured_proxy()
     test_check_update_uses_docker_api_when_cli_is_unavailable()
     test_delete_container_backup_removes_backup_file()
+    test_clear_container_backups_removes_all_backup_files()
     test_docker_hub_search_results_are_normalized()
     test_failed_update_check_should_not_clear_existing_update_state()
     test_container_card_uses_repo_tag_when_summary_image_is_digest()
+    test_remote_image_search_strips_tag_from_full_reference()
+    test_network_proxy_url_is_normalized_for_lan_proxy()
+    test_compose_repair_fixes_common_yaml_format_issues()
     print("PASS: DockPilot 单元测试全部通过")
     return 0
 

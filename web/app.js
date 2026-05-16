@@ -5,6 +5,9 @@ const state = {
   loading: false,
   overview: null,
   dashboardWidgets: [],
+  navPrefs: null,
+  navSettingsOpen: false,
+  navSearch: "",
   cards: [],
   editingCard: null,
   cardModal: { open: false, iconMime: "", iconBase64: "", clearIcon: false },
@@ -455,6 +458,47 @@ function filteredVolumes() {
   });
 }
 
+function defaultNavPrefs() {
+  return {
+    title: "私人导航",
+    subtitle: "清晰分组的服务入口，支持内外网地址和自定义图标",
+    layout_width: "wide",
+    density: "comfortable",
+    card_style: "professional",
+    background: "#eef5fb",
+    show_search: true,
+    show_status: true,
+    show_group_count: true,
+    groups: {},
+  };
+}
+
+function navPrefs() {
+  return { ...defaultNavPrefs(), ...(state.navPrefs || {}), groups: (state.navPrefs && state.navPrefs.groups) || {} };
+}
+
+function navGroupPrefs(group) {
+  const prefs = navPrefs();
+  return prefs.groups?.[group] || { color: "#2563eb", collapsed: false, hidden: false };
+}
+
+function filteredCardGroups() {
+  const query = state.navSearch.trim().toLowerCase();
+  return cardGroups()
+    .map(([group, cards]) => {
+      const filtered = query
+        ? cards.filter((card) => [card.title, card.description, card.url, card.internal_url, card.icon].join(" ").toLowerCase().includes(query))
+        : cards;
+      return [group, filtered];
+    })
+    .filter(([group, cards]) => !navGroupPrefs(group).hidden && (!query || cards.length));
+}
+
+async function saveNavPrefs(nextPrefs) {
+  const result = await api("/api/dashboard/nav", { method: "PUT", body: nextPrefs });
+  state.navPrefs = result.prefs;
+}
+
 function cardGroups() {
   const groups = state.cards.reduce((acc, card) => {
     const key = card.group_name || "应用";
@@ -674,10 +718,11 @@ async function refreshCurrent() {
 }
 
 async function loadDashboard() {
-  const [overview, cards] = await Promise.all([api("/api/overview"), api("/api/cards")]);
+  const [overview, cards, nav] = await Promise.all([api("/api/overview"), api("/api/cards"), api("/api/dashboard/nav")]);
   state.overview = overview;
   state.dashboardWidgets = overview.dashboard_widgets || [];
   state.cards = cards.cards || [];
+  state.navPrefs = nav.prefs || defaultNavPrefs();
 }
 
 async function loadContainers() {
@@ -998,17 +1043,24 @@ function renderCurrent() {
 }
 
 function renderDashboard() {
+  const prefs = navPrefs();
   return `
-    <section class="nav-home">
-      <div class="nav-hero">
+    <section class="nav-home nav-pro nav-width-${h(prefs.layout_width)} nav-density-${h(prefs.density)} nav-style-${h(prefs.card_style)}" style="--nav-bg:${h(prefs.background)}">
+      <div class="nav-pro-hero">
         <div>
-          <span>DockPilot 导航中心</span>
-          <h2>服务入口和主机状态集中管理</h2>
+          <span>DockPilot Navigation</span>
+          <h2>${h(prefs.title)}</h2>
+          <p>${h(prefs.subtitle)}</p>
         </div>
-        <button class="nav-hero-add" data-action="card-add" data-group="Docker">添加入口</button>
+        <div class="nav-pro-actions">
+          ${prefs.show_search ? `<input id="navSearch" value="${h(state.navSearch)}" placeholder="搜索服务、链接或描述" />` : ""}
+          <button data-action="nav-settings-open">外观设置</button>
+          <button class="primary" data-action="card-add" data-group="Docker">添加入口</button>
+        </div>
       </div>
       ${renderDashboardWidgets()}
       ${renderCards()}
+      ${renderNavSettingsModal()}
       ${renderCardContextMenu()}
       ${renderCardModal()}
     </section>
@@ -1070,33 +1122,102 @@ function renderDashboardWidgets() {
 }
 
 function renderCards() {
+  const prefs = navPrefs();
+  const groups = filteredCardGroups();
   return `
-    <section class="bookmark-board nav-section">
-      ${cardGroups()
+    <section class="bookmark-board nav-section professional-bookmark-board">
+      ${groups
         .map(
           ([group, cards]) => `
-            <div class="bookmark-group">
-              <div class="bookmark-group-head">
-                <h3>${h(group)}</h3>
-                <button class="bookmark-round" title="添加书签" data-action="card-add" data-group="${h(group)}">＋</button>
-                <button class="bookmark-round" title="分组设置" data-action="card-group-settings" data-group="${h(group)}">⚙</button>
+            <div class="bookmark-group professional-bookmark-group" style="--group-color:${h(navGroupPrefs(group).color || "#2563eb")}">
+              <div class="bookmark-group-head professional-group-head">
+                <div>
+                  <h3>${h(group)}</h3>
+                  ${prefs.show_group_count ? `<span>${cards.length} 个入口</span>` : ""}
+                </div>
+                <div class="bookmark-group-tools">
+                  <button class="bookmark-round" title="折叠/展开" data-action="nav-group-collapse" data-group="${h(group)}">${navGroupPrefs(group).collapsed ? "▸" : "▾"}</button>
+                  <input type="color" title="分组颜色" data-action="nav-group-color" data-group="${h(group)}" value="${h(navGroupPrefs(group).color || "#2563eb")}" />
+                  <button class="bookmark-round" title="隐藏分组" data-action="nav-group-hide" data-group="${h(group)}">－</button>
+                  <button class="bookmark-round" title="添加书签" data-action="card-add" data-group="${h(group)}">＋</button>
+                  <button class="bookmark-round" title="分组设置" data-action="card-group-settings" data-group="${h(group)}">⚙</button>
+                </div>
               </div>
               ${
-                cards.length
-                  ? `<div class="bookmark-grid">${cards.map(renderBookmarkCard).join("")}</div>`
-                  : `<div class="bookmark-empty">这个分组还没有书签。</div>`
+                navGroupPrefs(group).collapsed
+                  ? ""
+                  : cards.length
+                    ? `<div class="bookmark-grid professional-bookmark-grid">${cards.map(renderBookmarkCard).join("")}</div>`
+                    : `<div class="bookmark-empty">这个分组还没有书签。</div>`
               }
             </div>
           `
         )
         .join("")}
+      ${renderHiddenNavGroups()}
       <input class="hidden-input" id="cardIconUpload" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
     </section>
   `;
 }
 
+function renderHiddenNavGroups() {
+  const hidden = cardGroups().filter(([group]) => navGroupPrefs(group).hidden);
+  if (!hidden.length) return "";
+  return `<div class="hidden-widgets nav-hidden-groups">${hidden
+    .map(([group]) => `<button data-action="nav-group-show" data-group="${h(group)}">显示 ${h(group)}</button>`)
+    .join("")}</div>`;
+}
+
+function renderNavSettingsModal() {
+  if (!state.navSettingsOpen) return "";
+  const prefs = navPrefs();
+  return `
+    <div class="card-modal-backdrop" data-action="nav-settings-close">
+      <form id="navSettingsForm" class="card-modal nav-settings-modal">
+        <div class="card-modal-head">
+          <h3>导航外观设置</h3>
+          <button type="button" data-action="nav-settings-close">×</button>
+        </div>
+        <div class="card-modal-body">
+          <div class="card-modal-grid">
+            <label class="field wide"><span>页面标题</span><input name="title" value="${h(prefs.title)}" /></label>
+            <label class="field wide"><span>副标题</span><input name="subtitle" value="${h(prefs.subtitle)}" /></label>
+            <label class="field"><span>背景颜色</span><input name="background" type="color" value="${h(prefs.background)}" /></label>
+            <label class="field"><span>页面宽度</span><select name="layout_width">
+              <option value="compact" ${prefs.layout_width === "compact" ? "selected" : ""}>紧凑</option>
+              <option value="standard" ${prefs.layout_width === "standard" ? "selected" : ""}>标准</option>
+              <option value="wide" ${prefs.layout_width === "wide" ? "selected" : ""}>宽屏</option>
+            </select></label>
+            <label class="field"><span>卡片密度</span><select name="density">
+              <option value="compact" ${prefs.density === "compact" ? "selected" : ""}>紧凑</option>
+              <option value="comfortable" ${prefs.density === "comfortable" ? "selected" : ""}>舒适</option>
+              <option value="spacious" ${prefs.density === "spacious" ? "selected" : ""}>宽松</option>
+            </select></label>
+            <label class="field"><span>整体卡片样式</span><select name="card_style">
+              <option value="professional" ${prefs.card_style === "professional" ? "selected" : ""}>专业</option>
+              <option value="soft" ${prefs.card_style === "soft" ? "selected" : ""}>柔和</option>
+              <option value="outline" ${prefs.card_style === "outline" ? "selected" : ""}>描边</option>
+              <option value="glass" ${prefs.card_style === "glass" ? "selected" : ""}>玻璃</option>
+            </select></label>
+          </div>
+          <div class="card-modal-options">
+            <label class="check-option"><input name="show_search" type="checkbox" ${prefs.show_search ? "checked" : ""} />显示搜索</label>
+            <label class="check-option"><input name="show_status" type="checkbox" ${prefs.show_status ? "checked" : ""} />显示状态点</label>
+            <label class="check-option"><input name="show_group_count" type="checkbox" ${prefs.show_group_count ? "checked" : ""} />显示分组数量</label>
+          </div>
+        </div>
+        <div class="card-modal-foot">
+          <button type="button" data-action="nav-settings-close">取消</button>
+          <button class="primary" type="submit">保存外观</button>
+        </div>
+      </form>
+    </div>
+  `;
+}
+
 function renderBookmarkCard(card) {
   const description = String(card.description || "").split("\n").filter(Boolean).slice(0, 2).join(" / ");
+  const prefs = navPrefs();
   return `
     <button
       class="bookmark-card ${h(cardSize(card))} ${h(cardStyle(card))}"
@@ -1107,7 +1228,7 @@ function renderBookmarkCard(card) {
     >
       <span class="bookmark-icon">${cardIconMarkup(card)}</span>
       <span class="bookmark-card-copy">
-        <strong>${h(card.title)}</strong>
+        <strong>${prefs.show_status ? `<i class="nav-card-status"></i>` : ""}${h(card.title)}</strong>
         ${cardSize(card) === "large" && description ? `<small>${h(description)}</small>` : ""}
       </span>
     </button>
@@ -2252,6 +2373,24 @@ document.addEventListener("submit", async (event) => {
       form.reset();
       await refreshCurrent();
     }
+    if (form.id === "navSettingsForm") {
+      const data = Object.fromEntries(new FormData(form));
+      await saveNavPrefs({
+        ...navPrefs(),
+        title: data.title || "私人导航",
+        subtitle: data.subtitle || "",
+        background: data.background || "#eef5fb",
+        layout_width: data.layout_width || "wide",
+        density: data.density || "comfortable",
+        card_style: data.card_style || "professional",
+        show_search: data.show_search === "on",
+        show_status: data.show_status === "on",
+        show_group_count: data.show_group_count === "on",
+      });
+      state.navSettingsOpen = false;
+      state.error = "导航外观已保存。";
+      render();
+    }
     if (form.id === "composeNewForm") {
       const data = Object.fromEntries(new FormData(form));
       const result = await api("/api/compose/projects", { method: "POST", body: data });
@@ -2419,6 +2558,25 @@ document.addEventListener("click", async (event) => {
     }
     if (action === "card-add") {
       openCardModal(null, button.dataset.group || "Docker");
+      render();
+    }
+    if (action === "nav-settings-open") {
+      state.navSettingsOpen = true;
+      render();
+    }
+    if (action === "nav-settings-close") {
+      if (button.classList.contains("card-modal-backdrop") && event.target !== button) return;
+      state.navSettingsOpen = false;
+      render();
+    }
+    if (action === "nav-group-collapse" || action === "nav-group-hide" || action === "nav-group-show") {
+      const group = button.dataset.group || "";
+      const prefs = navPrefs();
+      const groupPrefs = { color: "#2563eb", collapsed: false, hidden: false, ...(prefs.groups[group] || {}) };
+      if (action === "nav-group-collapse") groupPrefs.collapsed = !groupPrefs.collapsed;
+      if (action === "nav-group-hide") groupPrefs.hidden = true;
+      if (action === "nav-group-show") groupPrefs.hidden = false;
+      await saveNavPrefs({ ...prefs, groups: { ...prefs.groups, [group]: groupPrefs } });
       render();
     }
     if (action === "card-open-default") {
@@ -2954,6 +3112,14 @@ document.addEventListener("change", async (event) => {
       });
       await refreshCurrent();
     }
+    if (event.target.dataset.action === "nav-group-color") {
+      const group = event.target.dataset.group || "";
+      const prefs = navPrefs();
+      const groupPrefs = { color: "#2563eb", collapsed: false, hidden: false, ...(prefs.groups[group] || {}) };
+      groupPrefs.color = event.target.value;
+      await saveNavPrefs({ ...prefs, groups: { ...prefs.groups, [group]: groupPrefs } });
+      render();
+    }
   } catch (error) {
     state.error = error.message;
     render();
@@ -2967,6 +3133,10 @@ document.addEventListener("input", (event) => {
   }
   if (event.target.id === "imageRemoteSearch") {
     state.images.remoteQuery = event.target.value;
+  }
+  if (event.target.id === "navSearch") {
+    state.navSearch = event.target.value;
+    render();
   }
   if (event.target.id === "volumeSearch") {
     state.volumes.query = event.target.value;

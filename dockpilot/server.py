@@ -43,6 +43,18 @@ DEFAULT_DASHBOARD_WIDGETS = [
     {"id": "docker", "type": "docker", "title": "Docker 状态", "visible": True},
     {"id": "containers", "type": "containers", "title": "容器监控", "visible": True},
 ]
+DEFAULT_NAV_PREFS = {
+    "title": "私人导航",
+    "subtitle": "清晰分组的服务入口，支持内外网地址和自定义图标",
+    "layout_width": "wide",
+    "density": "comfortable",
+    "card_style": "professional",
+    "background": "#eef5fb",
+    "show_search": True,
+    "show_status": True,
+    "show_group_count": True,
+    "groups": {},
+}
 
 
 def now_ts() -> int:
@@ -135,6 +147,37 @@ def normalize_dashboard_widgets(value: Any) -> list[dict[str, Any]]:
 
 def dashboard_widgets() -> list[dict[str, Any]]:
     return normalize_dashboard_widgets(read_json_setting(STORE.get_setting("dashboard_widgets", "[]"), []))
+
+
+def normalize_nav_prefs(value: Any) -> dict[str, Any]:
+    raw = value if isinstance(value, dict) else {}
+    prefs = dict(DEFAULT_NAV_PREFS)
+    prefs.update({key: raw.get(key, prefs[key]) for key in prefs if key != "groups"})
+    prefs["layout_width"] = str(prefs.get("layout_width", "wide")) if str(prefs.get("layout_width", "wide")) in {"compact", "standard", "wide"} else "wide"
+    prefs["density"] = str(prefs.get("density", "comfortable")) if str(prefs.get("density", "comfortable")) in {"compact", "comfortable", "spacious"} else "comfortable"
+    prefs["card_style"] = str(prefs.get("card_style", "professional")) if str(prefs.get("card_style", "professional")) in {"professional", "soft", "outline", "glass"} else "professional"
+    prefs["background"] = normalize_color(str(prefs.get("background", "#eef5fb")), "#eef5fb")
+    for key in ("show_search", "show_status", "show_group_count"):
+        prefs[key] = bool(prefs.get(key))
+    groups: dict[str, Any] = {}
+    raw_groups = raw.get("groups", {}) if isinstance(raw.get("groups", {}), dict) else {}
+    for group, item in raw_groups.items():
+        if not isinstance(item, dict):
+            continue
+        name = str(group).strip()
+        if not name:
+            continue
+        groups[name] = {
+            "color": normalize_color(str(item.get("color", "#2563eb")), "#2563eb"),
+            "collapsed": bool(item.get("collapsed", False)),
+            "hidden": bool(item.get("hidden", False)),
+        }
+    prefs["groups"] = groups
+    return prefs
+
+
+def dashboard_nav_prefs() -> dict[str, Any]:
+    return normalize_nav_prefs(read_json_setting(STORE.get_setting("dashboard_nav_prefs", "{}"), {}))
 
 
 def host_status() -> dict[str, Any]:
@@ -265,6 +308,7 @@ class Store:
                 "compose_ai_model": "",
                 "compose_ai_enabled": "false",
                 "dashboard_widgets": json_dumps(DEFAULT_DASHBOARD_WIDGETS),
+                "dashboard_nav_prefs": json_dumps(DEFAULT_NAV_PREFS),
                 "file_roots": json_dumps(
                     [
                         {"name": "files", "path": str(DATA_DIR / "files")},
@@ -901,6 +945,9 @@ class AppHandler(BaseHTTPRequestHandler):
         if path == "/api/dashboard/widgets":
             self.api_dashboard_widgets()
             return
+        if path == "/api/dashboard/nav":
+            self.api_dashboard_nav()
+            return
         if path.startswith("/api/cards"):
             self.api_cards(path)
             return
@@ -988,6 +1035,17 @@ class AppHandler(BaseHTTPRequestHandler):
             widgets = normalize_dashboard_widgets(self.read_json().get("widgets", []))
             STORE.set_setting("dashboard_widgets", json_dumps(widgets))
             self.write_json({"widgets": widgets})
+            return
+        self.write_json({"error": "method not allowed"}, status=405)
+
+    def api_dashboard_nav(self) -> None:
+        if self.command == "GET":
+            self.write_json({"prefs": dashboard_nav_prefs()})
+            return
+        if self.command == "PUT":
+            prefs = normalize_nav_prefs(self.read_json())
+            STORE.set_setting("dashboard_nav_prefs", json_dumps(prefs))
+            self.write_json({"prefs": prefs})
             return
         self.write_json({"error": "method not allowed"}, status=405)
 

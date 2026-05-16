@@ -134,6 +134,9 @@ def main() -> int:
         assert_true("container-backups-clear" in app_js, "容器备份应支持一键清理")
         assert_true("container-backup-delete" in app_js, "容器备份应支持删除")
         assert_true("bookmark-board" in app_js, "首页导航应使用分组书签板")
+        assert_true("navSettingsForm" in app_js, "首页导航应支持外观设置")
+        assert_true("nav-group-collapse" in app_js, "首页导航分组应支持折叠")
+        assert_true("navSearch" in app_js, "首页导航应支持搜索")
         assert_true("bookmark-context-menu" in app_js, "书签卡片应支持右键菜单")
         assert_true("cardIconUpload" in app_js, "书签卡片应支持图标上传")
         assert_true("cardModal" in app_js, "书签卡片应使用弹窗添加和编辑")
@@ -155,6 +158,8 @@ def main() -> int:
         assert_true("volume-risk" in styles_css, "Docker 卷应提供风险标识")
         assert_true("backup-actions" in styles_css, "容器备份应提供恢复和删除操作样式")
         assert_true("bookmark-card" in styles_css, "书签卡片应提供复刻样式")
+        assert_true("professional-bookmark-group" in styles_css, "首页导航应使用专业分组卡片")
+        assert_true("nav-pro-hero" in styles_css, "首页导航应使用专业导航头部")
         assert_true("nav-hero" in styles_css, "首页导航应使用重新设计的导航头部")
         assert_true("compose-repair-note" in styles_css, "Compose 修正结果应有提示样式")
         assert_true("yaml-repaired" in styles_css, "Compose 修正内容应高亮显示")
@@ -179,6 +184,11 @@ def main() -> int:
 
         _, overview = client.request("GET", "/api/overview")
         assert_true("docker" in overview, "总览应包含 Docker 状态")
+        _, nav_prefs = client.request("GET", "/api/dashboard/nav")
+        assert_true("prefs" in nav_prefs and "card_style" in nav_prefs["prefs"], "首页导航外观偏好应可读取")
+        _, nav_saved = client.request("PUT", "/api/dashboard/nav", {"title": "我的导航", "density": "compact", "groups": {"Docker": {"collapsed": True, "color": "#16a34a"}}})
+        assert_true(nav_saved["prefs"]["title"] == "我的导航", "首页导航标题应可保存")
+        assert_true(nav_saved["prefs"]["groups"]["Docker"]["collapsed"] is True, "首页导航分组折叠状态应可保存")
 
         _, created_card = client.request(
             "POST",

@@ -250,6 +250,13 @@ def test_volume_label_lines_are_normalized() -> None:
     assert_true(labels == {"app": "demo", "owner": "dockpilot", "empty": ""}, "卷标签应支持每行 key=value")
 
 
+def test_nav_preferences_are_normalized() -> None:
+    prefs = server.normalize_nav_prefs({"density": "tiny", "background": "bad", "groups": {"Docker": {"color": "#16a34a", "collapsed": True}}})
+    assert_true(prefs["density"] == "comfortable", "首页导航密度非法值应回退")
+    assert_true(prefs["background"] == "#eef5fb", "首页导航背景色非法值应回退")
+    assert_true(prefs["groups"]["Docker"]["collapsed"] is True, "首页导航分组偏好应保留")
+
+
 def test_remote_image_search_strips_tag_from_full_reference() -> None:
     assert_true(
         normalize_image_search_query("shenxianmq/symedia:latest") == "shenxianmq/symedia",
@@ -353,6 +360,7 @@ def main() -> int:
     test_images_are_marked_used_when_container_references_image_id()
     test_volumes_are_marked_used_from_container_mounts()
     test_volume_label_lines_are_normalized()
+    test_nav_preferences_are_normalized()
     test_remote_image_search_strips_tag_from_full_reference()
     test_remote_image_search_returns_direct_fallback_for_simple_name()
     test_network_proxy_url_is_normalized_for_lan_proxy()

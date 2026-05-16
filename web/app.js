@@ -1561,47 +1561,34 @@ function renderVolumeGroup(title, note, items, tone) {
         </div>
         <b>${items.length}</b>
       </div>
-      <div class="image-grid volume-grid">${items.map(renderVolumeCard).join("")}</div>
+      <div class="volume-table-list">${items.map(renderVolumeRow).join("")}</div>
     </section>
   `;
 }
 
-function renderVolumeCard(volume) {
+function renderVolumeRow(volume) {
   const name = volumeName(volume);
   const tone = volumeTone(volume);
   const backup = latestVolumeBackup(name);
   const containers = volume.DockPilot?.containers || [];
   return `
-    <article class="image-card-shell volume-card-shell ${h(tone)}">
-      <div class="image-card-top">
-        <div class="image-mark volume-mark" aria-hidden="true"><span>卷</span></div>
-        <div class="image-info">
-          <div class="image-title-row">
-            <strong title="${h(name)}">${h(name)}</strong>
-            <span class="image-status-dot ${h(tone)}"></span>
-          </div>
-          <small title="${h(volume.Mountpoint || "未记录挂载点")}">${h(volume.Mountpoint || "未记录挂载点")}</small>
-        </div>
+    <div class="volume-table-row ${h(tone)}">
+      <span class="image-status-dot ${h(tone)}"></span>
+      <div class="volume-row-main">
+        <strong title="${h(name)}">${h(name)}</strong>
+        <small title="${h(volume.Mountpoint || "未记录挂载点")}">${h(volume.Mountpoint || "未记录挂载点")}</small>
       </div>
-      <div class="image-facts volume-facts">
-        <span><b>${fmtBytes(volumeSize(volume))}</b><small>大小</small></span>
-        <span><b>${h(String(volumeRefCount(volume)))}</b><small>引用</small></span>
-        <span><b>${h(volume.Driver || "local")}</b><small>驱动</small></span>
-        <span><b>${h(volumeCreatedText(volume))}</b><small>创建</small></span>
+      <code title="${h(containers.join(", ") || "当前没有容器引用")}">${containers.length ? h(containers.slice(0, 3).join("、")) : "未关联容器"}</code>
+      <span>${fmtBytes(volumeSize(volume))}</span>
+      <span class="image-usage ${h(tone)}">${volumeUsageLabel(volume)}</span>
+      <span>${h(volumeCreatedText(volume))}</span>
+      <span>${h(volume.Driver || "local")}</span>
+      <div class="volume-row-actions">
+        <button data-action="volume-backup" data-name="${h(name)}">备份</button>
+        <button data-action="volume-restore" data-name="${h(name)}" ${backup ? "" : "disabled"}>恢复</button>
+        <button class="danger" data-action="volume-remove" data-name="${h(name)}" ${tone === "used" ? "disabled" : ""}>删除</button>
       </div>
-      <div class="volume-containers" title="${h(containers.join(", ") || "当前没有容器引用")}">
-        ${containers.length ? h(containers.slice(0, 3).join("、")) : "当前没有容器引用"}
-      </div>
-      <div class="image-card-bottom volume-card-bottom">
-        <span class="image-usage ${h(tone)}">${volumeUsageLabel(volume)}</span>
-        <code>${backup ? `最近备份 ${h(backup.created_at || backup.name)}` : "还没有备份"}</code>
-        <div class="image-card-actions volume-card-actions">
-          <button data-action="volume-backup" data-name="${h(name)}">备份</button>
-          <button data-action="volume-restore" data-name="${h(name)}" ${backup ? "" : "disabled"}>恢复</button>
-          <button class="danger" data-action="volume-remove" data-name="${h(name)}" ${tone === "used" ? "disabled" : ""}>删除</button>
-        </div>
-      </div>
-    </article>
+    </div>
   `;
 }
 

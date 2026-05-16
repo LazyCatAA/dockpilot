@@ -145,7 +145,7 @@ def main() -> int:
         assert_true("image-status-dot" in app_js, "镜像卡片应提供状态圆点")
         assert_true("image-card-shell" in styles_css, "镜像库卡片应使用专业化卡片壳层")
         assert_true("image-card-actions" in styles_css, "镜像库卡片操作区应紧凑收敛")
-        assert_true("volume-card-shell" in styles_css, "Docker 卷应复用镜像库卡片模式")
+        assert_true("volume-table-row" in styles_css, "Docker 卷应使用紧凑列表行模式")
         assert_true("volume-summary-bar" in app_js, "Docker 卷应提供镜像库模式的统计条")
         assert_true("backup-actions" in styles_css, "容器备份应提供恢复和删除操作样式")
         assert_true("bookmark-card" in styles_css, "书签卡片应提供复刻样式")

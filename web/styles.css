@@ -2243,61 +2243,76 @@ a {
   grid-template-columns: minmax(260px, 1fr) auto;
 }
 
-.volume-card-shell {
-  min-height: 158px;
-}
-
-.volume-card-shell.used::before {
-  background: linear-gradient(180deg, #0ea5e9, rgba(14, 165, 233, 0));
-}
-
-.volume-card-shell.unused::before {
-  background: linear-gradient(180deg, #f59e0b, rgba(245, 158, 11, 0));
-}
-
-.volume-mark {
-  background:
-    linear-gradient(135deg, rgba(14, 165, 233, 0.95), rgba(37, 99, 235, 0.95));
-}
-
-.volume-card-shell.unused .volume-mark {
-  background:
-    linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(234, 88, 12, 0.92));
-}
-
-.volume-facts {
+.volume-table-list {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
+  overflow: hidden;
+  border: 1px solid #d9e2ee;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.06);
 }
 
-.volume-facts span {
+.volume-table-row {
+  min-width: 0;
+  min-height: 54px;
   display: grid;
-  gap: 1px;
-  padding: 7px 8px;
-  border-radius: 10px;
-  background: rgba(248, 250, 252, 0.92);
+  grid-template-columns: 16px minmax(260px, 1.5fr) minmax(160px, 0.9fr) 90px 96px 100px 74px 186px;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 14px;
+  border-bottom: 1px solid #edf2f7;
 }
 
-.volume-containers {
+.volume-table-row:last-child {
+  border-bottom: 0;
+}
+
+.volume-table-row:hover {
+  background: #f8fbff;
+}
+
+.volume-row-main {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.volume-row-main strong,
+.volume-row-main small,
+.volume-table-row code,
+.volume-table-row > span {
   min-width: 0;
   overflow: hidden;
-  color: #64748b;
-  font-size: 12px;
-  font-weight: 700;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.volume-card-bottom {
-  grid-template-columns: auto minmax(0, 1fr) auto;
+.volume-row-main strong {
+  color: #111827;
+  font-size: 14px;
+  font-weight: 900;
 }
 
-.volume-card-actions {
+.volume-row-main small,
+.volume-table-row code,
+.volume-table-row > span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.volume-row-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
 }
 
-.volume-card-actions button:disabled {
+.volume-row-actions button {
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
+.volume-row-actions button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
 }

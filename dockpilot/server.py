@@ -1764,9 +1764,35 @@ def repair_compose_content(content: str, error: str = "") -> dict[str, Any]:
     fixed_lines: list[str] = []
     changes: list[str] = []
     repaired_lines: list[int] = []
+    block_keys = {"services", "networks", "volumes", "configs", "secrets", "ports", "environment", "labels", "depends_on"}
+    scalar_keys = {
+        "image",
+        "container_name",
+        "restart",
+        "network_mode",
+        "hostname",
+        "command",
+        "entrypoint",
+        "user",
+        "working_dir",
+        "build",
+        "env_file",
+    }
     for index, line in enumerate(lines, start=1):
         fixed = line.replace("\t", "  ").replace("：", ": ")
         fixed = re.sub(r":\s{2,}", ": ", fixed)
+        block_match = re.match(r"^(\s*)([A-Za-z_][A-Za-z0-9_-]*)\s*$", fixed)
+        if block_match and block_match.group(2) in block_keys:
+            fixed = f"{block_match.group(1)}{block_match.group(2)}:"
+        scalar_match = re.match(r"^(\s*)([A-Za-z_][A-Za-z0-9_-]*)\s+(.+?)\s*$", fixed)
+        if scalar_match and scalar_match.group(2) in scalar_keys and ":" not in scalar_match.group(3):
+            fixed = f"{scalar_match.group(1)}{scalar_match.group(2)}: {scalar_match.group(3).strip()}"
+        compact_scalar_match = re.match(r"^(\s*)([A-Za-z_][A-Za-z0-9_-]*):(\S.+?)\s*$", fixed)
+        if compact_scalar_match and compact_scalar_match.group(2) in scalar_keys:
+            fixed = f"{compact_scalar_match.group(1)}{compact_scalar_match.group(2)}: {compact_scalar_match.group(3).strip()}"
+        list_match = re.match(r"^(\s*)-(\S.*)$", fixed)
+        if list_match:
+            fixed = f"{list_match.group(1)}- {list_match.group(2).strip()}"
         if re.match(r"^\s*-\s+\d+:\d+(?:/\w+)?\s*$", fixed):
             indent, value = fixed.split("-", 1)
             fixed = f"{indent}- \"{value.strip()}\""

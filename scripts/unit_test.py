@@ -278,6 +278,17 @@ def test_compose_repair_uses_compose_error_context() -> None:
     assert_true(result["repaired_lines"] == [5], "Compose 修正应返回被修改的行号用于高亮")
 
 
+def test_compose_repair_fixes_missing_colons_and_bad_list_spacing() -> None:
+    content = "services\n  app:\n    image nginx\n    restart:unless-stopped\n    ports:\n      -8080:80\n"
+    result = repair_compose_content(content, "yaml: mapping values are not allowed in this context")
+    assert_true(result["changed"] is True, "Compose 修正应处理常见 YAML 格式错误")
+    assert_true(result["content"].splitlines()[0] == "services:", "已知 Compose 块关键字缺少冒号时应补齐")
+    assert_true("image: nginx" in result["content"], "已知 Compose 属性缺少冒号时应补齐")
+    assert_true("restart: unless-stopped" in result["content"], "已知 Compose 属性冒号后缺少空格时应补齐")
+    assert_true('- "8080:80"' in result["content"], "列表项少空格且端口未加引号时应修正")
+    assert_true(result["repaired_lines"] == [1, 3, 4, 6], "修正过的行应返回给前端高亮")
+
+
 def main() -> int:
     test_standalone_update_retries_when_docker_reports_same_rename_name()
     test_image_proxy_keeps_original_reference_shape()
@@ -295,6 +306,7 @@ def main() -> int:
     test_network_proxy_treats_registry_auth_response_as_connected()
     test_compose_repair_fixes_common_yaml_format_issues()
     test_compose_repair_uses_compose_error_context()
+    test_compose_repair_fixes_missing_colons_and_bad_list_spacing()
     print("PASS: DockPilot 单元测试全部通过")
     return 0
 

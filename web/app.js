@@ -2168,7 +2168,7 @@ document.addEventListener("click", async (event) => {
         state.error = "已修正编辑器内容，请检查后再保存或部署。";
       } else {
         state.compose.repairLines = [];
-        state.error = "未发现可自动修正的问题。";
+        state.error = (result.changes || []).join("；") || "未发现可自动修正的问题。";
       }
       render();
     }

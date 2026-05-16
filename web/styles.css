@@ -3546,15 +3546,16 @@ td.actions button {
   }
 
   .container-titlebar {
+    gap: 8px;
     flex-direction: column;
   }
 
   .container-titlebar h2 {
-    font-size: 28px;
+    font-size: 20px;
   }
 
   .container-titlebar p {
-    font-size: 15px;
+    display: none;
   }
 
   .container-title-actions {
@@ -3565,17 +3566,28 @@ td.actions button {
   .bulk-button,
   .refresh-button {
     flex: 1;
-    min-height: 48px;
-    padding: 0 14px;
+    min-height: 34px;
+    border-radius: 10px;
+    padding: 0 10px;
+    font-size: 12px;
   }
 
   .container-statbar {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    border-radius: 22px;
+    border-radius: 14px;
   }
 
   .container-stat {
-    min-height: 82px;
+    min-height: 46px;
+    gap: 1px;
+  }
+
+  .container-stat strong {
+    font-size: 22px;
+  }
+
+  .container-stat span {
+    font-size: 11px;
   }
 
   .container-stat:nth-child(3) {
@@ -3760,36 +3772,132 @@ td.actions button {
 
   .compose-monitor-layout {
     min-height: 0;
-    border-radius: 18px;
+    border-radius: 14px;
+    background: transparent;
+    border: 0;
+    box-shadow: none;
   }
 
   .compose-monitor-sidebar,
   .compose-monitor-main {
-    padding: 14px;
+    padding: 10px;
   }
 
-  .compose-run-overview,
-  .compose-status-strip {
-    grid-template-columns: 1fr;
+  .compose-monitor-title h3,
+  .compose-monitor-head h3 {
+    font-size: 22px;
   }
 
-  .compose-project-card,
-  .compose-service-status-card {
-    grid-template-columns: 1fr;
+  .compose-monitor-title p,
+  .compose-monitor-head span {
+    display: none;
+  }
+
+  .compose-run-overview {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .compose-run-overview div {
+    min-height: 46px;
+    padding: 8px;
+    border-radius: 12px;
+  }
+
+  .compose-run-overview b {
+    font-size: 18px;
+  }
+
+  .compose-run-overview span {
+    margin-top: 2px;
+    font-size: 10px;
+  }
+
+  .compose-project-list {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
   }
 
   .compose-project-card {
-    grid-template-columns: minmax(0, 1fr) auto;
+    min-width: 92px;
+    min-height: 34px;
+    border-left-width: 3px;
+    border-radius: 10px;
+    padding: 7px 9px;
+  }
+
+  .compose-project-card strong {
+    font-size: 13px;
+  }
+
+  .compose-inline-create {
+    gap: 8px;
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .compose-inline-create strong {
+    font-size: 14px;
+  }
+
+  .compose-inline-create input,
+  .compose-inline-create button {
+    min-height: 36px;
+    font-size: 13px;
+  }
+
+  .compose-monitor-head {
+    gap: 8px;
+  }
+
+  .compose-action-bar {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .compose-action-bar button {
+    min-height: 34px;
+    padding: 0 6px;
+    font-size: 12px;
+  }
+
+  .compose-status-strip {
+    display: none;
+  }
+
+  .compose-code-panel,
+  .compose-runtime-panel,
+  .compose-terminal-panel {
+    border-radius: 14px;
+    padding: 10px;
+  }
+
+  .compose-panel-caption strong {
+    font-size: 14px;
   }
 
   .compose-dark-editor {
-    height: 420px;
+    height: 300px;
     min-height: 0;
+    border-radius: 12px;
   }
 
   .compose-ai-preview-shell {
-    height: 420px;
+    height: 300px;
     min-height: 0;
+    border-radius: 12px;
+  }
+
+  .compose-note-spacer,
+  .compose-repair-note {
+    display: none;
+  }
+
+  .compose-terminal-panel {
+    display: none;
   }
 
   .image-card-actions {
@@ -3808,7 +3916,9 @@ td.actions button {
 
   .container-card {
     min-height: 0;
-    padding: 22px 18px 18px;
+    gap: 5px;
+    padding: 9px;
+    border-radius: 10px;
   }
 
   .bookmark-board {
@@ -3868,23 +3978,29 @@ td.actions button {
   }
 
   .container-card-main {
-    grid-template-columns: 58px minmax(0, 1fr);
-    gap: 14px;
+    grid-template-columns: 32px minmax(0, 1fr);
+    gap: 8px;
   }
 
   .container-icon {
-    width: 58px;
-    height: 58px;
-    min-height: 58px;
+    width: 32px;
+    height: 32px;
+    min-height: 32px;
+    border-radius: 8px;
+  }
+
+  .container-icon svg {
+    width: 18px;
+    height: 18px;
   }
 
   .container-name-row strong {
-    font-size: 19px;
+    font-size: 14px;
   }
 
   .container-image,
   .container-runtime {
-    font-size: 14px;
+    font-size: 10px;
   }
 
   .container-extra-actions {
@@ -3894,7 +4010,7 @@ td.actions button {
   }
 
   .container-head {
-    grid-template-columns: 38px minmax(0, 1fr);
+    grid-template-columns: 32px minmax(0, 1fr);
   }
 
   .container-head .status {
@@ -3913,7 +4029,7 @@ td.actions button {
   }
 
   .editor-shell {
-    min-height: 360px;
+    min-height: 280px;
   }
 
   .code-highlight,

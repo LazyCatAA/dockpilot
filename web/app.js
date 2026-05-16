@@ -607,15 +607,13 @@ function scheduleImageProxyTest() {
 async function testImageProxy(proxy = state.images.networkProxy) {
   if (!proxy) return;
   state.images.proxyOk = null;
-  state.images.proxyTest = "正在检测镜像代理...";
+  state.images.proxyTest = "";
   render();
   try {
     const result = await api("/api/docker/proxy/test", { method: "POST", body: { network_proxy: proxy } });
     state.images.proxyOk = Boolean(result.ok);
-    state.images.proxyTest = result.message || (result.ok ? "镜像代理连通正常。" : "镜像代理不可用。");
   } catch (error) {
     state.images.proxyOk = false;
-    state.images.proxyTest = error.message;
   }
   render();
 }
@@ -1310,7 +1308,7 @@ function renderImages() {
           </form>
           <div class="proxy-status">
             <i class="${state.images.proxyOk === true ? "ok" : state.images.proxyOk === false ? "bad" : "pending"}"></i>
-            <small class="proxy-test-result">${h(state.images.proxyTest || (state.images.networkProxy ? "等待自动检测" : "未设置镜像代理"))}</small>
+            <small class="proxy-test-result">${state.images.networkProxy ? "自动检测" : "未设置镜像代理"}</small>
           </div>
         </section>
       </div>

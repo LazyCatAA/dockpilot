@@ -256,7 +256,7 @@ def test_network_proxy_url_is_normalized_for_lan_proxy() -> None:
 def test_compose_repair_fixes_common_yaml_format_issues() -> None:
     result = repair_compose_content("app：\n\timage: nginx\n\tports:\n\t\t- 8080:80\n")
     assert_true(result["changed"] is True, "Compose 修正应报告内容变化")
-    assert_true("services:" in result["content"], "缺少 services 时应补充根节点")
+    assert_true(not result["content"].startswith("services:"), "Compose 修正不应自行补根节点或重写结构")
     assert_true('"8080:80"' in result["content"], "端口映射应自动加引号")
 
 

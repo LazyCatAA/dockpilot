@@ -1780,10 +1780,9 @@ def repair_compose_content(content: str, error: str = "") -> dict[str, Any]:
         if fixed != line:
             repaired_lines.append(index)
             changes.append("修正了缩进、中文标点或需要引号的值。")
-    fixed_content = "\n".join(fixed_lines).strip() + "\n"
-    if "services:" not in fixed_content:
-        fixed_content = "services:\n" + "\n".join(f"  {line}" if line.strip() else line for line in fixed_content.splitlines()) + "\n"
-        changes.append("补充了缺失的 services 根节点。")
+    fixed_content = "\n".join(fixed_lines)
+    if original.endswith("\n") and not fixed_content.endswith("\n"):
+        fixed_content += "\n"
     if error_text and not changes:
         changes.append("已读取 Compose 检查错误，但没有匹配到可安全自动修正的规则。")
     unique_changes = list(dict.fromkeys(changes))

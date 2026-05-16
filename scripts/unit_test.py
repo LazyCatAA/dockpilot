@@ -280,6 +280,22 @@ def test_compose_repair_uses_ai_compatible_result_without_rule_fallback() -> Non
     assert_true(result["repaired_lines"], "Compose AI 修正应返回差异行用于高亮")
 
 
+def test_ai_cloudflare_error_is_translated() -> None:
+    message = server.format_ai_http_error(
+        403,
+        json.dumps(
+            {
+                "error_code": 1010,
+                "error_name": "browser_signature_banned",
+                "detail": "The site owner has blocked access based on your browser's signature.",
+            }
+        ),
+        "Forbidden",
+    )
+    assert_true("Cloudflare" in message, "AI 1010 错误应说明是 Cloudflare 拦截")
+    assert_true("browser_signature_banned" not in message, "AI 1010 错误不应直接暴露原始英文代码")
+
+
 def main() -> int:
     test_standalone_update_retries_when_docker_reports_same_rename_name()
     test_image_proxy_keeps_original_reference_shape()
@@ -296,6 +312,7 @@ def main() -> int:
     test_network_proxy_url_is_normalized_for_lan_proxy()
     test_network_proxy_treats_registry_auth_response_as_connected()
     test_compose_repair_uses_ai_compatible_result_without_rule_fallback()
+    test_ai_cloudflare_error_is_translated()
     print("PASS: DockPilot 单元测试全部通过")
     return 0
 

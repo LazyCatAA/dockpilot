@@ -2193,6 +2193,32 @@ def changed_line_numbers(original: str, fixed: str) -> list[int]:
     return [index + 1 for index in range(total) if (original_lines[index] if index < len(original_lines) else "") != (fixed_lines[index] if index < len(fixed_lines) else "")]
 
 
+def format_ai_http_error(status: int, body: str, reason: str = "") -> str:
+    text = str(body or "").strip()
+    detail = text
+    try:
+        payload = json.loads(text) if text else {}
+        if isinstance(payload, dict):
+            detail = str(payload.get("detail") or payload.get("message") or payload.get("error") or text).strip()
+            error_code = str(payload.get("error_code") or "").strip()
+            error_name = str(payload.get("error_name") or "").strip()
+            if error_code == "1010" or error_name == "browser_signature_banned":
+                return "AI 接口被 Cloudflare 拦截：服务商拒绝了当前请求特征。已使用浏览器请求头重试仍失败时，请更换 AI Base URL、让服务商放行服务器 IP，或关闭该接口的 1010 拦截。"
+    except Exception:
+        detail = text
+    if status == 403 and ("error 1010" in text.lower() or "browser_signature_banned" in text.lower()):
+        return "AI 接口被 Cloudflare 拦截：服务商拒绝了当前请求特征。请更换 AI Base URL，或让服务商放行服务器 IP。"
+    suffix = detail or str(reason or "").strip() or f"HTTP {status}"
+    return f"AI 接口返回错误（HTTP {status}）：{suffix}"
+
+
+def ai_request_origin(base_url: str) -> str:
+    parsed = urllib.parse.urlsplit(base_url.strip())
+    if parsed.scheme and parsed.netloc:
+        return f"{parsed.scheme}://{parsed.netloc}"
+    return base_url.strip().rstrip("/")
+
+
 def call_ai_compose_repair(content: str, error: str, settings: dict[str, str]) -> str:
     system_prompt = (
         "你是 Docker Compose YAML 格式修正器。"
@@ -2211,6 +2237,7 @@ def call_ai_compose_repair(content: str, error: str, settings: dict[str, str]) -
         ],
         "temperature": 0,
     }
+    origin = ai_request_origin(settings["base_url"])
     request = urllib.request.Request(
         openai_chat_completions_url(settings["base_url"]),
         data=json_dumps(payload).encode("utf-8"),
@@ -2218,6 +2245,9 @@ def call_ai_compose_repair(content: str, error: str, settings: dict[str, str]) -
             "Authorization": f"Bearer {settings['api_key']}",
             "Content-Type": "application/json",
             "Accept": "application/json",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 DockPilot/1.0",
+            "Origin": origin,
+            "Referer": f"{origin}/",
         },
         method="POST",
     )
@@ -2226,7 +2256,7 @@ def call_ai_compose_repair(content: str, error: str, settings: dict[str, str]) -
             raw = response.read()
     except urllib.error.HTTPError as exc:
         message = exc.read().decode("utf-8", "replace") or exc.reason
-        raise RuntimeError(f"AI 接口返回错误：{message}") from exc
+        raise RuntimeError(format_ai_http_error(int(exc.code), message, str(exc.reason))) from exc
     except urllib.error.URLError as exc:
         reason = str(exc.reason) if getattr(exc, "reason", "") else str(exc)
         raise RuntimeError(f"AI 接口连接失败：{reason}") from exc

@@ -20,7 +20,7 @@ const state = {
   containerUpdateCheck: { active: false, done: 0, total: 0, failed: 0 },
   sidebarCollapsed: false,
   logs: { id: "", text: "" },
-  compose: { projects: [], selected: "", content: "", output: "", repair: null, repairLines: [] },
+  compose: { projects: [], selected: "", content: "", output: "", repair: null, repairLines: [], aiContent: "" },
   files: { roots: [], root: "", path: "", items: [], editPath: "", content: "" },
   settings: null,
 };
@@ -82,6 +82,12 @@ function syncComposeHighlight() {
   highlight.innerHTML = `${highlightYaml(editor.value)}\n`;
   highlight.scrollTop = editor.scrollTop;
   highlight.scrollLeft = editor.scrollLeft;
+}
+
+function syncComposeAiHighlight() {
+  const preview = document.getElementById("composeAiPreview");
+  if (!preview) return;
+  preview.innerHTML = `${highlightYaml(state.compose.aiContent || "")}\n`;
 }
 
 function fmtBytes(bytes) {
@@ -779,6 +785,9 @@ async function selectCompose(path) {
   state.compose.selected = path;
   const data = await api(`/api/compose/file?path=${encodeURIComponent(path)}`);
   state.compose.content = data.content || "";
+  state.compose.aiContent = "";
+  state.compose.repair = null;
+  state.compose.repairLines = [];
 }
 
 async function loadFiles() {
@@ -1613,7 +1622,8 @@ function renderCompose() {
           </div>
           <div class="top-actions compose-action-bar">
             <button data-action="compose-action" data-command="config">检查</button>
-            <button data-action="compose-repair">智能修正</button>
+            <button data-action="compose-repair">AI 修正</button>
+            <button data-action="compose-apply-ai" ${state.compose.aiContent ? "" : "disabled"}>应用 AI 修正</button>
             <button data-action="compose-save" class="primary">保存</button>
             <button data-action="compose-action" data-command="pull">拉取</button>
             <button data-action="compose-action" data-command="up" class="primary">部署</button>
@@ -1643,7 +1653,7 @@ function renderCompose() {
           <section class="compose-code-panel">
             <div class="compose-panel-caption">
               <strong>compose.yml</strong>
-              <span>修正只处理格式错误，不重写你的结构。</span>
+              <span>左侧为当前编辑内容。</span>
             </div>
             <div class="editor-shell compose-dark-editor">
               <pre id="composeHighlight" class="code-highlight" aria-hidden="true">${highlightYaml(state.compose.content)}\n</pre>
@@ -1652,21 +1662,21 @@ function renderCompose() {
           </section>
           <aside class="compose-runtime-panel">
             <div class="compose-panel-caption">
-              <strong>服务状态</strong>
-              <span>当前项目容器运行情况</span>
+              <strong>AI 修正预览</strong>
+              <span>右侧只展示 AI 返回内容，确认后再应用。</span>
             </div>
-            <div class="compose-service-stack">
-              ${services.length ? services.map(renderComposeServiceCard).join("") : `<div class="compose-dark-empty">还没有识别到服务。</div>`}
+            <div class="editor-shell compose-ai-preview-shell">
+              <pre id="composeAiPreview" class="code-highlight compose-ai-preview">${state.compose.aiContent ? highlightYaml(state.compose.aiContent) : "点击 AI 修正后，这里会显示修正后的 compose.yml。"}\n</pre>
             </div>
             ${
               state.compose.repair
                 ? `<div class="compose-repair-note compose-dark-note">
-                    <strong>${state.compose.repair.changed ? "已生成修正内容" : "未发现可自动修正的问题"}</strong>
+                    <strong>${state.compose.repair.changed ? "AI 已生成修正内容" : "AI 返回内容未变化"}</strong>
                     <span>${h((state.compose.repair.changes || []).join("；") || "可继续使用检查功能确认配置。")}</span>
                   </div>`
                 : `<div class="compose-repair-note compose-dark-note">
-                    <strong>智能修正</strong>
-                    <span>点击智能修正后，会先检查错误，再只修正可识别的格式问题。</span>
+                    <strong>AI 修正要求</strong>
+                    <span>AI 只允许修正格式，不应改变服务、镜像、端口含义、挂载路径和环境变量含义。</span>
                   </div>`
             }
           </aside>
@@ -1783,6 +1793,21 @@ function renderSettings() {
           <label>局域网网络代理</label>
           <input name="network_proxy" value="${h(settings.network_proxy || "")}" placeholder="例如 192.168.1.2:7890 或 socks5://192.168.1.2:7890" />
         </div>
+        <div class="field">
+          <label><input type="checkbox" name="compose_ai_enabled" value="1" ${settings.compose_ai_enabled ? "checked" : ""} /> 启用 Compose AI 修正</label>
+        </div>
+        <div class="field">
+          <label>AI Base URL（OpenAI 兼容）</label>
+          <input name="compose_ai_base_url" value="${h(settings.compose_ai_base_url || "")}" placeholder="例如 https://api.openai.com/v1 或 http://oneapi:3000/v1" />
+        </div>
+        <div class="field">
+          <label>AI 模型名</label>
+          <input name="compose_ai_model" value="${h(settings.compose_ai_model || "")}" placeholder="例如 gpt-4.1-mini / qwen-plus / deepseek-chat" />
+        </div>
+        <div class="field">
+          <label>AI API Key${settings.compose_ai_api_key_set ? "（已配置，留空不修改）" : ""}</label>
+          <input name="compose_ai_api_key" type="password" autocomplete="off" placeholder="${settings.compose_ai_api_key_set ? "已配置，留空不修改" : "请输入 API Key"}" />
+        </div>
         <button class="primary" type="submit">保存设置</button>
       </form>
     </section>
@@ -1863,6 +1888,10 @@ document.addEventListener("submit", async (event) => {
           docker_socket: data.docker_socket,
           registry_mirrors: data.image_registry_proxy,
           network_proxy: data.network_proxy,
+          compose_ai_enabled: data.compose_ai_enabled === "1",
+          compose_ai_base_url: data.compose_ai_base_url,
+          compose_ai_model: data.compose_ai_model,
+          compose_ai_api_key: data.compose_ai_api_key,
           compose_roots: data.compose_roots.split("\n").map((line) => line.trim()).filter(Boolean),
           file_roots: data.file_roots
             .split("\n")
@@ -1901,6 +1930,9 @@ document.addEventListener("submit", async (event) => {
           docker_socket: settings.docker_socket || "/var/run/docker.sock",
           registry_mirrors: data.registry_mirrors,
           network_proxy: state.images.networkProxy || settings.network_proxy || "",
+          compose_ai_enabled: settings.compose_ai_enabled || false,
+          compose_ai_base_url: settings.compose_ai_base_url || "",
+          compose_ai_model: settings.compose_ai_model || "",
           compose_roots: settings.compose_roots || [],
           file_roots: settings.file_roots || [],
         },
@@ -1920,6 +1952,9 @@ document.addEventListener("submit", async (event) => {
           docker_socket: settings.docker_socket || "/var/run/docker.sock",
           registry_mirrors: state.images.registryMirrors || settings.registry_mirrors || [],
           network_proxy: data.network_proxy,
+          compose_ai_enabled: settings.compose_ai_enabled || false,
+          compose_ai_base_url: settings.compose_ai_base_url || "",
+          compose_ai_model: settings.compose_ai_model || "",
           compose_roots: settings.compose_roots || [],
           file_roots: settings.file_roots || [],
         },
@@ -2161,16 +2196,24 @@ document.addEventListener("click", async (event) => {
       const result = await api("/api/compose/repair", { method: "POST", body: { content: editor.value, error: errorText } });
       state.compose.repair = result;
       if (result.changed) {
-        state.compose.content = result.content;
+        state.compose.aiContent = result.content || "";
         state.compose.repairLines = result.repaired_lines || [];
-        editor.value = result.content;
-        syncComposeHighlight();
-        state.error = "已修正编辑器内容，请检查后再保存或部署。";
+        state.error = "AI 已生成修正内容，请在右侧确认后应用。";
       } else {
+        state.compose.aiContent = result.content || "";
         state.compose.repairLines = [];
         state.error = (result.changes || []).join("；") || "未发现可自动修正的问题。";
       }
       render();
+    }
+    if (action === "compose-apply-ai") {
+      if (!state.compose.aiContent) throw new Error("还没有 AI 修正内容。");
+      state.compose.content = state.compose.aiContent;
+      state.compose.repairLines = [];
+      state.compose.aiContent = "";
+      state.error = "已应用 AI 修正，请检查后保存或部署。";
+      render();
+      syncComposeHighlight();
     }
     if (action === "compose-action") {
       if (!state.compose.selected) throw new Error("请先选择一个 Compose 项目。");

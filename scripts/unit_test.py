@@ -263,30 +263,21 @@ def test_network_proxy_treats_registry_auth_response_as_connected() -> None:
     assert_true(result["ok"] is True, "Registry 返回 401 代表代理已连通，只是未登录")
 
 
-def test_compose_repair_fixes_common_yaml_format_issues() -> None:
-    result = repair_compose_content("app：\n\timage: nginx\n\tports:\n\t\t- 8080:80\n")
-    assert_true(result["changed"] is True, "Compose 修正应报告内容变化")
-    assert_true(not result["content"].startswith("services:"), "Compose 修正不应自行补根节点或重写结构")
-    assert_true('"8080:80"' in result["content"], "端口映射应自动加引号")
-
-
-def test_compose_repair_uses_compose_error_context() -> None:
-    content = "services:\n  app:\n    image: nginx\n    ports:\n      - 8080:80\n"
-    error = "services.app.ports.0 must be a string"
-    result = repair_compose_content(content, error)
-    assert_true('"8080:80"' in result["content"], "Compose 报端口类型错误时应自动加引号")
-    assert_true(result["repaired_lines"] == [5], "Compose 修正应返回被修改的行号用于高亮")
-
-
-def test_compose_repair_fixes_missing_colons_and_bad_list_spacing() -> None:
-    content = "services\n  app:\n    image nginx\n    restart:unless-stopped\n    ports:\n      -8080:80\n"
-    result = repair_compose_content(content, "yaml: mapping values are not allowed in this context")
-    assert_true(result["changed"] is True, "Compose 修正应处理常见 YAML 格式错误")
-    assert_true(result["content"].splitlines()[0] == "services:", "已知 Compose 块关键字缺少冒号时应补齐")
-    assert_true("image: nginx" in result["content"], "已知 Compose 属性缺少冒号时应补齐")
-    assert_true("restart: unless-stopped" in result["content"], "已知 Compose 属性冒号后缺少空格时应补齐")
-    assert_true('- "8080:80"' in result["content"], "列表项少空格且端口未加引号时应修正")
-    assert_true(result["repaired_lines"] == [1, 3, 4, 6], "修正过的行应返回给前端高亮")
+def test_compose_repair_uses_ai_compatible_result_without_rule_fallback() -> None:
+    original_settings = server.compose_ai_settings
+    original_call = server.call_ai_compose_repair
+    try:
+        server.compose_ai_settings = lambda: {"base_url": "http://ai.local/v1", "api_key": "test", "model": "compose-fixer"}
+        server.call_ai_compose_repair = lambda content, error, settings: "```yaml\nservices:\n  app:\n    image: nginx\n    ports:\n      - \"8080:80\"\n```\n"
+        content = "services\n  app:\n    image nginx\n    ports:\n      -8080:80\n"
+        result = repair_compose_content(content, "yaml parse error")
+    finally:
+        server.compose_ai_settings = original_settings
+        server.call_ai_compose_repair = original_call
+    assert_true(result["changed"] is True, "Compose AI 修正应报告内容变化")
+    assert_true(result["content"].startswith("services:"), "Compose AI 修正应使用 AI 返回内容")
+    assert_true('- "8080:80"' in result["content"], "Compose AI 修正应保留 AI 返回的修正结果")
+    assert_true(result["repaired_lines"], "Compose AI 修正应返回差异行用于高亮")
 
 
 def main() -> int:
@@ -304,9 +295,7 @@ def main() -> int:
     test_remote_image_search_strips_tag_from_full_reference()
     test_network_proxy_url_is_normalized_for_lan_proxy()
     test_network_proxy_treats_registry_auth_response_as_connected()
-    test_compose_repair_fixes_common_yaml_format_issues()
-    test_compose_repair_uses_compose_error_context()
-    test_compose_repair_fixes_missing_colons_and_bad_list_spacing()
+    test_compose_repair_uses_ai_compatible_result_without_rule_fallback()
     print("PASS: DockPilot 单元测试全部通过")
     return 0
 

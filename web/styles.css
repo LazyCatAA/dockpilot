@@ -2621,6 +2621,20 @@ td.actions button {
   background: #050b16;
 }
 
+.compose-ai-preview-shell {
+  min-height: 500px;
+  border-color: rgba(56, 189, 248, 0.2);
+  border-radius: 18px;
+  background: #050b16;
+}
+
+.compose-ai-preview {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  color: #d8e4f0;
+}
+
 .compose-service-stack {
   display: grid;
   align-content: start;
@@ -3153,6 +3167,10 @@ td.actions button {
   }
 
   .compose-dark-editor {
+    min-height: 420px;
+  }
+
+  .compose-ai-preview-shell {
     min-height: 420px;
   }
 

@@ -119,7 +119,10 @@ def main() -> int:
         assert_true("proxyStatusText" in app_js, "镜像代理连通性应显示明确状态文案")
         assert_true("image-usage" in app_js, "镜像库应区分已使用和未使用镜像")
         assert_true("registry_mirrors" in app_js, "镜像库应支持多个镜像加速源")
-        assert_true("compose-repair" in app_js, "Compose 编辑器应支持检查并修正")
+        assert_true("compose-repair" in app_js, "Compose 编辑器应支持 AI 修正")
+        assert_true("compose-apply-ai" in app_js, "Compose 编辑器应先预览再应用 AI 修正")
+        assert_true("compose_ai_base_url" in app_js, "系统设置应支持 AI 兼容接口地址")
+        assert_true("compose_ai_model" in app_js, "系统设置应支持配置 AI 模型")
         assert_true("container-backups-clear" in app_js, "容器备份应支持一键清理")
         assert_true("container-backup-delete" in app_js, "容器备份应支持删除")
         assert_true("bookmark-board" in app_js, "首页导航应使用分组书签板")
@@ -143,6 +146,7 @@ def main() -> int:
         assert_true("nav-hero" in styles_css, "首页导航应使用重新设计的导航头部")
         assert_true("compose-repair-note" in styles_css, "Compose 修正结果应有提示样式")
         assert_true("yaml-repaired" in styles_css, "Compose 修正内容应高亮显示")
+        assert_true("compose-ai-preview-shell" in styles_css, "Compose AI 修正应使用右侧预览窗口")
         assert_true("compose-panel" in styles_css, "Compose 管理功能卡片应使用彩色区分")
         assert_true("compose-monitor-layout" in app_js, "Compose 管理应采用 D3 监控控制台结构")
         assert_true("compose-service-status-card" in app_js, "Compose 管理应突出服务状态卡片")
@@ -279,8 +283,13 @@ def main() -> int:
         _, cleared = client.request("DELETE", "/api/docker/backups/clear")
         assert_true(cleared["deleted"] >= 1, "容器备份应可一键清理")
         client.request("GET", "/api/docker/images/search?q=", expect=400)
-        _, repaired = client.request("POST", "/api/compose/repair", {"content": "app：\n\timage: nginx\n"})
-        assert_true(repaired["changed"] is True, "Compose 修复接口应返回修正后的内容")
+        repair_code, repair_error = client.request(
+            "POST",
+            "/api/compose/repair",
+            {"content": "app：\n\timage: nginx\n"},
+            expect=400,
+        )
+        assert_true(repair_code == 400 and "AI" in repair_error["error"], "未配置 AI 时 Compose 修正应返回明确提示")
 
         client.request("DELETE", f"/api/cards/{card_id}")
         print("PASS: DockPilot 冒烟测试全部通过")

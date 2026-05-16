@@ -258,6 +258,10 @@ class Store:
                 "image_registry_proxy": "",
                 "registry_mirrors": "",
                 "network_proxy": "",
+                "compose_ai_base_url": "",
+                "compose_ai_api_key": "",
+                "compose_ai_model": "",
+                "compose_ai_enabled": "false",
                 "dashboard_widgets": json_dumps(DEFAULT_DASHBOARD_WIDGETS),
                 "file_roots": json_dumps(
                     [
@@ -1343,6 +1347,10 @@ class AppHandler(BaseHTTPRequestHandler):
                     "image_registry_proxy": STORE.get_setting("image_registry_proxy", ""),
                     "registry_mirrors": normalize_registry_mirrors(STORE.get_setting("registry_mirrors", STORE.get_setting("image_registry_proxy", ""))),
                     "network_proxy": STORE.get_setting("network_proxy", ""),
+                    "compose_ai_enabled": STORE.get_setting("compose_ai_enabled", "false").lower() == "true",
+                    "compose_ai_base_url": STORE.get_setting("compose_ai_base_url", ""),
+                    "compose_ai_model": STORE.get_setting("compose_ai_model", ""),
+                    "compose_ai_api_key_set": bool(STORE.get_setting("compose_ai_api_key", "")),
                 }
             )
             return
@@ -1354,6 +1362,10 @@ class AppHandler(BaseHTTPRequestHandler):
             registry_mirrors = normalize_registry_mirrors(data.get("registry_mirrors", data.get("image_registry_proxy", "")))
             image_registry_proxy = registry_mirrors[0] if registry_mirrors else ""
             network_proxy = normalize_network_proxy_url(str(data.get("network_proxy", "")))
+            compose_ai_enabled = "true" if bool(data.get("compose_ai_enabled")) else "false"
+            compose_ai_base_url = str(data.get("compose_ai_base_url", "")).strip()
+            compose_ai_model = str(data.get("compose_ai_model", "")).strip()
+            compose_ai_api_key = str(data.get("compose_ai_api_key", "")).strip()
             for path_value in compose_roots:
                 Path(path_value).expanduser().mkdir(parents=True, exist_ok=True)
             for root in file_roots:
@@ -1364,6 +1376,11 @@ class AppHandler(BaseHTTPRequestHandler):
             STORE.set_setting("image_registry_proxy", image_registry_proxy)
             STORE.set_setting("registry_mirrors", "\n".join(registry_mirrors))
             STORE.set_setting("network_proxy", network_proxy)
+            STORE.set_setting("compose_ai_enabled", compose_ai_enabled)
+            STORE.set_setting("compose_ai_base_url", compose_ai_base_url)
+            STORE.set_setting("compose_ai_model", compose_ai_model)
+            if compose_ai_api_key:
+                STORE.set_setting("compose_ai_api_key", compose_ai_api_key)
             self.write_json({"ok": True})
             return
         self.write_json({"error": "method not allowed"}, status=405)
@@ -1759,60 +1776,19 @@ def quote_yaml(value: Any) -> str:
 
 def repair_compose_content(content: str, error: str = "") -> dict[str, Any]:
     original = str(content or "")
-    error_text = str(error or "")
-    lines = original.replace("\r\n", "\n").replace("\r", "\n").split("\n")
-    fixed_lines: list[str] = []
-    changes: list[str] = []
-    repaired_lines: list[int] = []
-    block_keys = {"services", "networks", "volumes", "configs", "secrets", "ports", "environment", "labels", "depends_on"}
-    scalar_keys = {
-        "image",
-        "container_name",
-        "restart",
-        "network_mode",
-        "hostname",
-        "command",
-        "entrypoint",
-        "user",
-        "working_dir",
-        "build",
-        "env_file",
-    }
-    for index, line in enumerate(lines, start=1):
-        fixed = line.replace("\t", "  ").replace("：", ": ")
-        fixed = re.sub(r":\s{2,}", ": ", fixed)
-        block_match = re.match(r"^(\s*)([A-Za-z_][A-Za-z0-9_-]*)\s*$", fixed)
-        if block_match and block_match.group(2) in block_keys:
-            fixed = f"{block_match.group(1)}{block_match.group(2)}:"
-        scalar_match = re.match(r"^(\s*)([A-Za-z_][A-Za-z0-9_-]*)\s+(.+?)\s*$", fixed)
-        if scalar_match and scalar_match.group(2) in scalar_keys and ":" not in scalar_match.group(3):
-            fixed = f"{scalar_match.group(1)}{scalar_match.group(2)}: {scalar_match.group(3).strip()}"
-        compact_scalar_match = re.match(r"^(\s*)([A-Za-z_][A-Za-z0-9_-]*):(\S.+?)\s*$", fixed)
-        if compact_scalar_match and compact_scalar_match.group(2) in scalar_keys:
-            fixed = f"{compact_scalar_match.group(1)}{compact_scalar_match.group(2)}: {compact_scalar_match.group(3).strip()}"
-        list_match = re.match(r"^(\s*)-(\S.*)$", fixed)
-        if list_match:
-            fixed = f"{list_match.group(1)}- {list_match.group(2).strip()}"
-        if re.match(r"^\s*-\s+\d+:\d+(?:/\w+)?\s*$", fixed):
-            indent, value = fixed.split("-", 1)
-            fixed = f"{indent}- \"{value.strip()}\""
-        if ("ports" in error_text.lower() or "must be a string" in error_text.lower()) and re.match(r"^\s*-\s+\d+:\d+.*$", fixed):
-            indent, value = fixed.split("-", 1)
-            fixed = f"{indent}- \"{value.strip().strip(chr(34))}\""
-        env_match = re.match(r"^(\s*-\s*)([A-Za-z_][A-Za-z0-9_]*=.*[#:&{}\\[\\],].*)$", fixed)
-        if env_match and not env_match.group(2).strip().startswith(("'", '"')):
-            fixed = f"{env_match.group(1)}{json.dumps(env_match.group(2).strip(), ensure_ascii=False)}"
-        fixed_lines.append(fixed.rstrip())
-        if fixed != line:
-            repaired_lines.append(index)
-            changes.append("修正了缩进、中文标点或需要引号的值。")
-    fixed_content = "\n".join(fixed_lines)
+    fixed_content = extract_ai_compose_content(call_ai_compose_repair(original, str(error or ""), compose_ai_settings()))
+    if not fixed_content:
+        raise RuntimeError("AI 没有返回修正后的 compose.yml。")
     if original.endswith("\n") and not fixed_content.endswith("\n"):
         fixed_content += "\n"
-    if error_text and not changes:
-        changes.append("已读取 Compose 检查错误，但没有匹配到可安全自动修正的规则。")
-    unique_changes = list(dict.fromkeys(changes))
-    return {"ok": True, "content": fixed_content, "changed": fixed_content != original, "changes": unique_changes, "repaired_lines": repaired_lines}
+    changed = fixed_content != original
+    return {
+        "ok": True,
+        "content": fixed_content,
+        "changed": changed,
+        "changes": ["AI 已生成格式修正结果，请在右侧预览确认后应用。"] if changed else ["AI 返回内容与当前内容一致。"],
+        "repaired_lines": changed_line_numbers(original, fixed_content),
+    }
 
 
 def compose_from_container_inspect(inspect_data: dict[str, Any]) -> str:
@@ -2179,6 +2155,87 @@ def test_network_proxy(proxy: str) -> dict[str, Any]:
         return {"ok": False, "message": f"镜像代理不连通，Docker Registry 返回状态码 {status}。"}
     except Exception as exc:
         return {"ok": False, "message": translate_docker_error(str(exc))}
+
+
+def compose_ai_settings() -> dict[str, str]:
+    enabled = STORE.get_setting("compose_ai_enabled", "false").lower() == "true"
+    base_url = STORE.get_setting("compose_ai_base_url", "").strip()
+    api_key = STORE.get_setting("compose_ai_api_key", "").strip()
+    model = STORE.get_setting("compose_ai_model", "").strip()
+    if not enabled:
+        raise RuntimeError("请先在系统设置里开启 Compose AI 修正。")
+    if not base_url or not api_key or not model:
+        raise RuntimeError("请先在系统设置里配置 AI Base URL、API Key 和模型名。")
+    return {"base_url": base_url, "api_key": api_key, "model": model}
+
+
+def openai_chat_completions_url(base_url: str) -> str:
+    normalized = base_url.strip().rstrip("/")
+    if normalized.endswith("/chat/completions"):
+        return normalized
+    if normalized.endswith("/v1"):
+        return f"{normalized}/chat/completions"
+    return f"{normalized}/v1/chat/completions"
+
+
+def extract_ai_compose_content(text: str) -> str:
+    content = str(text or "").strip()
+    fence = re.search(r"```(?:ya?ml|compose|yaml)?\s*(.*?)```", content, re.S | re.I)
+    if fence:
+        content = fence.group(1).strip()
+    return content
+
+
+def changed_line_numbers(original: str, fixed: str) -> list[int]:
+    original_lines = original.splitlines()
+    fixed_lines = fixed.splitlines()
+    total = max(len(original_lines), len(fixed_lines))
+    return [index + 1 for index in range(total) if (original_lines[index] if index < len(original_lines) else "") != (fixed_lines[index] if index < len(fixed_lines) else "")]
+
+
+def call_ai_compose_repair(content: str, error: str, settings: dict[str, str]) -> str:
+    system_prompt = (
+        "你是 Docker Compose YAML 格式修正器。"
+        "只允许修正 YAML/Compose 格式错误。"
+        "禁止新增、删除、重命名服务。"
+        "禁止修改镜像名、tag、端口含义、卷挂载路径、环境变量含义、网络名、容器名、重启策略。"
+        "如果必须加引号、补冒号、修缩进、修列表格式，可以修改。"
+        "只输出修正后的 compose.yml 原文，不要解释，不要 Markdown。"
+    )
+    user_prompt = f"Compose 检查错误：\n{error or '未提供'}\n\n原始 compose.yml：\n{content}"
+    payload = {
+        "model": settings["model"],
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        "temperature": 0,
+    }
+    request = urllib.request.Request(
+        openai_chat_completions_url(settings["base_url"]),
+        data=json_dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {settings['api_key']}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=90) as response:
+            raw = response.read()
+    except urllib.error.HTTPError as exc:
+        message = exc.read().decode("utf-8", "replace") or exc.reason
+        raise RuntimeError(f"AI 接口返回错误：{message}") from exc
+    except urllib.error.URLError as exc:
+        reason = str(exc.reason) if getattr(exc, "reason", "") else str(exc)
+        raise RuntimeError(f"AI 接口连接失败：{reason}") from exc
+    payload = json.loads(raw.decode("utf-8")) if raw else {}
+    choices = payload.get("choices") or []
+    if not choices:
+        raise RuntimeError("AI 接口没有返回修正内容。")
+    message = choices[0].get("message") or {}
+    return str(message.get("content") or "")
 
 
 def normalize_docker_hub_search_results(payload: dict[str, Any], limit: int = 12) -> list[dict[str, Any]]:

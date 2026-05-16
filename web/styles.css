@@ -185,26 +185,29 @@ a {
 .layout {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 252px minmax(0, 1fr);
+  grid-template-columns: 92px minmax(0, 1fr);
 }
 
 .layout.sidebar-collapsed {
-  grid-template-columns: 78px minmax(0, 1fr);
+  grid-template-columns: 92px minmax(0, 1fr);
 }
 
 .sidebar {
   position: sticky;
   top: 0;
   height: 100vh;
-  padding: 22px 18px;
-  background: linear-gradient(180deg, #111827, #162235);
-  color: #edf4ff;
+  display: grid;
+  align-items: center;
+  padding: 18px 0;
+  background: transparent;
+  color: #64748b;
 }
 
 .sidebar .brand {
-  position: relative;
-  padding: 0 6px 18px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  border: 0;
 }
 
 .brand-text {
@@ -216,16 +219,7 @@ a {
 }
 
 .sidebar-toggle {
-  position: absolute;
-  right: -8px;
-  top: 2px;
-  width: 30px;
-  min-height: 30px;
-  border: 0;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  padding: 0;
+  display: none;
 }
 
 .sidebar-collapsed .sidebar {
@@ -238,8 +232,9 @@ a {
 }
 
 .sidebar-collapsed .brand-text,
-.sidebar-collapsed .nav-title,
-.sidebar-collapsed .nav button span:not(.nav-icon) {
+.brand-text,
+.nav-title,
+.nav button span:not(.nav-icon) {
   display: none;
 }
 
@@ -258,7 +253,16 @@ a {
 
 .nav {
   display: grid;
-  gap: 18px;
+  gap: 12px;
+  width: 58px;
+  justify-self: center;
+  justify-items: center;
+  border: 1px solid rgba(216, 225, 237, 0.95);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.12);
+  padding: 14px 0;
+  backdrop-filter: blur(16px);
 }
 
 .nav-title {
@@ -270,26 +274,50 @@ a {
 
 .nav-group {
   display: grid;
-  gap: 7px;
+  gap: 10px;
 }
 
 .nav button {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 10px;
-  width: 100%;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
   min-height: 42px;
   border-color: transparent;
   background: transparent;
-  color: #cad7e7;
-  text-align: left;
+  color: #64748b;
+  padding: 0;
+  text-align: center;
 }
 
 .nav button.active,
 .nav button:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: #2563eb;
   color: #fff;
+  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.22);
+}
+
+.nav button::after {
+  content: attr(data-label);
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  z-index: 20;
+  transform: translateY(-50%);
+  min-width: max-content;
+  opacity: 0;
+  pointer-events: none;
+  border-radius: 10px;
+  background: #111827;
+  color: #fff;
+  padding: 7px 10px;
+  font-size: 12px;
+  font-weight: 800;
+  transition: opacity 0.16s ease;
+}
+
+.nav button:hover::after {
+  opacity: 1;
 }
 
 .nav-icon {
@@ -297,8 +325,8 @@ a {
   height: 24px;
   display: grid;
   place-items: center;
-  border-radius: 7px;
-  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9px;
+  background: transparent;
 }
 
 .content {

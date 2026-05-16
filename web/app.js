@@ -467,7 +467,7 @@ function renderNav() {
         ${group.items
           .map(
             ([key, label, icon]) =>
-              `<button class="${state.tab === key ? "active" : ""}" data-action="nav" data-tab="${key}">
+              `<button class="${state.tab === key ? "active" : ""}" data-action="nav" data-tab="${key}" data-label="${h(label)}" title="${h(label)}">
                 <span class="nav-icon">${h(icon)}</span><span>${h(label)}</span>
               </button>`
           )

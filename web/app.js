@@ -12,8 +12,9 @@ const state = {
   containers: [],
   containerBackups: [],
   images: { items: [], query: "", remoteQuery: "", searchResults: [], pullOutput: "", proxy: "", registryMirrors: [], networkProxy: "", proxyTest: "", proxyOk: null, pullMode: "proxy", configOpen: false },
-  volumes: { items: [], backups: [], query: "", backupOpen: false },
+  volumes: { items: [], backups: [], query: "", backupOpen: false, createOpen: false, detail: null },
   imagePullJob: null,
+  volumeBackupJob: null,
   containerView: "card",
   containerFilter: "all",
   containerDetail: null,
@@ -30,6 +31,7 @@ const containerUpdatePollTimers = {};
 const containerUpdateClearTimers = {};
 const containerAutoChecked = new Set();
 let imagePullPollTimer = null;
+let volumeBackupPollTimer = null;
 
 const tabs = [
   ["dashboard", "总览"],
@@ -409,7 +411,7 @@ function volumeCreatedText(volume) {
 }
 
 function volumeSize(volume) {
-  return Number(volume.UsageData?.Size || 0);
+  return Number(volume.DockPilot?.calculated_size || volume.UsageData?.Size || 0);
 }
 
 function volumeRefCount(volume) {
@@ -422,6 +424,14 @@ function volumeTone(volume) {
 
 function volumeUsageLabel(volume) {
   return volumeTone(volume) === "used" ? "使用中" : "未使用";
+}
+
+function volumeRiskLabel(volume) {
+  const backup = latestVolumeBackup(volumeName(volume));
+  if (!backup) return "无备份";
+  if (volumeRefCount(volume) > 1) return "多容器";
+  if (volumeSize(volume) > 10 * 1024 * 1024 * 1024) return "大体积";
+  return "正常";
 }
 
 function latestVolumeBackup(volumeNameValue) {
@@ -690,6 +700,33 @@ async function loadVolumes() {
   const data = await api("/api/docker/volumes");
   state.volumes.items = data.volumes || [];
   state.volumes.backups = data.backups || [];
+}
+
+async function startVolumeBackup(volumes) {
+  const names = Array.isArray(volumes) ? volumes : [volumes];
+  const data = await api("/api/docker/volumes/bulk-backup", { method: "POST", body: { volumes: names } });
+  state.volumeBackupJob = data.job;
+  pollVolumeBackupJob(data.job.id);
+  render();
+}
+
+async function pollVolumeBackupJob(jobId) {
+  clearTimeout(volumeBackupPollTimer);
+  const data = await api(`/api/docker/jobs/${encodeURIComponent(jobId)}`);
+  state.volumeBackupJob = data.job;
+  if (["queued", "running"].includes(data.job.status)) {
+    volumeBackupPollTimer = setTimeout(() => pollVolumeBackupJob(jobId), 900);
+  } else {
+    state.error = data.job.status === "success" ? data.job.message || "卷备份完成。" : zhError(data.job.error || data.job.message || "卷备份失败。");
+    await loadVolumes();
+    setTimeout(() => {
+      if (state.volumeBackupJob?.id === jobId) {
+        state.volumeBackupJob = null;
+        render();
+      }
+    }, 3500);
+  }
+  render();
 }
 
 function scheduleImageProxyTest() {
@@ -1582,11 +1619,88 @@ function renderVolumeRow(volume) {
       <span>${fmtBytes(volumeSize(volume))}</span>
       <span class="image-usage ${h(tone)}">${volumeUsageLabel(volume)}</span>
       <span>${h(volumeCreatedText(volume))}</span>
-      <span>${h(volume.Driver || "local")}</span>
+      <span class="volume-risk ${h(volumeRiskLabel(volume) === "正常" ? "ok" : "warn")}">${h(volumeRiskLabel(volume))}</span>
       <div class="volume-row-actions">
+        <button data-action="volume-detail" data-name="${h(name)}">详情</button>
         <button data-action="volume-backup" data-name="${h(name)}">备份</button>
         <button data-action="volume-restore" data-name="${h(name)}" ${backup ? "" : "disabled"}>恢复</button>
         <button class="danger" data-action="volume-remove" data-name="${h(name)}" ${tone === "used" ? "disabled" : ""}>删除</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderVolumeCreatePanel() {
+  if (!state.volumes.createOpen) return "";
+  return `
+    <section class="image-config-panel volume-create-panel">
+      <section class="image-tool-card accent-blue">
+        <h4>新增 Docker 卷</h4>
+        <form id="volumeCreateForm" class="volume-create-form">
+          <label class="field"><span>卷名</span><input name="name" placeholder="例如 moviepilot_config" required /></label>
+          <label class="field"><span>Driver</span><input name="driver" value="local" /></label>
+          <label class="field"><span>Labels，每行一个 key=value</span><textarea name="labels" placeholder="app=moviepilot&#10;owner=dockpilot"></textarea></label>
+          <label class="field"><span>Driver 参数，每行一个 key=value</span><textarea name="driver_opts" placeholder="可选"></textarea></label>
+          <button class="primary" type="submit">创建卷</button>
+        </form>
+      </section>
+    </section>
+  `;
+}
+
+function renderVolumeBackupProgress() {
+  const job = state.volumeBackupJob;
+  if (!job) return "";
+  const progress = Math.max(0, Math.min(100, Number(job.progress || 0)));
+  return `
+    <div class="image-pull-progress volume-backup-progress ${h(job.status || "")}">
+      <div class="image-pull-progress-head">
+        <strong>${h(jobProgressText(job))} · ${h(job.step || "卷备份")}</strong>
+        <b>${progress}%</b>
+      </div>
+      <div class="image-pull-track"><i style="width:${progress}%"></i></div>
+      <p>${h(zhError(job.error || job.message || "正在处理卷备份。"))}</p>
+    </div>
+  `;
+}
+
+function renderVolumeDetailModal() {
+  const volume = state.volumes.detail;
+  if (!volume) return "";
+  const labels = volume.Labels || {};
+  const mounts = volume.DockPilot?.mounts || [];
+  return `
+    <div class="modal-backdrop" data-action="volume-detail-close">
+      <div class="compose-backup-modal volume-detail-modal">
+        <div class="modal-head">
+          <div>
+            <h3>${h(volume.Name || "卷详情")}</h3>
+            <span class="muted">${h(volume.Mountpoint || "未记录挂载点")}</span>
+          </div>
+          <button type="button" data-action="volume-detail-close">关闭</button>
+        </div>
+        <div class="volume-detail-grid">
+          <div><b>${fmtBytes(volumeSize(volume))}</b><span>占用空间</span></div>
+          <div><b>${h(volume.Driver || "local")}</b><span>Driver</span></div>
+          <div><b>${h(volumeCreatedText(volume))}</b><span>创建时间</span></div>
+          <div><b>${h(String(volumeRefCount(volume)))}</b><span>关联容器</span></div>
+        </div>
+        <section class="volume-detail-section">
+          <h4>容器挂载</h4>
+          ${
+            mounts.length
+              ? mounts.map((item) => `<p><strong>${h(item.container)}</strong><span>${h(item.destination || "-")} ${item.mode ? `· ${h(item.mode)}` : ""}</span></p>`).join("")
+              : `<div class="empty">当前没有容器引用。</div>`
+          }
+        </section>
+        <section class="volume-detail-section">
+          <h4>Labels</h4>
+          ${
+            Object.keys(labels).length
+              ? Object.entries(labels).map(([key, value]) => `<p><strong>${h(key)}</strong><span>${h(value)}</span></p>`).join("")
+              : `<div class="empty">没有标签。</div>`
+          }
+        </section>
       </div>
     </div>
   `;
@@ -1642,7 +1756,10 @@ function renderVolumes() {
           <span class="muted">按镜像库模式管理 Docker 数据卷，支持搜索、备份、恢复和安全清理。</span>
         </div>
         <div class="top-actions">
+          <button data-action="volume-create-toggle">新增卷</button>
           <button data-action="volume-backups-toggle">备份记录</button>
+          <button data-action="volume-backup-unused">备份未使用</button>
+          <button class="danger" data-action="volume-remove-unused">删除未使用</button>
           <button data-action="volume-prune">清理未使用卷</button>
         </div>
       </div>
@@ -1655,7 +1772,9 @@ function renderVolumes() {
           <span>使用中的卷默认禁止删除</span>
         </div>
       </div>
+      ${renderVolumeCreatePanel()}
       ${renderVolumeBackups()}
+      ${renderVolumeBackupProgress()}
       <div class="image-summary-bar volume-summary-bar">
         <div><strong class="blue">${state.volumes.items.length}</strong><span>总卷数</span></div>
         <div><strong class="green">${usedCount}</strong><span>使用中</span></div>
@@ -1676,6 +1795,7 @@ function renderVolumes() {
           : `<div class="empty">没有匹配的卷。</div>`
       }
     </section>
+    ${renderVolumeDetailModal()}
   `;
 }
 
@@ -2196,6 +2316,14 @@ document.addEventListener("submit", async (event) => {
       scheduleImageProxyTest();
       render();
     }
+    if (form.id === "volumeCreateForm") {
+      const data = Object.fromEntries(new FormData(form));
+      await api("/api/docker/volumes", { method: "POST", body: data });
+      state.error = `卷已创建：${data.name}`;
+      state.volumes.createOpen = false;
+      form.reset();
+      await refreshCurrent();
+    }
     if (form.id === "passwordForm") {
       const data = Object.fromEntries(new FormData(form));
       if (data.new_password.length < 8) throw new Error("密码至少需要 8 个字符。");
@@ -2408,6 +2536,40 @@ document.addEventListener("click", async (event) => {
       state.volumes.backupOpen = !state.volumes.backupOpen;
       render();
     }
+    if (action === "volume-create-toggle") {
+      state.volumes.createOpen = !state.volumes.createOpen;
+      render();
+    }
+    if (action === "volume-detail") {
+      const data = await api(`/api/docker/volumes/${encodeURIComponent(button.dataset.name)}/inspect`);
+      state.volumes.detail = data.volume;
+      render();
+    }
+    if (action === "volume-detail-close") {
+      if (button.classList.contains("modal-backdrop") && event.target !== button) return;
+      state.volumes.detail = null;
+      render();
+    }
+    if (action === "volume-backup-unused") {
+      const names = state.volumes.items.filter((volume) => volumeTone(volume) !== "used").map(volumeName);
+      if (!names.length) {
+        state.error = "没有未使用卷需要备份。";
+        render();
+      } else if (confirm(`确定备份 ${names.length} 个未使用卷吗？`)) {
+        await startVolumeBackup(names);
+      }
+    }
+    if (action === "volume-remove-unused") {
+      const names = state.volumes.items.filter((volume) => volumeTone(volume) !== "used").map(volumeName);
+      if (!names.length) {
+        state.error = "没有未使用卷需要删除。";
+        render();
+      } else if (confirm(`确定删除 ${names.length} 个未使用卷吗？此操作会删除卷内数据。`)) {
+        const data = await api("/api/docker/volumes/bulk-remove", { method: "POST", body: { volumes: names } });
+        state.error = data.errors?.length ? `已删除 ${data.deleted.length} 个卷，${data.errors.length} 个失败。` : `已删除 ${data.deleted.length} 个未使用卷。`;
+        await refreshCurrent();
+      }
+    }
     if (action === "volume-prune") {
       if (confirm("确定清理全部未使用 Docker 卷吗？建议先确认不再需要这些数据。")) {
         const data = await api("/api/docker/volumes/prune", { method: "POST" });
@@ -2423,9 +2585,7 @@ document.addEventListener("click", async (event) => {
       }
     }
     if (action === "volume-backup") {
-      const data = await api(`/api/docker/volumes/${encodeURIComponent(button.dataset.name)}/backup`, { method: "POST" });
-      state.error = `卷备份已创建：${data.backup.name}`;
-      await refreshCurrent();
+      await startVolumeBackup(button.dataset.name);
     }
     if (action === "volume-restore" || action === "volume-restore-backup") {
       const sourceName = button.dataset.name || "volume";
@@ -2434,14 +2594,23 @@ document.addEventListener("click", async (event) => {
         state.error = "这个卷还没有可恢复的备份。";
         render();
       } else {
-        const nextName = prompt("恢复为新卷名", `${sourceName}-restored`);
-        if (nextName && nextName.trim()) {
-          await api(`/api/docker/volumes/${encodeURIComponent(sourceName)}/restore-new`, {
-            method: "POST",
-            body: { backup: backupName, name: nextName.trim() },
-          });
-          state.error = `已恢复为新卷：${nextName.trim()}`;
-          await refreshCurrent();
+        const mode = prompt("输入 1 恢复为新卷，输入 2 覆盖原卷", "1");
+        if (mode === "2") {
+          if (confirm(`确定覆盖卷 ${sourceName} 吗？覆盖会清空原卷数据。`)) {
+            await api(`/api/docker/volumes/${encodeURIComponent(sourceName)}/restore-replace`, { method: "POST", body: { backup: backupName } });
+            state.error = `已覆盖恢复卷：${sourceName}`;
+            await refreshCurrent();
+          }
+        } else if (mode) {
+          const nextName = prompt("恢复为新卷名", `${sourceName}-restored`);
+          if (nextName && nextName.trim()) {
+            await api(`/api/docker/volumes/${encodeURIComponent(sourceName)}/restore-new`, {
+              method: "POST",
+              body: { backup: backupName, name: nextName.trim() },
+            });
+            state.error = `已恢复为新卷：${nextName.trim()}`;
+            await refreshCurrent();
+          }
         }
       }
     }

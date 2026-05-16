@@ -631,7 +631,7 @@ def public_job(job: dict[str, Any]) -> dict[str, Any]:
     if isinstance(result, dict):
         result = {
             key: result.get(key)
-            for key in ("ok", "method", "message", "backup", "container_key", "old_container", "new_container_id", "image", "pull_image")
+            for key in ("ok", "method", "message", "backup", "container_key", "old_container", "new_container_id", "image", "pull_image", "volume", "backups")
             if key in result
         }
     return {
@@ -639,6 +639,7 @@ def public_job(job: dict[str, Any]) -> dict[str, Any]:
         "type": job.get("type", ""),
         "container_id": job.get("container_id", ""),
         "image": job.get("image", ""),
+        "volume": job.get("volume", ""),
         "status": job.get("status", "queued"),
         "progress": int(job.get("progress") or 0),
         "step": job.get("step", ""),
@@ -689,6 +690,17 @@ def create_image_job(job_type: str, image: str) -> dict[str, Any]:
         if stored:
             stored["image"] = image
             stored["message"] = f"准备拉取镜像：{image}"
+            return public_job(stored)
+    return job
+
+
+def create_volume_job(job_type: str, volume: str) -> dict[str, Any]:
+    job = create_job(job_type, "")
+    with JOB_LOCK:
+        stored = JOBS.get(str(job["id"]))
+        if stored:
+            stored["volume"] = volume
+            stored["message"] = f"准备处理卷：{volume}"
             return public_job(stored)
     return job
 
@@ -782,6 +794,38 @@ def start_image_pull_job(socket_path: str, image: str, use_proxy: bool = True) -
             update_job(job_id, status="error", step="拉取失败", message=str(exc), error=str(exc))
 
     thread = threading.Thread(target=worker, name=f"dockpilot-image-pull-{job_id[:8]}", daemon=True)
+    thread.start()
+    return get_job(job_id) or job
+
+
+def start_volume_backup_job(socket_path: str, volume_names: list[str]) -> dict[str, Any]:
+    names = [name.strip() for name in volume_names if name.strip()]
+    label = names[0] if len(names) == 1 else f"{len(names)} 个卷"
+    job = create_volume_job("volume-backup", label)
+    job_id = str(job["id"])
+
+    def worker() -> None:
+        backups: list[dict[str, Any]] = []
+        try:
+            docker = DockerClient(socket_path)
+            total = max(len(names), 1)
+            for index, name in enumerate(names, start=1):
+                percent = max(5, int((index - 1) / total * 90))
+                update_job(job_id, status="running", progress=percent, step="正在备份", message=f"正在备份卷：{name}", error="")
+                backups.append(create_volume_backup(docker, name))
+            update_job(
+                job_id,
+                status="success",
+                progress=100,
+                step="备份完成",
+                message=f"已完成 {len(backups)} 个卷备份。",
+                result={"ok": True, "backups": backups, "volume": label},
+                error="",
+            )
+        except Exception as exc:
+            update_job(job_id, status="error", step="备份失败", message=str(exc), error=str(exc), result={"ok": False, "backups": backups})
+
+    thread = threading.Thread(target=worker, name=f"dockpilot-volume-backup-{job_id[:8]}", daemon=True)
     thread.start()
     return get_job(job_id) or job
 
@@ -1021,6 +1065,30 @@ class AppHandler(BaseHTTPRequestHandler):
                 volumes = enrich_volumes_with_usage((result or {}).get("Volumes") or [], containers)
                 self.write_json({"volumes": volumes, "backups": list_volume_backups()})
                 return
+            if path == "/api/docker/volumes" and self.command == "POST":
+                self.write_json({"volume": create_docker_volume(docker, self.read_json())}, status=201)
+                return
+            if path == "/api/docker/volumes/bulk-backup" and self.command == "POST":
+                data = self.read_json()
+                names = [str(name) for name in data.get("volumes", []) if str(name).strip()]
+                if not names:
+                    self.write_json({"error": "volume name is required"}, status=400)
+                    return
+                self.write_json({"job": start_volume_backup_job(docker.socket_path, names)}, status=202)
+                return
+            if path == "/api/docker/volumes/bulk-remove" and self.command == "POST":
+                data = self.read_json()
+                names = [str(name).strip() for name in data.get("volumes", []) if str(name).strip()]
+                deleted: list[str] = []
+                errors: list[dict[str, str]] = []
+                for name in names:
+                    status, raw, reason = docker.request("DELETE", f"/volumes/{urllib.parse.quote(name, safe='')}", timeout=120)
+                    if status >= 400:
+                        errors.append({"volume": name, "message": docker_error_message(raw, reason)})
+                    else:
+                        deleted.append(name)
+                self.write_json({"ok": not errors, "deleted": deleted, "errors": errors})
+                return
             if path == "/api/docker/volumes/prune" and self.command == "POST":
                 status, data, reason = docker.request("POST", "/volumes/prune", timeout=120)
                 if status >= 400:
@@ -1040,9 +1108,17 @@ class AppHandler(BaseHTTPRequestHandler):
                     raise RuntimeError(docker_error_message(data, reason))
                 self.write_json({"ok": True})
                 return
+            if len(parts) == 5 and parts[:3] == ["api", "docker", "volumes"] and parts[4] == "inspect" and self.command == "GET":
+                volume_name = urllib.parse.unquote(parts[3])
+                self.write_json({"volume": inspect_volume_detail(docker, volume_name)})
+                return
             if len(parts) == 5 and parts[:3] == ["api", "docker", "volumes"] and parts[4] == "backup" and self.command == "POST":
                 volume_name = urllib.parse.unquote(parts[3])
                 self.write_json({"backup": create_volume_backup(docker, volume_name)}, status=201)
+                return
+            if len(parts) == 5 and parts[:3] == ["api", "docker", "volumes"] and parts[4] == "backup-job" and self.command == "POST":
+                volume_name = urllib.parse.unquote(parts[3])
+                self.write_json({"job": start_volume_backup_job(docker.socket_path, [volume_name])}, status=202)
                 return
             if len(parts) == 5 and parts[:3] == ["api", "docker", "volumes"] and parts[4] == "restore-new" and self.command == "POST":
                 data = self.read_json()
@@ -1050,6 +1126,12 @@ class AppHandler(BaseHTTPRequestHandler):
                 backup_name = str(data.get("backup", "")).strip()
                 target_name = str(data.get("name", "")).strip() or f"{safe_name(volume_name, 'volume')}-restored"
                 self.write_json(restore_volume_backup_new(docker, backup_name, target_name), status=201)
+                return
+            if len(parts) == 5 and parts[:3] == ["api", "docker", "volumes"] and parts[4] == "restore-replace" and self.command == "POST":
+                data = self.read_json()
+                volume_name = urllib.parse.unquote(parts[3])
+                backup_name = str(data.get("backup", "")).strip()
+                self.write_json(restore_volume_backup_replace(docker, backup_name, volume_name))
                 return
             if len(parts) == 5 and parts[:3] == ["api", "docker", "volume-backups"] and parts[4] == "delete" and self.command == "DELETE":
                 backup_name = urllib.parse.unquote(parts[3])
@@ -1709,7 +1791,7 @@ def enrich_images_with_usage(images: list[dict[str, Any]], containers: list[dict
 
 
 def enrich_volumes_with_usage(volumes: list[dict[str, Any]], containers: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    usage: dict[str, list[str]] = {}
+    usage: dict[str, list[dict[str, str]]] = {}
     for container in containers:
         container_name = container_key_from_summary(container)
         for mount in container.get("Mounts") or []:
@@ -1717,12 +1799,33 @@ def enrich_volumes_with_usage(volumes: list[dict[str, Any]], containers: list[di
                 continue
             name = str(mount.get("Name") or "")
             if name:
-                usage.setdefault(name, []).append(container_name)
+                usage.setdefault(name, []).append(
+                    {
+                        "container": container_name,
+                        "destination": str(mount.get("Destination") or ""),
+                        "mode": str(mount.get("Mode") or ""),
+                    }
+                )
     for volume in volumes:
         name = str(volume.get("Name") or "")
-        attached = sorted(set(usage.get(name, [])))
-        volume["DockPilot"] = {"used": bool(attached), "containers": attached, "container_count": len(attached)}
+        mounts = usage.get(name, [])
+        attached = sorted(set(item["container"] for item in mounts))
+        volume["DockPilot"] = {"used": bool(attached), "containers": attached, "mounts": mounts, "container_count": len(attached)}
     return volumes
+
+
+def volume_usage_map(docker: DockerClient) -> dict[str, list[dict[str, str]]]:
+    containers = docker.json("GET", "/containers/json", query={"all": "1", "size": "0"})
+    usage: dict[str, list[dict[str, str]]] = {}
+    for container in containers:
+        container_name = container_key_from_summary(container)
+        for mount in container.get("Mounts") or []:
+            if str(mount.get("Type") or "") != "volume":
+                continue
+            name = str(mount.get("Name") or "")
+            if name:
+                usage.setdefault(name, []).append({"container": container_name, "destination": str(mount.get("Destination") or ""), "mode": str(mount.get("Mode") or "")})
+    return usage
 
 
 def enrich_containers(
@@ -1820,6 +1923,69 @@ def volume_mountpoint(docker: DockerClient, volume_name: str) -> Path:
     return mountpoint
 
 
+def directory_size(path: Path) -> int:
+    total = 0
+    for root, _, files in os.walk(path):
+        for name in files:
+            try:
+                total += (Path(root) / name).stat().st_size
+            except OSError:
+                continue
+    return total
+
+
+def inspect_volume_detail(docker: DockerClient, volume_name: str) -> dict[str, Any]:
+    volume = docker.json("GET", f"/volumes/{urllib.parse.quote(volume_name, safe='')}")
+    usage = volume_usage_map(docker).get(volume_name, [])
+    try:
+        mountpoint = volume_mountpoint(docker, volume_name)
+        calculated_size = directory_size(mountpoint)
+    except Exception:
+        calculated_size = 0
+    volume["DockPilot"] = {
+        "used": bool(usage),
+        "containers": sorted(set(item["container"] for item in usage)),
+        "mounts": usage,
+        "container_count": len(set(item["container"] for item in usage)),
+        "calculated_size": calculated_size,
+    }
+    return volume
+
+
+def normalize_volume_labels(value: Any) -> dict[str, str]:
+    labels: dict[str, str] = {}
+    if isinstance(value, dict):
+        for key, label_value in value.items():
+            clean_key = str(key).strip()
+            if clean_key:
+                labels[clean_key] = str(label_value).strip()
+        return labels
+    if isinstance(value, str):
+        for line in value.splitlines():
+            if not line.strip():
+                continue
+            key, _, label_value = line.partition("=")
+            clean_key = key.strip()
+            if clean_key:
+                labels[clean_key] = label_value.strip()
+    return labels
+
+
+def create_docker_volume(docker: DockerClient, data: dict[str, Any]) -> dict[str, Any]:
+    name = safe_name(str(data.get("name", "")).strip(), "")
+    if not name:
+        raise ValueError("volume name is required")
+    body = {
+        "Name": name,
+        "Driver": str(data.get("driver", "")).strip() or "local",
+        "Labels": normalize_volume_labels(data.get("labels", "")),
+    }
+    options = normalize_volume_labels(data.get("driver_opts", ""))
+    if options:
+        body["DriverOpts"] = options
+    return docker.json("POST", "/volumes/create", body=body)
+
+
 def create_volume_backup(docker: DockerClient, volume_name: str) -> dict[str, Any]:
     source = volume_mountpoint(docker, volume_name)
     created_at = time.strftime("%Y%m%d-%H%M%S", time.localtime())
@@ -1845,6 +2011,29 @@ def restore_volume_backup_new(docker: DockerClient, backup_name: str, volume_nam
                 raise ValueError("备份文件包含不安全路径，已停止恢复。")
         archive.extractall(target_root)
     return {"ok": True, "volume": target_name, "backup": backup.name}
+
+
+def restore_volume_backup_replace(docker: DockerClient, backup_name: str, volume_name: str) -> dict[str, Any]:
+    usage = volume_usage_map(docker).get(volume_name, [])
+    if usage:
+        raise ValueError("这个卷正在被容器使用，请先停止或移除关联容器后再覆盖恢复。")
+    backup = volume_backup_file_path(backup_name)
+    if not backup.exists():
+        raise FileNotFoundError("volume backup not found")
+    target = volume_mountpoint(docker, volume_name)
+    for child in target.iterdir():
+        if child.is_dir():
+            shutil.rmtree(child)
+        else:
+            child.unlink()
+    with tarfile.open(backup, "r:gz") as archive:
+        target_root = target.resolve()
+        for member in archive.getmembers():
+            member_path = (target_root / member.name).resolve()
+            if not is_relative_to(member_path, target_root):
+                raise ValueError("备份文件包含不安全路径，已停止恢复。")
+        archive.extractall(target_root)
+    return {"ok": True, "volume": volume_name, "backup": backup.name}
 
 
 def backup_file_path(name: str) -> Path:

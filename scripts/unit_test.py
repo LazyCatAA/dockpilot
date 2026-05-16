@@ -241,7 +241,13 @@ def test_volumes_are_marked_used_from_container_mounts() -> None:
     enriched = enrich_volumes_with_usage(volumes, containers)
     assert_true(enriched[0]["DockPilot"]["used"] is True, "被容器挂载的卷应标记为使用中")
     assert_true(enriched[0]["DockPilot"]["containers"] == ["demo"], "卷应记录关联容器名称")
+    assert_true(enriched[0]["DockPilot"]["mounts"][0]["destination"] == "", "卷应记录挂载详情结构")
     assert_true(enriched[1]["DockPilot"]["used"] is False, "未被容器挂载的卷应标记为未使用")
+
+
+def test_volume_label_lines_are_normalized() -> None:
+    labels = server.normalize_volume_labels("app=demo\nowner=dockpilot\nempty=")
+    assert_true(labels == {"app": "demo", "owner": "dockpilot", "empty": ""}, "卷标签应支持每行 key=value")
 
 
 def test_remote_image_search_strips_tag_from_full_reference() -> None:
@@ -346,6 +352,7 @@ def main() -> int:
     test_container_card_uses_repo_tag_when_summary_image_is_digest()
     test_images_are_marked_used_when_container_references_image_id()
     test_volumes_are_marked_used_from_container_mounts()
+    test_volume_label_lines_are_normalized()
     test_remote_image_search_strips_tag_from_full_reference()
     test_remote_image_search_returns_direct_fallback_for_simple_name()
     test_network_proxy_url_is_normalized_for_lan_proxy()

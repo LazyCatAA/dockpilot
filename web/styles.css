@@ -2256,7 +2256,7 @@ a {
   min-width: 0;
   min-height: 54px;
   display: grid;
-  grid-template-columns: 16px minmax(260px, 1.5fr) minmax(160px, 0.9fr) 90px 96px 100px 74px 186px;
+  grid-template-columns: 16px minmax(260px, 1.5fr) minmax(160px, 0.9fr) 90px 96px 100px 82px 252px;
   gap: 12px;
   align-items: center;
   padding: 8px 14px;
@@ -2302,7 +2302,7 @@ a {
 
 .volume-row-actions {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
 }
 
@@ -2324,6 +2324,114 @@ a {
 .volume-backup-list {
   max-height: 260px;
   overflow: auto;
+}
+
+.volume-create-panel {
+  grid-template-columns: 1fr;
+}
+
+.volume-create-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.volume-create-form textarea {
+  min-height: 74px;
+}
+
+.volume-create-form button {
+  grid-column: 1 / -1;
+  justify-self: end;
+}
+
+.volume-risk {
+  min-height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0 9px;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.volume-risk.ok {
+  background: rgba(220, 252, 231, 0.9);
+  color: #15803d;
+}
+
+.volume-risk.warn {
+  background: rgba(254, 243, 199, 0.95);
+  color: #b45309;
+}
+
+.volume-detail-modal {
+  max-width: 760px;
+}
+
+.volume-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.volume-detail-grid div {
+  padding: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.volume-detail-grid b,
+.volume-detail-grid span {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.volume-detail-grid b {
+  color: #0f172a;
+  font-size: 15px;
+}
+
+.volume-detail-grid span {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.volume-detail-section {
+  display: grid;
+  gap: 8px;
+}
+
+.volume-detail-section h4 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.volume-detail-section p {
+  display: grid;
+  grid-template-columns: minmax(0, 170px) minmax(0, 1fr);
+  gap: 10px;
+  margin: 0;
+  padding: 9px 10px;
+  border: 1px solid #edf2f7;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.volume-detail-section strong,
+.volume-detail-section span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .image-compact-list {

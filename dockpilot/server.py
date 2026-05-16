@@ -2130,18 +2130,29 @@ def fetch_json_url(url: str, timeout: int = 10) -> dict[str, Any]:
     return payload
 
 
+def probe_registry_proxy_status(proxy: str, timeout: int = 8) -> int:
+    request = urllib.request.Request("https://registry-1.docker.io/v2/", headers={"User-Agent": "DockPilot/1.0"})
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({"http": proxy, "https": proxy}))
+    try:
+        with opener.open(request, timeout=timeout) as response:
+            return int(response.status)
+    except urllib.error.HTTPError as exc:
+        return int(exc.code)
+    except urllib.error.URLError as exc:
+        reason = str(exc.reason) if getattr(exc, "reason", "") else str(exc)
+        raise RuntimeError(translate_docker_error(reason)) from exc
+
+
 def test_network_proxy(proxy: str) -> dict[str, Any]:
     if not proxy:
         return {"ok": False, "message": "请先填写镜像代理地址。"}
-    old_get_setting = STORE.get_setting
     try:
-        STORE.get_setting = lambda key, fallback="": proxy if key == "network_proxy" else old_get_setting(key, fallback)
-        fetch_json_url("https://hub.docker.com/v2/", timeout=8)
-        return {"ok": True, "message": "镜像代理连通正常。"}
+        status = probe_registry_proxy_status(proxy, timeout=8)
+        if status in (200, 401):
+            return {"ok": True, "message": "镜像代理连通正常。"}
+        return {"ok": False, "message": f"镜像代理不连通，Docker Registry 返回状态码 {status}。"}
     except Exception as exc:
         return {"ok": False, "message": translate_docker_error(str(exc))}
-    finally:
-        STORE.get_setting = old_get_setting
 
 
 def normalize_docker_hub_search_results(payload: dict[str, Any], limit: int = 12) -> list[dict[str, Any]]:

@@ -253,6 +253,16 @@ def test_network_proxy_url_is_normalized_for_lan_proxy() -> None:
     )
 
 
+def test_network_proxy_treats_registry_auth_response_as_connected() -> None:
+    original = server.probe_registry_proxy_status
+    try:
+        server.probe_registry_proxy_status = lambda proxy, timeout=8: 401
+        result = server.test_network_proxy("http://192.168.1.2:7898")
+    finally:
+        server.probe_registry_proxy_status = original
+    assert_true(result["ok"] is True, "Registry 返回 401 代表代理已连通，只是未登录")
+
+
 def test_compose_repair_fixes_common_yaml_format_issues() -> None:
     result = repair_compose_content("app：\n\timage: nginx\n\tports:\n\t\t- 8080:80\n")
     assert_true(result["changed"] is True, "Compose 修正应报告内容变化")
@@ -282,6 +292,7 @@ def main() -> int:
     test_images_are_marked_used_when_container_references_image_id()
     test_remote_image_search_strips_tag_from_full_reference()
     test_network_proxy_url_is_normalized_for_lan_proxy()
+    test_network_proxy_treats_registry_auth_response_as_connected()
     test_compose_repair_fixes_common_yaml_format_issues()
     test_compose_repair_uses_compose_error_context()
     print("PASS: DockPilot 单元测试全部通过")

@@ -150,8 +150,12 @@ def main() -> int:
         assert_true("compose-panel" in styles_css, "Compose 管理功能卡片应使用彩色区分")
         assert_true("compose-monitor-layout" in app_js, "Compose 管理应采用 D3 监控控制台结构")
         assert_true("compose-service-status-card" in app_js, "Compose 管理应突出服务状态卡片")
+        assert_true('["compose", "Compose"' in app_js, "Compose 菜单应显示为 Compose")
+        assert_true("resetComposeEditor" in app_js, "每次打开 Compose 菜单应进入空白编辑窗口")
+        assert_true("创建空白编辑窗口" in app_js, "Compose 新建项目入口应移动到编辑区上方")
         assert_true("compose-run-overview" in styles_css, "Compose 管理应提供运行概览样式")
         assert_true("compose-terminal-tabs" in styles_css, "Compose 管理应提供日志终端样式")
+        assert_true("compose-inline-create" in styles_css, "Compose 新建项目应有顶部输入区域样式")
         _, update_job = client.request("POST", "/api/docker/containers/fake-container/update-job", expect=202)
         job_id = update_job["job"]["id"]
         _, job_state = client.request("GET", f"/api/docker/jobs/{job_id}")

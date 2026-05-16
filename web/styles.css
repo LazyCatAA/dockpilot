@@ -2757,6 +2757,192 @@ td.actions button {
   font-weight: 700;
 }
 
+.compose-monitor-layout {
+  border-color: #dbe5f1;
+  background: linear-gradient(180deg, #f8fbff 0%, #eef5ff 100%);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+}
+
+.compose-monitor-sidebar {
+  border-right-color: #dce7f4;
+  background: #f2f7ff;
+}
+
+.compose-monitor-title h3,
+.compose-monitor-head h3 {
+  color: #111827;
+}
+
+.compose-monitor-title p,
+.compose-monitor-head span,
+.compose-panel-caption span,
+.compose-command-card span {
+  color: #66758a;
+}
+
+.compose-run-overview div:nth-child(1),
+.compose-status-strip div:nth-child(1) {
+  background: #dbeafe;
+}
+
+.compose-run-overview div:nth-child(2),
+.compose-status-strip div:nth-child(2) {
+  background: #dcfce7;
+}
+
+.compose-run-overview div:nth-child(3),
+.compose-status-strip div:nth-child(3) {
+  background: #fef3c7;
+}
+
+.compose-run-overview div:nth-child(4),
+.compose-status-strip div:nth-child(4) {
+  background: #fce7f3;
+}
+
+.compose-run-overview div,
+.compose-status-strip div {
+  border-color: rgba(148, 163, 184, 0.22);
+  box-shadow: none;
+}
+
+.compose-run-overview b,
+.compose-status-strip b {
+  color: #172033;
+}
+
+.compose-run-overview span,
+.compose-status-strip span {
+  color: #536176;
+}
+
+.compose-project-card {
+  border-color: #d9e3f0;
+  background: #e0f2fe;
+  color: #111827;
+  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
+}
+
+.compose-project-card:nth-child(3n + 2) {
+  background: #dcfce7;
+}
+
+.compose-project-card:nth-child(3n) {
+  background: #fef3c7;
+}
+
+.compose-project-card small,
+.compose-project-card em {
+  color: #536176;
+}
+
+.compose-project-card em {
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.compose-project-card.active {
+  border-color: #2563eb;
+  border-left-color: #2563eb;
+  background: #bfdbfe;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12), 0 18px 36px rgba(37, 99, 235, 0.14);
+}
+
+.compose-command-card,
+.compose-inline-create,
+.compose-code-panel,
+.compose-runtime-panel,
+.compose-terminal-panel {
+  border-color: #dce7f4;
+  background: #ffffff;
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+}
+
+.compose-command-card {
+  background: #fff7ed;
+}
+
+.compose-inline-create {
+  display: grid;
+  grid-template-columns: auto minmax(220px, 360px) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid #dce7f4;
+  border-radius: 18px;
+  background: #ecfeff;
+}
+
+.compose-inline-create strong,
+.compose-command-card strong,
+.compose-panel-caption strong {
+  color: #172033;
+}
+
+.compose-inline-create input,
+.compose-command-card input,
+.compose-command-card textarea {
+  border-color: #d1dce9;
+  background: rgba(255, 255, 255, 0.82);
+  color: #111827;
+}
+
+.compose-action-bar button {
+  border-color: #d1dce9;
+  background: #ffffff;
+  color: #334155;
+}
+
+.compose-action-bar button:disabled {
+  color: #9aa7b7;
+  background: #eef2f7;
+}
+
+.compose-action-bar button.danger {
+  border-color: #fecaca;
+  color: #dc2626;
+}
+
+.compose-dark-editor,
+.compose-ai-preview-shell,
+.compose-dark-console {
+  border-color: #d7e2ef;
+  background: #f8fafc;
+  color: #111827;
+}
+
+.compose-ai-preview {
+  color: #111827;
+}
+
+.compose-dark-note {
+  border-color: #bbf7d0;
+  background: #ecfdf5;
+}
+
+.compose-dark-note strong {
+  color: #166534;
+}
+
+.compose-dark-note span {
+  color: #536176;
+}
+
+.compose-terminal-tabs span {
+  background: #eef2f7;
+  color: #64748b;
+}
+
+.compose-terminal-tabs .active {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.compose-dark-empty {
+  border-color: #cbd5e1;
+  color: #64748b;
+  background: rgba(255, 255, 255, 0.55);
+}
+
 .compose-panel {
   position: relative;
   overflow: hidden;
@@ -2959,6 +3145,10 @@ td.actions button {
   }
 
   .compose-monitor-head {
+    grid-template-columns: 1fr;
+  }
+
+  .compose-inline-create {
     grid-template-columns: 1fr;
   }
 

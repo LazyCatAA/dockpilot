@@ -41,7 +41,7 @@ const tabs = [
 
 const navGroups = [
   { title: "发现", items: [["dashboard", "首页导航", "⌂"]] },
-  { title: "Docker", items: [["containers", "容器管理", "▦"], ["images", "镜像库", "◉"], ["compose", "Compose管理", "◇"]] },
+  { title: "Docker", items: [["containers", "容器管理", "▦"], ["images", "镜像库", "◉"], ["compose", "Compose", "◇"]] },
   { title: "系统", items: [["files", "文件管理", "≡"], ["settings", "系统设置", "⚙"]] },
 ];
 
@@ -773,12 +773,22 @@ function scheduleContainerUpdateChecks() {
 async function loadCompose() {
   const data = await api("/api/compose/projects");
   state.compose.projects = data.projects || [];
-  if (!state.compose.selected && state.compose.projects[0]) {
-    await selectCompose(state.compose.projects[0].path);
-  } else if (state.compose.selected && !state.compose.projects.some((project) => project.path === state.compose.selected)) {
+  if (state.compose.selected && !state.compose.projects.some((project) => project.path === state.compose.selected)) {
     state.compose.selected = "";
     state.compose.content = "";
+    state.compose.aiContent = "";
+    state.compose.repair = null;
+    state.compose.repairLines = [];
   }
+}
+
+function resetComposeEditor() {
+  state.compose.selected = "";
+  state.compose.content = "";
+  state.compose.aiContent = "";
+  state.compose.repair = null;
+  state.compose.repairLines = [];
+  state.compose.output = "";
 }
 
 async function selectCompose(path) {
@@ -1472,7 +1482,7 @@ function renderImagePullProgress() {
 }
 
 function selectedComposeProject() {
-  return state.compose.projects.find((project) => project.path === state.compose.selected) || state.compose.projects[0] || null;
+  return state.compose.projects.find((project) => project.path === state.compose.selected) || null;
 }
 
 function composeStatusLabel(tone) {
@@ -1582,7 +1592,7 @@ function renderCompose() {
     <section class="compose-monitor-layout">
       <aside class="compose-monitor-sidebar">
         <div class="compose-monitor-title">
-          <h3>Compose 管理</h3>
+          <h3>Compose</h3>
           <p>以服务运行状态为中心管理 Compose 项目。</p>
         </div>
         <div class="compose-run-overview">
@@ -1598,11 +1608,6 @@ function renderCompose() {
               : `<div class="compose-dark-empty">配置的目录中没有找到 Compose 文件。</div>`
           }
         </div>
-        <form class="compose-create-card" id="composeNewForm">
-          <strong>新建项目</strong>
-          <input name="name" placeholder="nginx-demo" />
-          <button type="submit" class="primary">创建</button>
-        </form>
         <form class="compose-command-card" id="composeCommandForm">
           <strong>命令转 Compose</strong>
           <span>粘贴 docker run 命令，可转为 Compose 后部署。</span>
@@ -1615,20 +1620,25 @@ function renderCompose() {
         </form>
       </aside>
       <main class="compose-monitor-main">
+        <form class="compose-inline-create" id="composeNewForm">
+          <strong>新建项目</strong>
+          <input name="name" placeholder="输入项目名，例如 nginx-demo" required />
+          <button type="submit" class="primary">创建空白编辑窗口</button>
+        </form>
         <div class="compose-monitor-head">
           <div>
-            <h3>${h(selected?.name || "请选择项目")}</h3>
-            <span>${h(state.compose.selected || "左侧选择 Compose 项目后编辑 compose.yml")}</span>
+            <h3>${h(selected?.name || "新建 compose.yml")}</h3>
+            <span>${h(state.compose.selected || "当前为空白编辑窗口，请先在上方创建项目，或从左侧选择已有项目。")}</span>
           </div>
           <div class="top-actions compose-action-bar">
-            <button data-action="compose-action" data-command="config">检查</button>
+            <button data-action="compose-action" data-command="config" ${state.compose.selected ? "" : "disabled"}>检查</button>
             <button data-action="compose-repair">AI 修正</button>
             <button data-action="compose-apply-ai" ${state.compose.aiContent ? "" : "disabled"}>应用 AI 修正</button>
-            <button data-action="compose-save" class="primary">保存</button>
-            <button data-action="compose-action" data-command="pull">拉取</button>
-            <button data-action="compose-action" data-command="up" class="primary">部署</button>
-            <button data-action="compose-action" data-command="restart">重启</button>
-            <button data-action="compose-action" data-command="down" class="danger">停止</button>
+            <button data-action="compose-save" class="primary" ${state.compose.selected ? "" : "disabled"}>保存</button>
+            <button data-action="compose-action" data-command="pull" ${state.compose.selected ? "" : "disabled"}>拉取</button>
+            <button data-action="compose-action" data-command="up" class="primary" ${state.compose.selected ? "" : "disabled"}>部署</button>
+            <button data-action="compose-action" data-command="restart" ${state.compose.selected ? "" : "disabled"}>重启</button>
+            <button data-action="compose-action" data-command="down" class="danger" ${state.compose.selected ? "" : "disabled"}>停止</button>
           </div>
         </div>
         <div class="compose-status-strip">
@@ -1861,9 +1871,16 @@ document.addEventListener("submit", async (event) => {
     }
     if (form.id === "composeNewForm") {
       const data = Object.fromEntries(new FormData(form));
-      await api("/api/compose/projects", { method: "POST", body: data });
-      state.compose.selected = "";
+      const result = await api("/api/compose/projects", { method: "POST", body: data });
+      state.compose.selected = result.project.path;
+      state.compose.output = "";
+      state.compose.aiContent = "";
+      state.compose.repair = null;
+      state.compose.repairLines = [];
+      form.reset();
       await refreshCurrent();
+      await selectCompose(result.project.path);
+      render();
     }
     if (form.id === "composeCommandForm") {
       const data = Object.fromEntries(new FormData(form));
@@ -1877,6 +1894,8 @@ document.addEventListener("submit", async (event) => {
       state.compose.output = result.output ? `$ docker compose up -d\n\n${result.output}` : "";
       form.reset();
       await refreshCurrent();
+      await selectCompose(result.project.path);
+      state.compose.output = result.output ? `$ docker compose up -d\n\n${result.output}` : "";
       state.error = deploy ? "命令已转为 Compose 并完成部署。" : "命令已转为 Compose 项目。";
       render();
     }
@@ -1993,6 +2012,7 @@ document.addEventListener("click", async (event) => {
   try {
     if (action === "nav") {
       state.tab = button.dataset.tab;
+      if (state.tab === "compose") resetComposeEditor();
       await refreshCurrent();
     }
     if (action === "sidebar-toggle") {
@@ -2122,6 +2142,8 @@ document.addEventListener("click", async (event) => {
         state.compose.selected = data.project.path;
         state.error = "已恢复为 Compose 项目，可检查后再启动。";
         await refreshCurrent();
+        await selectCompose(data.project.path);
+        render();
       }
     }
     if (action === "container-backup-delete") {

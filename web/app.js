@@ -315,6 +315,13 @@ function jobProgressText(job) {
   return statusMap[job.status] || "任务";
 }
 
+function proxyStatusText() {
+  if (!state.images.networkProxy) return "未设置";
+  if (state.images.proxyOk === true) return "连通";
+  if (state.images.proxyOk === false) return "不连通";
+  return "检测中";
+}
+
 function dashboardWidgetValue(widget, overview) {
   if (widget.type === "host") {
     const host = overview.host || {};
@@ -1308,7 +1315,7 @@ function renderImages() {
           </form>
           <div class="proxy-status">
             <i class="${state.images.proxyOk === true ? "ok" : state.images.proxyOk === false ? "bad" : "pending"}"></i>
-            <small class="proxy-test-result">${state.images.networkProxy ? "自动检测" : "未设置镜像代理"}</small>
+            <small class="proxy-test-result">${proxyStatusText()}</small>
           </div>
         </section>
       </div>

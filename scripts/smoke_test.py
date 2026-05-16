@@ -116,6 +116,7 @@ def main() -> int:
         assert_true("pull_mode" in app_js, "镜像库拉取镜像应可选择下载方式")
         assert_true("imagePullJob" in app_js, "镜像拉取应使用带进度的后台任务")
         assert_true("scheduleImageProxyTest" in app_js, "镜像代理应自动连通检测")
+        assert_true("proxyStatusText" in app_js, "镜像代理连通性应显示明确状态文案")
         assert_true("image-usage" in app_js, "镜像库应区分已使用和未使用镜像")
         assert_true("registry_mirrors" in app_js, "镜像库应支持多个镜像加速源")
         assert_true("compose-repair" in app_js, "Compose 编辑器应支持检查并修正")

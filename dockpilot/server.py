@@ -44,33 +44,15 @@ DEFAULT_DASHBOARD_WIDGETS = [
     {"id": "containers", "type": "containers", "title": "容器监控", "visible": True},
 ]
 DEFAULT_NAV_PREFS = {
-    "title": "DockPilot",
-    "subtitle": "为效率而生的 NAS 服务导航",
+    "title": "私人导航",
+    "subtitle": "清晰分组的服务入口，支持内外网地址和自定义图标",
     "layout_width": "wide",
     "density": "comfortable",
-    "card_style": "glass",
-    "background": "#eaf4ff",
-    "theme": "light",
-    "background_effect": "aurora",
-    "display_mode": "grid",
-    "search_engine": "google",
-    "weather_location": "",
-    "iconfont_url": "",
-    "ai_enabled": False,
-    "ai_protection": True,
+    "card_style": "professional",
+    "background": "#eef5fb",
     "show_search": True,
     "show_status": True,
     "show_group_count": True,
-    "show_datetime": True,
-    "show_weather": True,
-    "header_modules": [
-        {"id": "logo", "type": "logo", "visible": True, "order": 0},
-        {"id": "datetime", "type": "datetime", "visible": True, "order": 1},
-        {"id": "weather-text", "type": "weather-text", "visible": True, "order": 2},
-        {"id": "search", "type": "search", "visible": True, "order": 3},
-        {"id": "ai-chat", "type": "ai-chat", "visible": True, "order": 4},
-        {"id": "quick-actions", "type": "quick-actions", "visible": True, "order": 5},
-    ],
     "groups": {},
 }
 
@@ -175,31 +157,8 @@ def normalize_nav_prefs(value: Any) -> dict[str, Any]:
     prefs["density"] = str(prefs.get("density", "comfortable")) if str(prefs.get("density", "comfortable")) in {"compact", "comfortable", "spacious"} else "comfortable"
     prefs["card_style"] = str(prefs.get("card_style", "professional")) if str(prefs.get("card_style", "professional")) in {"professional", "soft", "outline", "glass"} else "professional"
     prefs["background"] = normalize_color(str(prefs.get("background", "#eef5fb")), "#eef5fb")
-    prefs["theme"] = str(prefs.get("theme", "light")) if str(prefs.get("theme", "light")) in {"light", "dark", "system"} else "light"
-    prefs["background_effect"] = str(prefs.get("background_effect", "aurora")) if str(prefs.get("background_effect", "aurora")) in {"none", "aurora", "gradient", "grid", "particles"} else "aurora"
-    prefs["display_mode"] = str(prefs.get("display_mode", "grid")) if str(prefs.get("display_mode", "grid")) in {"grid", "compact", "nebula"} else "grid"
-    prefs["search_engine"] = str(prefs.get("search_engine", "google")) if str(prefs.get("search_engine", "google")) in {"google", "baidu", "bing", "duckduckgo"} else "google"
-    prefs["weather_location"] = str(prefs.get("weather_location", "")).strip()[:120]
-    prefs["iconfont_url"] = str(prefs.get("iconfont_url", "")).strip()[:500]
-    for key in ("show_search", "show_status", "show_group_count", "show_datetime", "show_weather", "ai_enabled", "ai_protection"):
+    for key in ("show_search", "show_status", "show_group_count"):
         prefs[key] = bool(prefs.get(key))
-    modules: list[dict[str, Any]] = []
-    raw_modules = raw.get("header_modules", prefs.get("header_modules", []))
-    allowed_modules = {"logo", "datetime", "weather-text", "search", "ai-chat", "quick-actions"}
-    if isinstance(raw_modules, list):
-        for index, item in enumerate(raw_modules):
-            if not isinstance(item, dict):
-                continue
-            module_type = str(item.get("type", item.get("id", ""))).strip()
-            if module_type not in allowed_modules:
-                continue
-            module_id = safe_name(str(item.get("id", module_type)) or module_type, module_type)
-            modules.append({"id": module_id, "type": module_type, "visible": bool(item.get("visible", True)), "order": int(item.get("order", index))})
-    seen_types = {item["type"] for item in modules}
-    for item in DEFAULT_NAV_PREFS["header_modules"]:
-        if item["type"] not in seen_types:
-            modules.append(dict(item))
-    prefs["header_modules"] = sorted(modules, key=lambda item: item["order"])
     groups: dict[str, Any] = {}
     raw_groups = raw.get("groups", {}) if isinstance(raw.get("groups", {}), dict) else {}
     for group, item in raw_groups.items():

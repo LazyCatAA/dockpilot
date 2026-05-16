@@ -7,8 +7,6 @@ const state = {
   dashboardWidgets: [],
   navPrefs: null,
   navSettingsOpen: false,
-  navSettingsTab: "global",
-  navEditMode: false,
   navSearch: "",
   cards: [],
   editingCard: null,
@@ -462,67 +460,21 @@ function filteredVolumes() {
 
 function defaultNavPrefs() {
   return {
-    title: "DockPilot",
-    subtitle: "为效率而生的 NAS 服务导航",
+    title: "私人导航",
+    subtitle: "清晰分组的服务入口，支持内外网地址和自定义图标",
     layout_width: "wide",
     density: "comfortable",
-    card_style: "glass",
-    background: "#eaf4ff",
-    theme: "light",
-    background_effect: "aurora",
-    display_mode: "grid",
-    search_engine: "google",
-    weather_location: "",
-    iconfont_url: "",
-    ai_enabled: false,
-    ai_protection: true,
+    card_style: "professional",
+    background: "#eef5fb",
     show_search: true,
     show_status: true,
     show_group_count: true,
-    show_datetime: true,
-    show_weather: true,
-    header_modules: [
-      { id: "logo", type: "logo", visible: true, order: 0 },
-      { id: "datetime", type: "datetime", visible: true, order: 1 },
-      { id: "weather-text", type: "weather-text", visible: true, order: 2 },
-      { id: "search", type: "search", visible: true, order: 3 },
-      { id: "ai-chat", type: "ai-chat", visible: true, order: 4 },
-      { id: "quick-actions", type: "quick-actions", visible: true, order: 5 },
-    ],
     groups: {},
   };
 }
 
 function navPrefs() {
-  const defaults = defaultNavPrefs();
-  const raw = state.navPrefs || {};
-  return {
-    ...defaults,
-    ...raw,
-    header_modules: Array.isArray(raw.header_modules) ? raw.header_modules : defaults.header_modules,
-    groups: raw.groups || {},
-  };
-}
-
-function navModuleVisible(type) {
-  const prefs = navPrefs();
-  if (type === "datetime" && !prefs.show_datetime) return false;
-  if (type === "weather-text" && !prefs.show_weather) return false;
-  if (type === "search" && !prefs.show_search) return false;
-  const modules = navPrefs().header_modules || [];
-  const item = modules.find((module) => module.type === type);
-  return item ? item.visible !== false : true;
-}
-
-function searchEngineUrl(query) {
-  const q = encodeURIComponent(query);
-  const engines = {
-    google: `https://www.google.com/search?q=${q}`,
-    baidu: `https://www.baidu.com/s?wd=${q}`,
-    bing: `https://www.bing.com/search?q=${q}`,
-    duckduckgo: `https://duckduckgo.com/?q=${q}`,
-  };
-  return engines[navPrefs().search_engine] || engines.google;
+  return { ...defaultNavPrefs(), ...(state.navPrefs || {}), groups: (state.navPrefs && state.navPrefs.groups) || {} };
 }
 
 function navGroupPrefs(group) {
@@ -1031,7 +983,7 @@ function render() {
       </aside>
       <main class="content">
         ${
-          ["dashboard", "containers", "images", "volumes", "compose"].includes(state.tab)
+          ["containers", "images", "volumes", "compose"].includes(state.tab)
             ? ""
             : `<div class="topbar">
                 <div>
@@ -1093,47 +1045,25 @@ function renderCurrent() {
 function renderDashboard() {
   const prefs = navPrefs();
   return `
-    <section class="nav-home nav-pro easy-panel-shell easy-panel-${h(prefs.background_effect)} nav-width-${h(prefs.layout_width)} nav-density-${h(prefs.density)} nav-style-${h(prefs.card_style)} nav-display-${h(prefs.display_mode)}" style="--nav-bg:${h(prefs.background)}">
-      <div class="easy-panel-sky"></div>
-      <header class="easy-panel-header nav-pro-hero">
-        ${navModuleVisible("logo") ? `<div class="easy-panel-brand"><span class="easy-panel-logo">DP</span><div><strong>${h(prefs.title)}</strong><small>${h(prefs.subtitle)}</small></div></div>` : ""}
-        <div class="easy-panel-header-modules">
-          ${navModuleVisible("datetime") ? `<div class="easy-panel-chip"><strong>${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}</strong><small>${new Date().toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "long" })}</small></div>` : ""}
-          ${navModuleVisible("weather-text") ? `<div class="easy-panel-chip"><strong>${prefs.weather_location ? h(prefs.weather_location) : "天气"}</strong><small>${prefs.weather_location ? "等待接入天气服务" : "未设置城市"}</small></div>` : ""}
-          ${navModuleVisible("quick-actions") ? `<div class="easy-panel-actions"><button data-action="nav-edit-toggle">${state.navEditMode ? "退出编辑" : "调整布局"}</button><button data-action="nav-settings-open">设置</button></div>` : ""}
+    <section class="nav-home nav-pro nav-width-${h(prefs.layout_width)} nav-density-${h(prefs.density)} nav-style-${h(prefs.card_style)}" style="--nav-bg:${h(prefs.background)}">
+      <div class="nav-pro-hero">
+        <div>
+          <span>DockPilot Navigation</span>
+          <h2>${h(prefs.title)}</h2>
+          <p>${h(prefs.subtitle)}</p>
         </div>
-      </header>
-      ${navModuleVisible("search") && prefs.show_search ? renderEasyPanelSearch() : ""}
-      ${navModuleVisible("ai-chat") ? renderNavAiCommand() : ""}
+        <div class="nav-pro-actions">
+          ${prefs.show_search ? `<input id="navSearch" value="${h(state.navSearch)}" placeholder="搜索服务、链接或描述" />` : ""}
+          <button data-action="nav-settings-open">外观设置</button>
+          <button class="primary" data-action="card-add" data-group="Docker">添加入口</button>
+        </div>
+      </div>
       ${renderDashboardWidgets()}
       ${renderCards()}
       ${renderNavSettingsModal()}
       ${renderCardContextMenu()}
       ${renderCardModal()}
     </section>
-  `;
-}
-
-function renderEasyPanelSearch() {
-  const prefs = navPrefs();
-  return `
-    <form id="navSearchForm" class="easy-panel-search">
-      <span>${h({ google: "G", baidu: "百", bing: "B", duckduckgo: "D" }[prefs.search_engine] || "G")}</span>
-      <input id="navSearch" value="${h(state.navSearch)}" placeholder="搜索服务、链接或直接输入关键词" />
-      <button type="submit">搜索</button>
-      <button type="button" data-action="nav-random-card">随机</button>
-    </form>
-  `;
-}
-
-function renderNavAiCommand() {
-  const prefs = navPrefs();
-  return `
-    <div class="nav-ai-command">
-      <span>AI</span>
-      <input placeholder="${prefs.ai_enabled ? "输入指令，后续可接入 AI 助手" : "AI 助手未启用，可在设置中开启"}" disabled />
-      <button data-action="nav-settings-open" data-tab="ai">配置</button>
-    </div>
   `;
 }
 
@@ -1145,10 +1075,10 @@ function renderDashboardWidgets() {
     <section class="dashboard-widget-panel nav-section">
       <div class="panel-head">
         <div>
-          <h3>状态模块</h3>
-          <span class="muted">类似 Easy Panel 顶部模块，可隐藏或添加 NAS 监控卡片。</span>
+          <h3>状态小卡片</h3>
+          <span class="muted">可自定义显示主机状态、Docker 状态或容器监控。</span>
         </div>
-        <form id="dashboardWidgetForm" class="widget-form ${state.navEditMode ? "" : "hidden-input"}">
+        <form id="dashboardWidgetForm" class="widget-form">
           <input name="title" placeholder="小卡片标题" />
           <select name="type">
             <option value="host">物理机运行状态</option>
@@ -1170,7 +1100,7 @@ function renderDashboardWidgets() {
                       <strong>${h(info.value)}</strong>
                       <small>${h(info.detail)}</small>
                     </div>
-                    ${state.navEditMode ? `<button data-action="dashboard-widget-hide" data-id="${h(widget.id)}">隐藏</button>` : ""}
+                    <button data-action="dashboard-widget-hide" data-id="${h(widget.id)}">隐藏</button>
                   </article>
                 `;
               })
@@ -1205,7 +1135,7 @@ function renderCards() {
                   <h3>${h(group)}</h3>
                   ${prefs.show_group_count ? `<span>${cards.length} 个入口</span>` : ""}
                 </div>
-                <div class="bookmark-group-tools ${state.navEditMode ? "" : "hidden-input"}">
+                <div class="bookmark-group-tools">
                   <button class="bookmark-round" title="折叠/展开" data-action="nav-group-collapse" data-group="${h(group)}">${navGroupPrefs(group).collapsed ? "▸" : "▾"}</button>
                   <input type="color" title="分组颜色" data-action="nav-group-color" data-group="${h(group)}" value="${h(navGroupPrefs(group).color || "#2563eb")}" />
                   <button class="bookmark-round" title="隐藏分组" data-action="nav-group-hide" data-group="${h(group)}">－</button>
@@ -1241,79 +1171,46 @@ function renderHiddenNavGroups() {
 function renderNavSettingsModal() {
   if (!state.navSettingsOpen) return "";
   const prefs = navPrefs();
-  const tabs = [
-    ["global", "全局设置"],
-    ["appearance", "外观样式"],
-    ["search", "搜索引擎"],
-    ["ai", "AI 助手"],
-    ["icons", "图标库"],
-    ["backup", "备份恢复"],
-  ];
   return `
     <div class="card-modal-backdrop" data-action="nav-settings-close">
       <form id="navSettingsForm" class="card-modal nav-settings-modal">
         <div class="card-modal-head">
-          <div>
-            <h3>设置面板</h3>
-            <span>${state.cards.length} 个书签 · ${cardGroups().length} 个分类</span>
-          </div>
+          <h3>导航外观设置</h3>
           <button type="button" data-action="nav-settings-close">×</button>
         </div>
-        <div class="card-modal-body nav-settings-layout">
-          <aside class="nav-settings-tabs">
-            ${tabs.map(([id, label]) => `<button type="button" class="${state.navSettingsTab === id ? "active" : ""}" data-action="nav-settings-tab" data-tab="${h(id)}">${h(label)}</button>`).join("")}
-          </aside>
-          <div class="nav-settings-content">
-            ${renderNavSettingsPane(prefs)}
+        <div class="card-modal-body">
+          <div class="card-modal-grid">
+            <label class="field wide"><span>页面标题</span><input name="title" value="${h(prefs.title)}" /></label>
+            <label class="field wide"><span>副标题</span><input name="subtitle" value="${h(prefs.subtitle)}" /></label>
+            <label class="field"><span>背景颜色</span><input name="background" type="color" value="${h(prefs.background)}" /></label>
+            <label class="field"><span>页面宽度</span><select name="layout_width">
+              <option value="compact" ${prefs.layout_width === "compact" ? "selected" : ""}>紧凑</option>
+              <option value="standard" ${prefs.layout_width === "standard" ? "selected" : ""}>标准</option>
+              <option value="wide" ${prefs.layout_width === "wide" ? "selected" : ""}>宽屏</option>
+            </select></label>
+            <label class="field"><span>卡片密度</span><select name="density">
+              <option value="compact" ${prefs.density === "compact" ? "selected" : ""}>紧凑</option>
+              <option value="comfortable" ${prefs.density === "comfortable" ? "selected" : ""}>舒适</option>
+              <option value="spacious" ${prefs.density === "spacious" ? "selected" : ""}>宽松</option>
+            </select></label>
+            <label class="field"><span>整体卡片样式</span><select name="card_style">
+              <option value="professional" ${prefs.card_style === "professional" ? "selected" : ""}>专业</option>
+              <option value="soft" ${prefs.card_style === "soft" ? "selected" : ""}>柔和</option>
+              <option value="outline" ${prefs.card_style === "outline" ? "selected" : ""}>描边</option>
+              <option value="glass" ${prefs.card_style === "glass" ? "selected" : ""}>玻璃</option>
+            </select></label>
+          </div>
+          <div class="card-modal-options">
+            <label class="check-option"><input name="show_search" type="checkbox" ${prefs.show_search ? "checked" : ""} />显示搜索</label>
+            <label class="check-option"><input name="show_status" type="checkbox" ${prefs.show_status ? "checked" : ""} />显示状态点</label>
+            <label class="check-option"><input name="show_group_count" type="checkbox" ${prefs.show_group_count ? "checked" : ""} />显示分组数量</label>
           </div>
         </div>
         <div class="card-modal-foot">
           <button type="button" data-action="nav-settings-close">取消</button>
-          <button class="primary" type="submit">保存设置</button>
+          <button class="primary" type="submit">保存外观</button>
         </div>
       </form>
-    </div>
-  `;
-}
-
-function renderNavSettingsPane(prefs) {
-  const pane = state.navSettingsTab;
-  if (pane === "appearance") {
-    return `
-      <div class="card-modal-grid">
-        <label class="field"><span>主题</span><select name="theme"><option value="light" ${prefs.theme === "light" ? "selected" : ""}>浅色</option><option value="dark" ${prefs.theme === "dark" ? "selected" : ""}>深色</option><option value="system" ${prefs.theme === "system" ? "selected" : ""}>跟随系统</option></select></label>
-        <label class="field"><span>背景效果</span><select name="background_effect"><option value="aurora" ${prefs.background_effect === "aurora" ? "selected" : ""}>极光</option><option value="gradient" ${prefs.background_effect === "gradient" ? "selected" : ""}>渐变</option><option value="grid" ${prefs.background_effect === "grid" ? "selected" : ""}>网格</option><option value="particles" ${prefs.background_effect === "particles" ? "selected" : ""}>粒子</option><option value="none" ${prefs.background_effect === "none" ? "selected" : ""}>关闭</option></select></label>
-        <label class="field"><span>背景颜色</span><input name="background" type="color" value="${h(prefs.background)}" /></label>
-        <label class="field"><span>布局模式</span><select name="display_mode"><option value="grid" ${prefs.display_mode === "grid" ? "selected" : ""}>传统网格</option><option value="compact" ${prefs.display_mode === "compact" ? "selected" : ""}>紧凑</option><option value="nebula" ${prefs.display_mode === "nebula" ? "selected" : ""}>蜂窝星云</option></select></label>
-        <label class="field"><span>页面宽度</span><select name="layout_width"><option value="compact" ${prefs.layout_width === "compact" ? "selected" : ""}>紧凑</option><option value="standard" ${prefs.layout_width === "standard" ? "selected" : ""}>标准</option><option value="wide" ${prefs.layout_width === "wide" ? "selected" : ""}>宽屏</option></select></label>
-        <label class="field"><span>卡片密度</span><select name="density"><option value="compact" ${prefs.density === "compact" ? "selected" : ""}>紧凑</option><option value="comfortable" ${prefs.density === "comfortable" ? "selected" : ""}>舒适</option><option value="spacious" ${prefs.density === "spacious" ? "selected" : ""}>宽松</option></select></label>
-        <label class="field"><span>卡片样式</span><select name="card_style"><option value="glass" ${prefs.card_style === "glass" ? "selected" : ""}>玻璃</option><option value="professional" ${prefs.card_style === "professional" ? "selected" : ""}>专业</option><option value="soft" ${prefs.card_style === "soft" ? "selected" : ""}>柔和</option><option value="outline" ${prefs.card_style === "outline" ? "selected" : ""}>描边</option></select></label>
-      </div>
-    `;
-  }
-  if (pane === "search") {
-    return `<div class="card-modal-grid"><label class="field"><span>搜索引擎</span><select name="search_engine"><option value="google" ${prefs.search_engine === "google" ? "selected" : ""}>Google</option><option value="baidu" ${prefs.search_engine === "baidu" ? "selected" : ""}>百度</option><option value="bing" ${prefs.search_engine === "bing" ? "selected" : ""}>Bing</option><option value="duckduckgo" ${prefs.search_engine === "duckduckgo" ? "selected" : ""}>DuckDuckGo</option></select></label><label class="check-option"><input name="show_search" type="checkbox" ${prefs.show_search ? "checked" : ""} />显示搜索栏</label></div>`;
-  }
-  if (pane === "ai") {
-    return `<div class="card-modal-options"><label class="check-option"><input name="ai_enabled" type="checkbox" ${prefs.ai_enabled ? "checked" : ""} />启用 AI 助手入口</label><label class="check-option"><input name="ai_protection" type="checkbox" ${prefs.ai_protection ? "checked" : ""} />AI 聊天需要登录保护</label><p class="muted">这里先整合 Easy Panel 的首页 AI 命令栏入口，实际模型配置仍使用 DockPilot 系统设置里的 AI 兼容接口。</p></div>`;
-  }
-  if (pane === "icons") {
-    return `<div class="card-modal-grid"><label class="field wide"><span>Iconfont Symbol 地址</span><input name="iconfont_url" value="${h(prefs.iconfont_url)}" placeholder="//at.alicdn.com/t/c/font_xxx.js" /></label><p class="muted">卡片仍支持上传自定义图标；这里用于后续统一加载自定义图标库。</p></div>`;
-  }
-  if (pane === "backup") {
-    return `<div class="nav-backup-panel"><button type="button" data-action="nav-backup-export">导出首页配置</button><button type="button" data-action="nav-backup-copy">复制 JSON</button><p class="muted">导出内容包含导航外观、分组偏好和当前书签，不包含密码。</p></div>`;
-  }
-  return `
-    <div class="card-modal-grid">
-      <label class="field wide"><span>页面标题</span><input name="title" value="${h(prefs.title)}" /></label>
-      <label class="field wide"><span>副标题</span><input name="subtitle" value="${h(prefs.subtitle)}" /></label>
-      <label class="field"><span>天气城市</span><input name="weather_location" value="${h(prefs.weather_location)}" placeholder="例如 Shenzhen" /></label>
-    </div>
-    <div class="card-modal-options">
-      <label class="check-option"><input name="show_status" type="checkbox" ${prefs.show_status ? "checked" : ""} />显示状态点</label>
-      <label class="check-option"><input name="show_group_count" type="checkbox" ${prefs.show_group_count ? "checked" : ""} />显示分组数量</label>
-      <label class="check-option"><input name="show_datetime" type="checkbox" ${prefs.show_datetime ? "checked" : ""} />显示时间模块</label>
-      <label class="check-option"><input name="show_weather" type="checkbox" ${prefs.show_weather ? "checked" : ""} />显示天气模块</label>
     </div>
   `;
 }
@@ -2478,42 +2375,21 @@ document.addEventListener("submit", async (event) => {
     }
     if (form.id === "navSettingsForm") {
       const data = Object.fromEntries(new FormData(form));
-      const current = navPrefs();
       await saveNavPrefs({
-        ...current,
-        title: data.title ?? current.title,
-        subtitle: data.subtitle ?? current.subtitle,
-        weather_location: data.weather_location ?? current.weather_location,
-        background: data.background || current.background,
-        theme: data.theme || current.theme,
-        background_effect: data.background_effect || current.background_effect,
-        display_mode: data.display_mode || current.display_mode,
-        layout_width: data.layout_width || current.layout_width,
-        density: data.density || current.density,
-        card_style: data.card_style || current.card_style,
-        search_engine: data.search_engine || current.search_engine,
-        iconfont_url: data.iconfont_url ?? current.iconfont_url,
-        ai_enabled: data.ai_enabled === "on" || (state.navSettingsTab !== "ai" && current.ai_enabled),
-        ai_protection: data.ai_protection === "on" || (state.navSettingsTab !== "ai" && current.ai_protection),
-        show_search: data.show_search === "on" || (state.navSettingsTab !== "search" && current.show_search),
-        show_status: data.show_status === "on" || (state.navSettingsTab !== "global" && current.show_status),
-        show_group_count: data.show_group_count === "on" || (state.navSettingsTab !== "global" && current.show_group_count),
-        show_datetime: data.show_datetime === "on" || (state.navSettingsTab !== "global" && current.show_datetime),
-        show_weather: data.show_weather === "on" || (state.navSettingsTab !== "global" && current.show_weather),
+        ...navPrefs(),
+        title: data.title || "私人导航",
+        subtitle: data.subtitle || "",
+        background: data.background || "#eef5fb",
+        layout_width: data.layout_width || "wide",
+        density: data.density || "comfortable",
+        card_style: data.card_style || "professional",
+        show_search: data.show_search === "on",
+        show_status: data.show_status === "on",
+        show_group_count: data.show_group_count === "on",
       });
       state.navSettingsOpen = false;
       state.error = "导航外观已保存。";
       render();
-    }
-    if (form.id === "navSearchForm") {
-      const query = state.navSearch.trim();
-      if (!query) return;
-      const localMatches = state.cards.filter((card) => [card.title, card.description, card.url, card.internal_url].join(" ").toLowerCase().includes(query.toLowerCase()));
-      if (localMatches.length === 1) {
-        window.open(cardDefaultUrl(localMatches[0]), "_blank", "noreferrer");
-      } else if (!localMatches.length) {
-        window.open(searchEngineUrl(query), "_blank", "noreferrer");
-      }
     }
     if (form.id === "composeNewForm") {
       const data = Object.fromEntries(new FormData(form));
@@ -2685,27 +2561,7 @@ document.addEventListener("click", async (event) => {
       render();
     }
     if (action === "nav-settings-open") {
-      state.navSettingsTab = button.dataset.tab || state.navSettingsTab || "global";
       state.navSettingsOpen = true;
-      render();
-    }
-    if (action === "nav-settings-tab") {
-      state.navSettingsTab = button.dataset.tab || "global";
-      render();
-    }
-    if (action === "nav-edit-toggle") {
-      state.navEditMode = !state.navEditMode;
-      render();
-    }
-    if (action === "nav-random-card") {
-      const cards = state.cards.filter((card) => cardDefaultUrl(card));
-      const card = cards[Math.floor(Math.random() * cards.length)];
-      if (card) window.open(cardDefaultUrl(card), "_blank", "noreferrer");
-    }
-    if (action === "nav-backup-export" || action === "nav-backup-copy") {
-      const payload = JSON.stringify({ prefs: navPrefs(), cards: state.cards }, null, 2);
-      if (navigator.clipboard) await navigator.clipboard.writeText(payload);
-      state.error = action === "nav-backup-export" ? "首页配置 JSON 已复制，可保存为备份文件。" : "首页配置已复制。";
       render();
     }
     if (action === "nav-settings-close") {

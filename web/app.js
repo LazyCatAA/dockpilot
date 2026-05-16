@@ -12,6 +12,7 @@ const state = {
   containers: [],
   containerBackups: [],
   images: { items: [], query: "", remoteQuery: "", searchResults: [], pullOutput: "", proxy: "", registryMirrors: [], networkProxy: "", proxyTest: "", proxyOk: null, pullMode: "proxy", configOpen: false },
+  volumes: { items: [], backups: [], query: "", backupOpen: false },
   imagePullJob: null,
   containerView: "card",
   containerFilter: "all",
@@ -34,6 +35,7 @@ const tabs = [
   ["dashboard", "总览"],
   ["containers", "容器"],
   ["images", "镜像"],
+  ["volumes", "卷"],
   ["compose", "Compose"],
   ["files", "文件"],
   ["settings", "设置"],
@@ -41,7 +43,7 @@ const tabs = [
 
 const navGroups = [
   { title: "发现", items: [["dashboard", "首页导航", "⌂"]] },
-  { title: "Docker", items: [["containers", "容器管理", "▦"], ["images", "镜像库", "◉"], ["compose", "Compose", "◇"]] },
+  { title: "Docker", items: [["containers", "容器管理", "▦"], ["images", "镜像库", "◉"], ["volumes", "Docker 卷", "▣"], ["compose", "Compose", "◇"]] },
   { title: "系统", items: [["files", "文件管理", "≡"], ["settings", "系统设置", "⚙"]] },
 ];
 
@@ -395,6 +397,54 @@ function filteredImages() {
   });
 }
 
+function volumeName(volume) {
+  return String(volume.Name || "");
+}
+
+function volumeCreatedText(volume) {
+  const value = volume.CreatedAt || "";
+  if (!value) return "-";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value).slice(0, 10) : date.toLocaleDateString("zh-CN");
+}
+
+function volumeSize(volume) {
+  return Number(volume.UsageData?.Size || 0);
+}
+
+function volumeRefCount(volume) {
+  return Number(volume.UsageData?.RefCount ?? volume.DockPilot?.container_count ?? 0);
+}
+
+function volumeTone(volume) {
+  return volume.DockPilot?.used || volumeRefCount(volume) > 0 ? "used" : "unused";
+}
+
+function volumeUsageLabel(volume) {
+  return volumeTone(volume) === "used" ? "使用中" : "未使用";
+}
+
+function latestVolumeBackup(volumeNameValue) {
+  return (state.volumes.backups || []).find((backup) => backup.volume_name === volumeNameValue) || null;
+}
+
+function filteredVolumes() {
+  const query = state.volumes.query.trim().toLowerCase();
+  if (!query) return state.volumes.items;
+  return state.volumes.items.filter((volume) => {
+    const haystack = [
+      volume.Name,
+      volume.Driver,
+      volume.Mountpoint,
+      ...(volume.Labels ? Object.entries(volume.Labels).flat() : []),
+      ...((volume.DockPilot?.containers || [])),
+    ]
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(query);
+  });
+}
+
 function cardGroups() {
   const groups = state.cards.reduce((acc, card) => {
     const key = card.group_name || "应用";
@@ -601,6 +651,7 @@ async function refreshCurrent() {
     if (state.tab === "dashboard") await loadDashboard();
     if (state.tab === "containers") await loadContainers();
     if (state.tab === "images") await loadImages();
+    if (state.tab === "volumes") await loadVolumes();
     if (state.tab === "compose") await loadCompose();
     if (state.tab === "files") await loadFiles();
     if (state.tab === "settings") await loadSettings();
@@ -633,6 +684,12 @@ async function loadImages() {
   state.images.registryMirrors = data.registry_mirrors || (state.images.proxy ? [state.images.proxy] : []);
   state.images.networkProxy = data.network_proxy || state.images.networkProxy || "";
   if (state.images.networkProxy) scheduleImageProxyTest();
+}
+
+async function loadVolumes() {
+  const data = await api("/api/docker/volumes");
+  state.volumes.items = data.volumes || [];
+  state.volumes.backups = data.backups || [];
 }
 
 function scheduleImageProxyTest() {
@@ -844,7 +901,7 @@ function render() {
       </aside>
       <main class="content">
         ${
-          ["containers", "images", "compose"].includes(state.tab)
+          ["containers", "images", "volumes", "compose"].includes(state.tab)
             ? ""
             : `<div class="topbar">
                 <div>
@@ -896,6 +953,7 @@ function renderCurrent() {
   if (state.tab === "dashboard") return renderDashboard();
   if (state.tab === "containers") return renderContainers();
   if (state.tab === "images") return renderImages();
+  if (state.tab === "volumes") return renderVolumes();
   if (state.tab === "compose") return renderCompose();
   if (state.tab === "files") return renderFiles();
   if (state.tab === "settings") return renderSettings();
@@ -1487,6 +1545,148 @@ function renderImages() {
               ${renderImageGroup("悬空镜像", "没有有效标签的镜像，通常来自构建或更新残留。", danglingImages, "dangling")}
             </div>`
           : `<div class="empty">没有匹配的镜像。</div>`
+      }
+    </section>
+  `;
+}
+
+function renderVolumeGroup(title, note, items, tone) {
+  if (!items.length) return "";
+  return `
+    <section class="image-group-section volume-group ${h(tone)}">
+      <div class="image-group-head">
+        <div>
+          <h4>${h(title)}</h4>
+          <span>${h(note)}</span>
+        </div>
+        <b>${items.length}</b>
+      </div>
+      <div class="image-grid volume-grid">${items.map(renderVolumeCard).join("")}</div>
+    </section>
+  `;
+}
+
+function renderVolumeCard(volume) {
+  const name = volumeName(volume);
+  const tone = volumeTone(volume);
+  const backup = latestVolumeBackup(name);
+  const containers = volume.DockPilot?.containers || [];
+  return `
+    <article class="image-card-shell volume-card-shell ${h(tone)}">
+      <div class="image-card-top">
+        <div class="image-mark volume-mark" aria-hidden="true"><span>卷</span></div>
+        <div class="image-info">
+          <div class="image-title-row">
+            <strong title="${h(name)}">${h(name)}</strong>
+            <span class="image-status-dot ${h(tone)}"></span>
+          </div>
+          <small title="${h(volume.Mountpoint || "未记录挂载点")}">${h(volume.Mountpoint || "未记录挂载点")}</small>
+        </div>
+      </div>
+      <div class="image-facts volume-facts">
+        <span><b>${fmtBytes(volumeSize(volume))}</b><small>大小</small></span>
+        <span><b>${h(String(volumeRefCount(volume)))}</b><small>引用</small></span>
+        <span><b>${h(volume.Driver || "local")}</b><small>驱动</small></span>
+        <span><b>${h(volumeCreatedText(volume))}</b><small>创建</small></span>
+      </div>
+      <div class="volume-containers" title="${h(containers.join(", ") || "当前没有容器引用")}">
+        ${containers.length ? h(containers.slice(0, 3).join("、")) : "当前没有容器引用"}
+      </div>
+      <div class="image-card-bottom volume-card-bottom">
+        <span class="image-usage ${h(tone)}">${volumeUsageLabel(volume)}</span>
+        <code>${backup ? `最近备份 ${h(backup.created_at || backup.name)}` : "还没有备份"}</code>
+        <div class="image-card-actions volume-card-actions">
+          <button data-action="volume-backup" data-name="${h(name)}">备份</button>
+          <button data-action="volume-restore" data-name="${h(name)}" ${backup ? "" : "disabled"}>恢复</button>
+          <button class="danger" data-action="volume-remove" data-name="${h(name)}" ${tone === "used" ? "disabled" : ""}>删除</button>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderVolumeBackups() {
+  if (!state.volumes.backupOpen) return "";
+  return `
+    <section class="image-config-panel volume-backup-panel">
+      <section class="image-tool-card accent-purple">
+        <h4>卷备份记录</h4>
+        ${
+          state.volumes.backups.length
+            ? `<div class="backup-list volume-backup-list">${state.volumes.backups
+                .map(
+                  (backup) => `
+                  <div class="backup-item">
+                    <div class="backup-main">
+                      <strong>${h(backup.volume_name || backup.name)}</strong>
+                      <span>${h(backup.name)}</span>
+                      <small>${h(backup.created_at || "-")} · ${fmtBytes(backup.size || 0)}</small>
+                    </div>
+                    <div class="backup-actions">
+                      <button data-action="volume-restore-backup" data-name="${h(backup.volume_name || "")}" data-backup="${h(backup.name)}">恢复</button>
+                      <button class="danger" data-action="volume-backup-delete" data-backup="${h(backup.name)}">删除</button>
+                    </div>
+                  </div>
+                `
+                )
+                .join("")}</div>`
+            : `<div class="empty">还没有卷备份。</div>`
+        }
+      </section>
+    </section>
+  `;
+}
+
+function renderVolumes() {
+  const volumes = filteredVolumes();
+  const usedVolumes = volumes.filter((volume) => volumeTone(volume) === "used");
+  const unusedVolumes = volumes.filter((volume) => volumeTone(volume) !== "used");
+  const totalSize = state.volumes.items.reduce((sum, volume) => sum + volumeSize(volume), 0);
+  const totalCount = Math.max(state.volumes.items.length, 1);
+  const usedCount = state.volumes.items.filter((volume) => volumeTone(volume) === "used").length;
+  const unusedCount = Math.max(0, state.volumes.items.length - usedCount);
+  const usedPct = (usedCount / totalCount) * 100;
+  const unusedPct = (unusedCount / totalCount) * 100;
+  return `
+    <section class="image-library volume-library">
+      <div class="panel-head">
+        <div>
+          <h3>Docker 卷</h3>
+          <span class="muted">按镜像库模式管理 Docker 数据卷，支持搜索、备份、恢复和安全清理。</span>
+        </div>
+        <div class="top-actions">
+          <button data-action="volume-backups-toggle">备份记录</button>
+          <button data-action="volume-prune">清理未使用卷</button>
+        </div>
+      </div>
+      <div class="image-command-bar volume-command-bar">
+        <label>
+          <input id="volumeSearch" value="${h(state.volumes.query)}" placeholder="搜索卷名、挂载点或关联容器" />
+        </label>
+        <div class="image-config-status">
+          <i class="ok"></i>
+          <span>使用中的卷默认禁止删除</span>
+        </div>
+      </div>
+      ${renderVolumeBackups()}
+      <div class="image-summary-bar volume-summary-bar">
+        <div><strong class="blue">${state.volumes.items.length}</strong><span>总卷数</span></div>
+        <div><strong class="green">${usedCount}</strong><span>使用中</span></div>
+        <div><strong class="orange">${unusedCount}</strong><span>未使用</span></div>
+        <div><strong class="purple">${fmtBytes(totalSize)}</strong><span>占用空间</span></div>
+        <div><strong class="slate">${state.volumes.backups.length}</strong><span>备份记录</span></div>
+        <div class="image-ratio-track" title="使用中 / 未使用比例">
+          <i class="used" style="width:${usedPct}%"></i>
+          <i class="dangling" style="width:${unusedPct}%"></i>
+        </div>
+      </div>
+      ${
+        volumes.length
+          ? `<div class="image-groups volume-groups">
+              ${renderVolumeGroup("使用中", "被容器挂载的卷，删除前需要先处理相关容器。", usedVolumes, "used")}
+              ${renderVolumeGroup("未使用", "当前没有容器引用，适合检查后备份或清理。", unusedVolumes, "unused")}
+            </div>`
+          : `<div class="empty">没有匹配的卷。</div>`
       }
     </section>
   `;
@@ -2217,6 +2417,54 @@ document.addEventListener("click", async (event) => {
       state.error = `已提交拉取：${button.dataset.image}`;
       await startImagePull(button.dataset.image, state.images.pullMode !== "direct");
     }
+    if (action === "volume-backups-toggle") {
+      state.volumes.backupOpen = !state.volumes.backupOpen;
+      render();
+    }
+    if (action === "volume-prune") {
+      if (confirm("确定清理全部未使用 Docker 卷吗？建议先确认不再需要这些数据。")) {
+        const data = await api("/api/docker/volumes/prune", { method: "POST" });
+        state.error = `清理完成，释放 ${fmtBytes(data.SpaceReclaimed || 0)}。`;
+        await refreshCurrent();
+      }
+    }
+    if (action === "volume-remove") {
+      if (confirm(`确定删除卷 ${button.dataset.name} 吗？此操作会删除卷内数据。`)) {
+        await api(`/api/docker/volumes/${encodeURIComponent(button.dataset.name)}/remove`, { method: "DELETE" });
+        state.error = "卷已删除。";
+        await refreshCurrent();
+      }
+    }
+    if (action === "volume-backup") {
+      const data = await api(`/api/docker/volumes/${encodeURIComponent(button.dataset.name)}/backup`, { method: "POST" });
+      state.error = `卷备份已创建：${data.backup.name}`;
+      await refreshCurrent();
+    }
+    if (action === "volume-restore" || action === "volume-restore-backup") {
+      const sourceName = button.dataset.name || "volume";
+      const backupName = button.dataset.backup || latestVolumeBackup(sourceName)?.name || "";
+      if (!backupName) {
+        state.error = "这个卷还没有可恢复的备份。";
+        render();
+      } else {
+        const nextName = prompt("恢复为新卷名", `${sourceName}-restored`);
+        if (nextName && nextName.trim()) {
+          await api(`/api/docker/volumes/${encodeURIComponent(sourceName)}/restore-new`, {
+            method: "POST",
+            body: { backup: backupName, name: nextName.trim() },
+          });
+          state.error = `已恢复为新卷：${nextName.trim()}`;
+          await refreshCurrent();
+        }
+      }
+    }
+    if (action === "volume-backup-delete") {
+      if (confirm("确定删除这个卷备份吗？")) {
+        await api(`/api/docker/volume-backups/${encodeURIComponent(button.dataset.backup)}/delete`, { method: "DELETE" });
+        state.error = "卷备份已删除。";
+        await refreshCurrent();
+      }
+    }
     if (action === "compose-select") {
       await selectCompose(button.dataset.path);
       render();
@@ -2528,6 +2776,10 @@ document.addEventListener("input", (event) => {
   }
   if (event.target.id === "imageRemoteSearch") {
     state.images.remoteQuery = event.target.value;
+  }
+  if (event.target.id === "volumeSearch") {
+    state.volumes.query = event.target.value;
+    render();
   }
 });
 

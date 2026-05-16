@@ -111,6 +111,9 @@ def main() -> int:
         assert_true("update_check_error" in app_js, "更新检测失败时不应静默覆盖更新状态")
         assert_true("containerImageName" in app_js, "容器卡片应优先显示解析后的镜像名")
         assert_true("镜像库" in app_js, "前端应包含镜像库页面")
+        assert_true("Docker 卷" in app_js, "前端应包含 Docker 卷页面")
+        assert_true("volume-backup" in app_js, "Docker 卷应支持备份")
+        assert_true("volume-prune" in app_js, "Docker 卷应支持清理未使用卷")
         assert_true("imagePullForm" in app_js, "镜像库应支持拉取镜像")
         assert_true("imageRemoteSearchForm" in app_js, "镜像库应支持远程搜索镜像")
         assert_true("pull_mode" in app_js, "镜像库拉取镜像应可选择下载方式")
@@ -142,6 +145,8 @@ def main() -> int:
         assert_true("image-status-dot" in app_js, "镜像卡片应提供状态圆点")
         assert_true("image-card-shell" in styles_css, "镜像库卡片应使用专业化卡片壳层")
         assert_true("image-card-actions" in styles_css, "镜像库卡片操作区应紧凑收敛")
+        assert_true("volume-card-shell" in styles_css, "Docker 卷应复用镜像库卡片模式")
+        assert_true("volume-summary-bar" in app_js, "Docker 卷应提供镜像库模式的统计条")
         assert_true("backup-actions" in styles_css, "容器备份应提供恢复和删除操作样式")
         assert_true("bookmark-card" in styles_css, "书签卡片应提供复刻样式")
         assert_true("nav-hero" in styles_css, "首页导航应使用重新设计的导航头部")
@@ -160,7 +165,7 @@ def main() -> int:
         assert_true("compose-project-card:nth-child(3n + 2)" not in styles_css, "Compose 项目卡片不应再使用杂色分层")
         assert_true("compose-backup-modal" in styles_css, "Compose 备份恢复应使用选择弹窗")
         assert_true("compose-backup-restore-new" in app_js, "Compose 备份应支持恢复为新项目")
-        assert_true('["containers", "images", "compose"].includes(state.tab)' in app_js, "容器、镜像库和 Compose 页面应隐藏顶部用户栏")
+        assert_true('["containers", "images", "volumes", "compose"].includes(state.tab)' in app_js, "容器、镜像库、卷和 Compose 页面应隐藏顶部用户栏")
         _, update_job = client.request("POST", "/api/docker/containers/fake-container/update-job", expect=202)
         job_id = update_job["job"]["id"]
         _, job_state = client.request("GET", f"/api/docker/jobs/{job_id}")
@@ -279,6 +284,11 @@ def main() -> int:
             assert_true("Docker socket not found" in image_status["error"], "无 Docker 环境时镜像库应返回明确错误")
         else:
             assert_true("images" in image_status, "有 Docker 环境时应返回镜像列表")
+        volume_code, volume_status = client.request("GET", "/api/docker/volumes", expect=(200, 502))
+        if volume_code == 502:
+            assert_true("Docker socket not found" in volume_status["error"], "无 Docker 环境时卷管理应返回明确错误")
+        else:
+            assert_true("volumes" in volume_status and "backups" in volume_status, "有 Docker 环境时应返回卷和备份列表")
         _, pref = client.request(
             "POST",
             "/api/docker/containers/fake-container/pref",

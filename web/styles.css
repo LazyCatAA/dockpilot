@@ -2239,6 +2239,78 @@ a {
   font-size: 12px;
 }
 
+.volume-library .image-command-bar {
+  grid-template-columns: minmax(260px, 1fr) auto;
+}
+
+.volume-card-shell {
+  min-height: 158px;
+}
+
+.volume-card-shell.used::before {
+  background: linear-gradient(180deg, #0ea5e9, rgba(14, 165, 233, 0));
+}
+
+.volume-card-shell.unused::before {
+  background: linear-gradient(180deg, #f59e0b, rgba(245, 158, 11, 0));
+}
+
+.volume-mark {
+  background:
+    linear-gradient(135deg, rgba(14, 165, 233, 0.95), rgba(37, 99, 235, 0.95));
+}
+
+.volume-card-shell.unused .volume-mark {
+  background:
+    linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(234, 88, 12, 0.92));
+}
+
+.volume-facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.volume-facts span {
+  display: grid;
+  gap: 1px;
+  padding: 7px 8px;
+  border-radius: 10px;
+  background: rgba(248, 250, 252, 0.92);
+}
+
+.volume-containers {
+  min-width: 0;
+  overflow: hidden;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.volume-card-bottom {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.volume-card-actions {
+  gap: 6px;
+}
+
+.volume-card-actions button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.volume-backup-panel {
+  grid-template-columns: 1fr;
+}
+
+.volume-backup-list {
+  max-height: 260px;
+  overflow: auto;
+}
+
 .image-compact-list {
   display: grid;
   overflow: hidden;

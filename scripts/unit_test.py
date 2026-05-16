@@ -15,6 +15,7 @@ from dockpilot.server import (
     clear_container_backups,
     enrich_containers,
     enrich_images_with_usage,
+    enrich_volumes_with_usage,
     normalize_image_search_query,
     normalize_network_proxy_url,
     normalize_registry_mirrors,
@@ -234,6 +235,15 @@ def test_images_are_marked_used_when_container_references_image_id() -> None:
     assert_true(enriched[1]["DockPilot"]["used"] is False, "未被容器引用的镜像应标记为未使用")
 
 
+def test_volumes_are_marked_used_from_container_mounts() -> None:
+    volumes = [{"Name": "app-data"}, {"Name": "old-cache"}]
+    containers = [{"Names": ["/demo"], "Mounts": [{"Type": "volume", "Name": "app-data"}]}]
+    enriched = enrich_volumes_with_usage(volumes, containers)
+    assert_true(enriched[0]["DockPilot"]["used"] is True, "被容器挂载的卷应标记为使用中")
+    assert_true(enriched[0]["DockPilot"]["containers"] == ["demo"], "卷应记录关联容器名称")
+    assert_true(enriched[1]["DockPilot"]["used"] is False, "未被容器挂载的卷应标记为未使用")
+
+
 def test_remote_image_search_strips_tag_from_full_reference() -> None:
     assert_true(
         normalize_image_search_query("shenxianmq/symedia:latest") == "shenxianmq/symedia",
@@ -335,6 +345,7 @@ def main() -> int:
     test_failed_update_check_should_not_clear_existing_update_state()
     test_container_card_uses_repo_tag_when_summary_image_is_digest()
     test_images_are_marked_used_when_container_references_image_id()
+    test_volumes_are_marked_used_from_container_mounts()
     test_remote_image_search_strips_tag_from_full_reference()
     test_remote_image_search_returns_direct_fallback_for_simple_name()
     test_network_proxy_url_is_normalized_for_lan_proxy()

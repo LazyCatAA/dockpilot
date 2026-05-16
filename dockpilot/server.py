@@ -16,6 +16,7 @@ import socket
 import sqlite3
 import subprocess
 import sys
+import tarfile
 import time
 import threading
 import urllib.error
@@ -178,6 +179,7 @@ class Store:
         (DATA_DIR / "stacks").mkdir(parents=True, exist_ok=True)
         (DATA_DIR / "files").mkdir(parents=True, exist_ok=True)
         (DATA_DIR / "backups" / "containers").mkdir(parents=True, exist_ok=True)
+        (DATA_DIR / "backups" / "volumes").mkdir(parents=True, exist_ok=True)
         with self.connect() as conn:
             conn.executescript(
                 """
@@ -1013,6 +1015,49 @@ class AppHandler(BaseHTTPRequestHandler):
                     }
                 )
                 return
+            if path == "/api/docker/volumes" and self.command == "GET":
+                result = docker.json("GET", "/volumes")
+                containers = docker.json("GET", "/containers/json", query={"all": "1", "size": "0"})
+                volumes = enrich_volumes_with_usage((result or {}).get("Volumes") or [], containers)
+                self.write_json({"volumes": volumes, "backups": list_volume_backups()})
+                return
+            if path == "/api/docker/volumes/prune" and self.command == "POST":
+                status, data, reason = docker.request("POST", "/volumes/prune", timeout=120)
+                if status >= 400:
+                    raise RuntimeError(docker_error_message(data, reason))
+                self.write_json(json.loads(data.decode("utf-8")) if data else {"VolumesDeleted": [], "SpaceReclaimed": 0})
+                return
+            if len(parts) == 5 and parts[:3] == ["api", "docker", "volumes"] and parts[4] == "remove" and self.command == "DELETE":
+                volume_name = urllib.parse.unquote(parts[3])
+                force = self.query_bool("force")
+                status, data, reason = docker.request(
+                    "DELETE",
+                    f"/volumes/{urllib.parse.quote(volume_name, safe='')}",
+                    query={"force": "1" if force else "0"},
+                    timeout=120,
+                )
+                if status >= 400:
+                    raise RuntimeError(docker_error_message(data, reason))
+                self.write_json({"ok": True})
+                return
+            if len(parts) == 5 and parts[:3] == ["api", "docker", "volumes"] and parts[4] == "backup" and self.command == "POST":
+                volume_name = urllib.parse.unquote(parts[3])
+                self.write_json({"backup": create_volume_backup(docker, volume_name)}, status=201)
+                return
+            if len(parts) == 5 and parts[:3] == ["api", "docker", "volumes"] and parts[4] == "restore-new" and self.command == "POST":
+                data = self.read_json()
+                volume_name = urllib.parse.unquote(parts[3])
+                backup_name = str(data.get("backup", "")).strip()
+                target_name = str(data.get("name", "")).strip() or f"{safe_name(volume_name, 'volume')}-restored"
+                self.write_json(restore_volume_backup_new(docker, backup_name, target_name), status=201)
+                return
+            if len(parts) == 5 and parts[:3] == ["api", "docker", "volume-backups"] and parts[4] == "delete" and self.command == "DELETE":
+                backup_name = urllib.parse.unquote(parts[3])
+                target = volume_backup_file_path(backup_name)
+                if target.exists():
+                    target.unlink()
+                self.write_json({"ok": True})
+                return
             if path == "/api/docker/images/search" and self.command == "GET":
                 query = urllib.parse.parse_qs(urllib.parse.urlparse(self.path).query)
                 keyword = query.get("q", [""])[0].strip()
@@ -1663,6 +1708,23 @@ def enrich_images_with_usage(images: list[dict[str, Any]], containers: list[dict
     return images
 
 
+def enrich_volumes_with_usage(volumes: list[dict[str, Any]], containers: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    usage: dict[str, list[str]] = {}
+    for container in containers:
+        container_name = container_key_from_summary(container)
+        for mount in container.get("Mounts") or []:
+            if str(mount.get("Type") or "") != "volume":
+                continue
+            name = str(mount.get("Name") or "")
+            if name:
+                usage.setdefault(name, []).append(container_name)
+    for volume in volumes:
+        name = str(volume.get("Name") or "")
+        attached = sorted(set(usage.get(name, [])))
+        volume["DockPilot"] = {"used": bool(attached), "containers": attached, "container_count": len(attached)}
+    return volumes
+
+
 def enrich_containers(
     containers: list[dict[str, Any]],
     prefs: dict[str, dict[str, Any]],
@@ -1709,6 +1771,80 @@ def backup_dir() -> Path:
     path = DATA_DIR / "backups" / "containers"
     path.mkdir(parents=True, exist_ok=True)
     return path
+
+
+def volume_backup_dir() -> Path:
+    path = DATA_DIR / "backups" / "volumes"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def volume_backup_file_path(name: str) -> Path:
+    clean = Path(name).name
+    if not clean.endswith(".tar.gz"):
+        clean += ".tar.gz"
+    target = (volume_backup_dir() / clean).resolve()
+    if not is_relative_to(target, volume_backup_dir().resolve()):
+        raise ValueError("invalid volume backup name")
+    return target
+
+
+def list_volume_backups() -> list[dict[str, Any]]:
+    backups: list[dict[str, Any]] = []
+    for path in sorted(volume_backup_dir().glob("*.tar.gz"), key=lambda item: item.stat().st_mtime, reverse=True):
+        try:
+            stat = path.stat()
+            parts = path.name.removesuffix(".tar.gz").rsplit("-", 2)
+            volume_name = parts[0] if parts else path.name
+            backups.append(
+                {
+                    "name": path.name,
+                    "volume_name": volume_name,
+                    "created_at": time.strftime("%Y%m%d-%H%M%S", time.localtime(stat.st_mtime)),
+                    "size": stat.st_size,
+                }
+            )
+        except OSError:
+            continue
+    return backups
+
+
+def volume_mountpoint(docker: DockerClient, volume_name: str) -> Path:
+    clean = volume_name.strip()
+    if not clean:
+        raise ValueError("volume name is required")
+    volume = docker.json("GET", f"/volumes/{urllib.parse.quote(clean, safe='')}")
+    mountpoint = Path(str(volume.get("Mountpoint") or "")).resolve()
+    if not mountpoint.exists() or not mountpoint.is_dir():
+        raise ValueError("卷挂载目录不存在，无法备份或恢复。")
+    return mountpoint
+
+
+def create_volume_backup(docker: DockerClient, volume_name: str) -> dict[str, Any]:
+    source = volume_mountpoint(docker, volume_name)
+    created_at = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+    target = volume_backup_file_path(f"{safe_name(volume_name, 'volume')}-{created_at}.tar.gz")
+    with tarfile.open(target, "w:gz") as archive:
+        for child in source.iterdir():
+            archive.add(child, arcname=child.name, recursive=True)
+    return {"name": target.name, "volume_name": volume_name, "created_at": created_at, "size": target.stat().st_size}
+
+
+def restore_volume_backup_new(docker: DockerClient, backup_name: str, volume_name: str) -> dict[str, Any]:
+    backup = volume_backup_file_path(backup_name)
+    if not backup.exists():
+        raise FileNotFoundError("volume backup not found")
+    target_name = safe_name(volume_name, "restored-volume")
+    docker.json("POST", "/volumes/create", body={"Name": target_name})
+    target = volume_mountpoint(docker, target_name)
+    with tarfile.open(backup, "r:gz") as archive:
+        target_root = target.resolve()
+        for member in archive.getmembers():
+            member_path = (target_root / member.name).resolve()
+            if not is_relative_to(member_path, target_root):
+                raise ValueError("备份文件包含不安全路径，已停止恢复。")
+        archive.extractall(target_root)
+    return {"ok": True, "volume": target_name, "backup": backup.name}
 
 
 def backup_file_path(name: str) -> Path:

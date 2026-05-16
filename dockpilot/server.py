@@ -44,8 +44,8 @@ DEFAULT_DASHBOARD_WIDGETS = [
     {"id": "containers", "type": "containers", "title": "容器监控", "visible": True},
 ]
 DEFAULT_NAV_PREFS = {
-    "title": "DockPilot",
-    "subtitle": "为效率而生的 NAS 服务导航",
+    "title": "Easy Panel",
+    "subtitle": "",
     "layout_width": "wide",
     "density": "comfortable",
     "card_style": "glass",

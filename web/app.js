@@ -7,7 +7,7 @@ const state = {
   dashboardWidgets: [],
   navPrefs: null,
   navSettingsOpen: false,
-  navSettingsTab: "global",
+  navSettingsTab: "about",
   navEditMode: false,
   navSearch: "",
   cards: [],
@@ -462,8 +462,8 @@ function filteredVolumes() {
 
 function defaultNavPrefs() {
   return {
-    title: "DockPilot",
-    subtitle: "为效率而生的 NAS 服务导航",
+    title: "Easy Panel",
+    subtitle: "",
     layout_width: "wide",
     density: "comfortable",
     card_style: "glass",
@@ -1020,7 +1020,7 @@ function render() {
     return;
   }
   app.innerHTML = `
-    <div class="layout ${state.sidebarCollapsed ? "sidebar-collapsed" : ""}">
+    <div class="layout ${state.sidebarCollapsed ? "sidebar-collapsed" : ""} ${state.tab === "dashboard" ? "dashboard-layout" : ""}">
       <aside class="sidebar">
         <div class="brand">
           <div class="mark">DP</div>
@@ -1096,13 +1096,13 @@ function renderDashboard() {
     <section class="nav-home nav-pro easy-panel-shell easy-panel-${h(prefs.background_effect)} nav-width-${h(prefs.layout_width)} nav-density-${h(prefs.density)} nav-style-${h(prefs.card_style)} nav-display-${h(prefs.display_mode)}" style="--nav-bg:${h(prefs.background)}">
       <div class="easy-panel-sky"></div>
       <header class="easy-panel-header easy-panel-topbar nav-pro-hero">
-        ${navModuleVisible("logo") ? `<div class="easy-panel-brand"><span class="easy-panel-logo">DP</span><div><strong>${h(prefs.title)}</strong><small>${h(prefs.subtitle)}</small></div></div>` : ""}
+        ${navModuleVisible("logo") ? `<div class="easy-panel-brand"><span class="easy-panel-logo">Easy Panel</span><div><strong>Easy Panel</strong><small>简洁高效的个人导航面板</small></div></div>` : ""}
         <div class="easy-panel-header-modules">
-          ${navModuleVisible("datetime") ? `<div class="easy-panel-chip"><strong>${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}</strong><small>${new Date().toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "long" })}</small></div>` : ""}
-          ${navModuleVisible("weather-text") ? `<div class="easy-panel-chip"><strong>${prefs.weather_location ? h(prefs.weather_location) : "天气"}</strong><small>${prefs.weather_location ? "等待接入天气服务" : "未设置城市"}</small></div>` : ""}
+          ${navModuleVisible("datetime") ? `<div class="easy-panel-time"><strong>${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}</strong><span class="easy-panel-lunar">农历三十</span><small>${new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "numeric", day: "numeric", weekday: "long" })}</small></div>` : ""}
+          ${navModuleVisible("weather-text") ? `<div class="easy-panel-weather"><strong>19.1°C</strong><small>${prefs.weather_location ? h(prefs.weather_location) : "北京"} <span>雨</span></small></div>` : ""}
           ${navModuleVisible("search") && prefs.show_search ? renderEasyPanelSearch() : ""}
           ${navModuleVisible("ai-chat") ? renderNavAiCommand() : ""}
-          ${navModuleVisible("quick-actions") ? `<div class="easy-panel-actions"><button data-action="nav-edit-toggle">${state.navEditMode ? "退出编辑" : "调整布局"}</button><button data-action="nav-settings-open">设置</button></div>` : ""}
+          ${navModuleVisible("quick-actions") ? renderEasyPanelIconActions() : ""}
         </div>
       </header>
       <div class="easy-panel-canvas">
@@ -1119,8 +1119,8 @@ function renderEasyPanelSearch() {
   const prefs = navPrefs();
   return `
     <form id="navSearchForm" class="easy-panel-search">
-      <span>${h({ google: "G", baidu: "百", bing: "B", duckduckgo: "D" }[prefs.search_engine] || "G")}</span>
-      <input id="navSearch" value="${h(state.navSearch)}" placeholder="搜索服务、链接或直接输入关键词" />
+      <span>${h({ google: "G", baidu: "G", bing: "G", duckduckgo: "G" }[prefs.search_engine] || "G")}</span>
+      <input id="navSearch" value="${h(state.navSearch)}" placeholder="搜索..." />
       <button type="submit">搜索</button>
       <button type="button" data-action="nav-random-card">随机</button>
     </form>
@@ -1131,9 +1131,25 @@ function renderNavAiCommand() {
   const prefs = navPrefs();
   return `
     <div class="nav-ai-command">
-      <span>AI</span>
-      <input placeholder="${prefs.ai_enabled ? "输入指令，后续可接入 AI 助手" : "AI 助手未启用，可在设置中开启"}" disabled />
-      <button data-action="nav-settings-open" data-tab="ai">配置</button>
+      <span></span>
+      <input placeholder="指令..." disabled />
+      <button data-action="nav-settings-open" data-tab="ai">▣</button>
+    </div>
+  `;
+}
+
+function renderEasyPanelIconActions() {
+  return `
+    <div class="easy-panel-icon-actions">
+      <button data-action="nav-edit-toggle" title="外观">${state.navEditMode ? "☾" : "☼"}</button>
+      <button data-action="nav" data-tab="dashboard" title="首页">⌂</button>
+      <button data-action="nav" data-tab="containers" title="容器">▦</button>
+      <button data-action="nav" data-tab="images" title="镜像">◉</button>
+      <button data-action="nav" data-tab="volumes" title="卷">▣</button>
+      <button data-action="nav" data-tab="compose" title="Compose">◇</button>
+      <button data-action="nav" data-tab="files" title="文件">≡</button>
+      <button data-action="nav-settings-open" title="设置">⚙</button>
+      <button data-action="card-add" data-group="Docker" title="添加">✎</button>
     </div>
   `;
 }
@@ -1189,12 +1205,14 @@ function renderNavSettingsModal() {
   if (!state.navSettingsOpen) return "";
   const prefs = navPrefs();
   const tabs = [
-    ["global", "全局设置"],
-    ["appearance", "外观样式"],
-    ["search", "搜索引擎"],
-    ["ai", "AI 助手"],
-    ["icons", "图标库"],
-    ["backup", "备份恢复"],
+    ["about", "ⓘ", "关于"],
+    ["global", "▣", "全局设置"],
+    ["appearance", "◌", "外观样式"],
+    ["search", "⌕", "搜索引擎"],
+    ["weather", "☼", "天气服务"],
+    ["ai", "✣", "AI 助手"],
+    ["icons", "▤", "自定义图标库"],
+    ["backup", "▱", "备份与恢复"],
   ];
   return `
     <div class="card-modal-backdrop" data-action="nav-settings-close">
@@ -1208,7 +1226,9 @@ function renderNavSettingsModal() {
         </div>
         <div class="card-modal-body nav-settings-layout">
           <aside class="nav-settings-tabs">
-            ${tabs.map(([id, label]) => `<button type="button" class="${state.navSettingsTab === id ? "active" : ""}" data-action="nav-settings-tab" data-tab="${h(id)}">${h(label)}</button>`).join("")}
+            <span>全局设置</span>
+            ${tabs.map(([id, icon, label]) => `<button type="button" class="${state.navSettingsTab === id ? "active" : ""}" data-action="nav-settings-tab" data-tab="${h(id)}"><i>${h(icon)}</i>${h(label)}</button>`).join("")}
+            <button type="button" class="nav-json-edit" data-action="nav-settings-tab" data-tab="backup"><i>♧</i>高级 JSON 编辑</button>
           </aside>
           <div class="nav-settings-content">
             ${renderNavSettingsPane(prefs)}
@@ -1225,6 +1245,27 @@ function renderNavSettingsModal() {
 
 function renderNavSettingsPane(prefs) {
   const pane = state.navSettingsTab;
+  if (pane === "about") {
+    return `
+      <div class="nav-about-pane">
+        <div class="nav-about-hero">
+          <span class="easy-panel-logo">Easy Panel</span>
+          <h2>Easy Panel</h2>
+          <p>简洁高效的个人导航面板</p>
+          <div><code>v0.2.0</code><button type="button">更新日志⌄</button></div>
+        </div>
+        <h3>更多作品</h3>
+        <div class="nav-product-list">
+          ${[
+            ["Easy Panel", "简洁高效的个人导航面板：支持服务监控、AI 对话、快捷标签置顶等功能。"],
+            ["Easy VDL", "全能视频解析下载平台：支持多平台博主订阅、批量下载、自动元数据刮削及硬件加速转码播放。"],
+            ["Easy Mihomo", "专为 Unraid 和 fnOS 设计的 Mihomo Web 管理插件，轻量美观，完美适配系统风格。"],
+            ["Easy Stun", "面向家庭网络的连通性检测和服务入口工具。"],
+          ].map(([title, desc]) => `<article><div><strong>${h(title)}</strong><p>${h(desc)}</p></div><span>◎</span></article>`).join("")}
+        </div>
+      </div>
+    `;
+  }
   if (pane === "appearance") {
     return `
       <div class="card-modal-grid">
@@ -1240,6 +1281,9 @@ function renderNavSettingsPane(prefs) {
   }
   if (pane === "search") {
     return `<div class="card-modal-grid"><label class="field"><span>搜索引擎</span><select name="search_engine"><option value="google" ${prefs.search_engine === "google" ? "selected" : ""}>Google</option><option value="baidu" ${prefs.search_engine === "baidu" ? "selected" : ""}>百度</option><option value="bing" ${prefs.search_engine === "bing" ? "selected" : ""}>Bing</option><option value="duckduckgo" ${prefs.search_engine === "duckduckgo" ? "selected" : ""}>DuckDuckGo</option></select></label><label class="check-option"><input name="show_search" type="checkbox" ${prefs.show_search ? "checked" : ""} />显示搜索栏</label></div>`;
+  }
+  if (pane === "weather") {
+    return `<div class="card-modal-grid"><label class="field wide"><span>天气城市</span><input name="weather_location" value="${h(prefs.weather_location)}" placeholder="例如 北京" /></label><label class="check-option"><input name="show_weather" type="checkbox" ${prefs.show_weather ? "checked" : ""} />显示天气模块</label></div>`;
   }
   if (pane === "ai") {
     return `<div class="card-modal-options"><label class="check-option"><input name="ai_enabled" type="checkbox" ${prefs.ai_enabled ? "checked" : ""} />启用 AI 助手入口</label><label class="check-option"><input name="ai_protection" type="checkbox" ${prefs.ai_protection ? "checked" : ""} />AI 聊天需要登录保护</label><p class="muted">这里先整合 Easy Panel 的首页 AI 命令栏入口，实际模型配置仍使用 DockPilot 系统设置里的 AI 兼容接口。</p></div>`;
@@ -2446,7 +2490,7 @@ document.addEventListener("submit", async (event) => {
         show_status: data.show_status === "on" || (state.navSettingsTab !== "global" && current.show_status),
         show_group_count: data.show_group_count === "on" || (state.navSettingsTab !== "global" && current.show_group_count),
         show_datetime: data.show_datetime === "on" || (state.navSettingsTab !== "global" && current.show_datetime),
-        show_weather: data.show_weather === "on" || (state.navSettingsTab !== "global" && current.show_weather),
+        show_weather: data.show_weather === "on" || (!["global", "weather"].includes(state.navSettingsTab) && current.show_weather),
       });
       state.navSettingsOpen = false;
       state.error = "导航外观已保存。";

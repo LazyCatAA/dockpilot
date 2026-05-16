@@ -14,6 +14,7 @@ from dockpilot.server import (
     direct_image_search_result,
     clear_container_backups,
     enrich_containers,
+    enrich_images_with_usage,
     normalize_image_search_query,
     normalize_network_proxy_url,
     normalize_registry_mirrors,
@@ -224,6 +225,14 @@ def test_container_card_uses_repo_tag_when_summary_image_is_digest() -> None:
     )
 
 
+def test_images_are_marked_used_when_container_references_image_id() -> None:
+    images = [{"Id": "sha256:image-one", "RepoTags": ["demo/app:latest"]}, {"Id": "sha256:image-two", "RepoTags": ["demo/old:latest"]}]
+    containers = [{"ImageID": "sha256:image-one", "Image": "demo/app:latest"}]
+    enriched = enrich_images_with_usage(images, containers)
+    assert_true(enriched[0]["DockPilot"]["used"] is True, "被容器引用的镜像应标记为已使用")
+    assert_true(enriched[1]["DockPilot"]["used"] is False, "未被容器引用的镜像应标记为未使用")
+
+
 def test_remote_image_search_strips_tag_from_full_reference() -> None:
     assert_true(
         normalize_image_search_query("shenxianmq/symedia:latest") == "shenxianmq/symedia",
@@ -256,6 +265,7 @@ def test_compose_repair_uses_compose_error_context() -> None:
     error = "services.app.ports.0 must be a string"
     result = repair_compose_content(content, error)
     assert_true('"8080:80"' in result["content"], "Compose 报端口类型错误时应自动加引号")
+    assert_true(result["repaired_lines"] == [5], "Compose 修正应返回被修改的行号用于高亮")
 
 
 def main() -> int:
@@ -269,6 +279,7 @@ def main() -> int:
     test_docker_hub_search_results_are_normalized()
     test_failed_update_check_should_not_clear_existing_update_state()
     test_container_card_uses_repo_tag_when_summary_image_is_digest()
+    test_images_are_marked_used_when_container_references_image_id()
     test_remote_image_search_strips_tag_from_full_reference()
     test_network_proxy_url_is_normalized_for_lan_proxy()
     test_compose_repair_fixes_common_yaml_format_issues()

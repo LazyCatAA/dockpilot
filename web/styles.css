@@ -1606,6 +1606,28 @@ a {
   line-height: 1.35;
 }
 
+.proxy-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.proxy-status i {
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
+  border-radius: 999px;
+  background: #94a3b8;
+}
+
+.proxy-status i.ok {
+  background: #22c55e;
+}
+
+.proxy-status i.bad {
+  background: #ef4444;
+}
+
 .image-output {
   max-height: 220px;
 }
@@ -1717,7 +1739,7 @@ a {
 
 .image-card {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) auto;
+  grid-template-columns: 34px minmax(0, 1fr) auto auto;
   gap: 9px;
   align-items: center;
   min-height: 62px;
@@ -1726,6 +1748,27 @@ a {
   border-radius: 10px;
   background: #fff;
   box-shadow: 0 2px 8px rgba(17, 24, 39, 0.06);
+}
+
+.image-usage {
+  min-height: 24px;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.image-usage.used {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.image-usage.unused {
+  background: #f1f5f9;
+  color: #64748b;
 }
 
 .image-mark {
@@ -2067,9 +2110,58 @@ td.actions button {
   color: #7b8da5;
 }
 
+.yaml-repaired {
+  display: inline-block;
+  width: 100%;
+  background: rgba(250, 204, 21, 0.2);
+  box-shadow: inset 3px 0 0 #f59e0b;
+}
+
 .list {
   display: grid;
   gap: 8px;
+}
+
+.compose-page {
+  align-items: start;
+}
+
+.compose-panel {
+  position: relative;
+  overflow: hidden;
+}
+
+.compose-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+}
+
+.project-panel {
+  background: linear-gradient(180deg, #f8fbff, #fff);
+}
+
+.project-panel::before {
+  background: #0ea5e9;
+}
+
+.command-panel {
+  background: linear-gradient(180deg, #fff7ed, #fff);
+  border-color: #fed7aa;
+}
+
+.command-panel::before {
+  background: #f97316;
+}
+
+.editor-panel {
+  background: linear-gradient(180deg, #f5f3ff, #fff);
+  border-color: #ddd6fe;
+}
+
+.editor-panel::before {
+  background: #8b5cf6;
 }
 
 .list-item {
@@ -2079,7 +2171,7 @@ td.actions button {
   text-align: left;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: #fff;
+  background: linear-gradient(135deg, #fff, #f8fafc);
   padding: 10px;
 }
 

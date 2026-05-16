@@ -115,7 +115,8 @@ def main() -> int:
         assert_true("imageRemoteSearchForm" in app_js, "镜像库应支持远程搜索镜像")
         assert_true("pull_mode" in app_js, "镜像库拉取镜像应可选择下载方式")
         assert_true("imagePullJob" in app_js, "镜像拉取应使用带进度的后台任务")
-        assert_true("image-proxy-test" in app_js, "镜像代理应支持连通检测")
+        assert_true("scheduleImageProxyTest" in app_js, "镜像代理应自动连通检测")
+        assert_true("image-usage" in app_js, "镜像库应区分已使用和未使用镜像")
         assert_true("registry_mirrors" in app_js, "镜像库应支持多个镜像加速源")
         assert_true("compose-repair" in app_js, "Compose 编辑器应支持检查并修正")
         assert_true("container-backups-clear" in app_js, "容器备份应支持一键清理")
@@ -136,6 +137,8 @@ def main() -> int:
         assert_true("bookmark-card" in styles_css, "书签卡片应提供复刻样式")
         assert_true("nav-hero" in styles_css, "首页导航应使用重新设计的导航头部")
         assert_true("compose-repair-note" in styles_css, "Compose 修正结果应有提示样式")
+        assert_true("yaml-repaired" in styles_css, "Compose 修正内容应高亮显示")
+        assert_true("compose-panel" in styles_css, "Compose 管理功能卡片应使用彩色区分")
         _, update_job = client.request("POST", "/api/docker/containers/fake-container/update-job", expect=202)
         job_id = update_job["job"]["id"]
         _, job_state = client.request("GET", f"/api/docker/jobs/{job_id}")

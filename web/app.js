@@ -11,7 +11,7 @@ const state = {
   cardContextMenu: { open: false, x: 0, y: 0, id: null },
   containers: [],
   containerBackups: [],
-  images: { items: [], query: "", remoteQuery: "", searchResults: [], pullOutput: "", proxy: "", registryMirrors: [], networkProxy: "", proxyTest: "", pullMode: "proxy" },
+  images: { items: [], query: "", remoteQuery: "", searchResults: [], pullOutput: "", proxy: "", registryMirrors: [], networkProxy: "", proxyTest: "", proxyOk: null, pullMode: "proxy" },
   imagePullJob: null,
   containerView: "card",
   containerFilter: "all",
@@ -20,7 +20,7 @@ const state = {
   containerUpdateCheck: { active: false, done: 0, total: 0, failed: 0 },
   sidebarCollapsed: false,
   logs: { id: "", text: "" },
-  compose: { projects: [], selected: "", content: "", output: "", repair: null },
+  compose: { projects: [], selected: "", content: "", output: "", repair: null, repairLines: [] },
   files: { roots: [], root: "", path: "", items: [], editPath: "", content: "" },
   settings: null,
 };
@@ -59,7 +59,7 @@ function h(value) {
 function highlightYaml(value) {
   return String(value || "")
     .split("\n")
-    .map((line) => {
+    .map((line, index) => {
       if (/^\s*#/.test(line)) return `<span class="yaml-comment">${h(line)}</span>`;
       let escaped = h(line);
       escaped = escaped.replace(
@@ -70,7 +70,7 @@ function highlightYaml(value) {
       escaped = escaped.replace(/\b(true|false|null|yes|no|on|off)\b/gi, `<span class="yaml-bool">$1</span>`);
       escaped = escaped.replace(/(^|\s)(-\s)/g, `$1<span class="yaml-list">$2</span>`);
       escaped = escaped.replace(/(#.*)$/g, `<span class="yaml-comment">$1</span>`);
-      return escaped;
+      return state.compose.repairLines.includes(index + 1) ? `<span class="yaml-repaired">${escaped}</span>` : escaped;
     })
     .join("\n");
 }
@@ -591,6 +591,33 @@ async function loadImages() {
   state.images.proxy = data.image_registry_proxy || state.images.proxy || "";
   state.images.registryMirrors = data.registry_mirrors || (state.images.proxy ? [state.images.proxy] : []);
   state.images.networkProxy = data.network_proxy || state.images.networkProxy || "";
+  if (state.images.networkProxy) scheduleImageProxyTest();
+}
+
+function scheduleImageProxyTest() {
+  const proxy = state.images.networkProxy;
+  if (!proxy) {
+    state.images.proxyOk = null;
+    state.images.proxyTest = "";
+    return;
+  }
+  setTimeout(() => testImageProxy(proxy), 150);
+}
+
+async function testImageProxy(proxy = state.images.networkProxy) {
+  if (!proxy) return;
+  state.images.proxyOk = null;
+  state.images.proxyTest = "正在检测镜像代理...";
+  render();
+  try {
+    const result = await api("/api/docker/proxy/test", { method: "POST", body: { network_proxy: proxy } });
+    state.images.proxyOk = Boolean(result.ok);
+    state.images.proxyTest = result.message || (result.ok ? "镜像代理连通正常。" : "镜像代理不可用。");
+  } catch (error) {
+    state.images.proxyOk = false;
+    state.images.proxyTest = error.message;
+  }
+  render();
 }
 
 async function startContainerUpdate(containerId) {
@@ -1228,7 +1255,7 @@ function renderImages() {
       <div class="image-summary">
         <div><strong>${state.images.items.length}</strong><span>本地镜像</span></div>
         <div><strong>${fmtBytes(totalSize)}</strong><span>占用空间</span></div>
-        <div><strong>${h(state.images.proxy || "未设置")}</strong><span>镜像代理</span></div>
+        <div><strong>${h(state.images.proxy || "未设置")}</strong><span>镜像加速源</span></div>
       </div>
       <div class="image-sections">
         <section class="image-tool-card accent-blue">
@@ -1281,8 +1308,10 @@ function renderImages() {
           </label>
           <button type="submit">保存</button>
           </form>
-          <button data-action="image-proxy-test">连通检测</button>
-          ${state.images.proxyTest ? `<small class="proxy-test-result">${h(state.images.proxyTest)}</small>` : ""}
+          <div class="proxy-status">
+            <i class="${state.images.proxyOk === true ? "ok" : state.images.proxyOk === false ? "bad" : "pending"}"></i>
+            <small class="proxy-test-result">${h(state.images.proxyTest || (state.images.networkProxy ? "等待自动检测" : "未设置镜像代理"))}</small>
+          </div>
         </section>
       </div>
       ${renderImagePullProgress()}
@@ -1323,6 +1352,7 @@ function renderImages() {
                       <strong>${h(imageTitle(image))}</strong>
                       <small>${h(shortId(id))} · ${fmtBytes(image.Size)} · ${h(imageCreatedText(image))}</small>
                     </div>
+                    <span class="image-usage ${image.DockPilot?.used ? "used" : "unused"}">${image.DockPilot?.used ? "已使用" : "未使用"}</span>
                     <button class="danger" data-action="image-remove" data-id="${h(id)}">删除</button>
                   </article>
                 `;
@@ -1398,8 +1428,8 @@ function maskEnv(value) {
 
 function renderCompose() {
   return `
-    <div class="split">
-      <section class="panel">
+    <div class="split compose-page">
+      <section class="panel compose-panel project-panel">
         <div class="panel-head"><h3>项目列表</h3></div>
         <form class="form-stack" id="composeNewForm">
           <div class="field"><label>新建项目</label><input name="name" placeholder="nginx-demo" /></div>
@@ -1436,7 +1466,7 @@ function renderCompose() {
               : `<div class="empty">配置的目录中没有找到 Compose 文件。</div>`
           }
         </div>
-        <form class="form-stack command-deploy" id="composeCommandForm">
+        <form class="form-stack command-deploy compose-panel command-panel" id="composeCommandForm">
           <div class="panel-head"><h3>命令部署</h3><span class="muted">粘贴 docker run 命令，可转为 Compose 后部署。</span></div>
           <div class="field"><label>项目名称</label><input name="name" placeholder="my-app" required /></div>
           <div class="field"><label>Docker run 命令</label><textarea name="command" placeholder="docker run -d --name app -p 8080:80 nginx:alpine" required></textarea></div>
@@ -1446,7 +1476,7 @@ function renderCompose() {
           </div>
         </form>
       </section>
-      <section class="panel">
+      <section class="panel compose-panel editor-panel">
         <div class="panel-head">
           <div>
             <h3>Compose 编辑器</h3>
@@ -1721,8 +1751,10 @@ document.addEventListener("submit", async (event) => {
         },
       });
       state.images.networkProxy = data.network_proxy || "";
+      state.images.proxyOk = null;
       state.settings = { ...settings, network_proxy: state.images.networkProxy };
       state.error = "局域网网络代理已保存。";
+      scheduleImageProxyTest();
       render();
     }
     if (form.id === "passwordForm") {
@@ -1926,12 +1958,6 @@ document.addEventListener("click", async (event) => {
       state.error = `已提交拉取：${button.dataset.image}`;
       await startImagePull(button.dataset.image, state.images.pullMode !== "direct");
     }
-    if (action === "image-proxy-test") {
-      const input = document.querySelector('#imageNetworkProxyForm input[name="network_proxy"]');
-      const result = await api("/api/docker/proxy/test", { method: "POST", body: { network_proxy: input?.value || state.images.networkProxy } });
-      state.images.proxyTest = result.message || (result.ok ? "镜像代理连通正常。" : "镜像代理不可用。");
-      render();
-    }
     if (action === "compose-select") {
       await selectCompose(button.dataset.path);
       render();
@@ -1962,10 +1988,12 @@ document.addEventListener("click", async (event) => {
       state.compose.repair = result;
       if (result.changed) {
         state.compose.content = result.content;
+        state.compose.repairLines = result.repaired_lines || [];
         editor.value = result.content;
         syncComposeHighlight();
         state.error = "已修正编辑器内容，请检查后再保存或部署。";
       } else {
+        state.compose.repairLines = [];
         state.error = "未发现可自动修正的问题。";
       }
       render();

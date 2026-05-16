@@ -998,6 +998,8 @@ class AppHandler(BaseHTTPRequestHandler):
                 return
             if path == "/api/docker/images" and self.command == "GET":
                 images = docker.json("GET", "/images/json", query={"all": "0"})
+                containers = docker.json("GET", "/containers/json", query={"all": "1", "size": "0"})
+                images = enrich_images_with_usage(images, containers)
                 self.write_json(
                     {
                         "images": images,
@@ -1602,6 +1604,17 @@ def container_display_image(container: dict[str, Any], image_lookup: dict[str, s
     return image_lookup.get(image_id) or image_value
 
 
+def enrich_images_with_usage(images: list[dict[str, Any]], containers: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    used_ids = {normalize_image_id(str(container.get("ImageID") or container.get("Image") or "")) for container in containers}
+    used_names = {str(container.get("Image") or "") for container in containers}
+    for image in images:
+        image_id = normalize_image_id(str(image.get("Id") or image.get("ID") or ""))
+        tags = {str(tag) for tag in (image.get("RepoTags") or []) if tag and tag != "<none>:<none>"}
+        used = bool(image_id and image_id in used_ids) or bool(tags & used_names)
+        image["DockPilot"] = {"used": used}
+    return images
+
+
 def enrich_containers(
     containers: list[dict[str, Any]],
     prefs: dict[str, dict[str, Any]],
@@ -1750,7 +1763,8 @@ def repair_compose_content(content: str, error: str = "") -> dict[str, Any]:
     lines = original.replace("\r\n", "\n").replace("\r", "\n").split("\n")
     fixed_lines: list[str] = []
     changes: list[str] = []
-    for line in lines:
+    repaired_lines: list[int] = []
+    for index, line in enumerate(lines, start=1):
         fixed = line.replace("\t", "  ").replace("：", ": ")
         fixed = re.sub(r":\s{2,}", ": ", fixed)
         if re.match(r"^\s*-\s+\d+:\d+(?:/\w+)?\s*$", fixed):
@@ -1764,6 +1778,7 @@ def repair_compose_content(content: str, error: str = "") -> dict[str, Any]:
             fixed = f"{env_match.group(1)}{json.dumps(env_match.group(2).strip(), ensure_ascii=False)}"
         fixed_lines.append(fixed.rstrip())
         if fixed != line:
+            repaired_lines.append(index)
             changes.append("修正了缩进、中文标点或需要引号的值。")
     fixed_content = "\n".join(fixed_lines).strip() + "\n"
     if "services:" not in fixed_content:
@@ -1772,7 +1787,7 @@ def repair_compose_content(content: str, error: str = "") -> dict[str, Any]:
     if error_text and not changes:
         changes.append("已读取 Compose 检查错误，但没有匹配到可安全自动修正的规则。")
     unique_changes = list(dict.fromkeys(changes))
-    return {"ok": True, "content": fixed_content, "changed": fixed_content != original, "changes": unique_changes}
+    return {"ok": True, "content": fixed_content, "changed": fixed_content != original, "changes": unique_changes, "repaired_lines": repaired_lines}
 
 
 def compose_from_container_inspect(inspect_data: dict[str, Any]) -> str:

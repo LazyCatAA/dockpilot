@@ -1095,18 +1095,19 @@ function renderDashboard() {
   return `
     <section class="nav-home nav-pro easy-panel-shell easy-panel-${h(prefs.background_effect)} nav-width-${h(prefs.layout_width)} nav-density-${h(prefs.density)} nav-style-${h(prefs.card_style)} nav-display-${h(prefs.display_mode)}" style="--nav-bg:${h(prefs.background)}">
       <div class="easy-panel-sky"></div>
-      <header class="easy-panel-header nav-pro-hero">
+      <header class="easy-panel-header easy-panel-topbar nav-pro-hero">
         ${navModuleVisible("logo") ? `<div class="easy-panel-brand"><span class="easy-panel-logo">DP</span><div><strong>${h(prefs.title)}</strong><small>${h(prefs.subtitle)}</small></div></div>` : ""}
         <div class="easy-panel-header-modules">
           ${navModuleVisible("datetime") ? `<div class="easy-panel-chip"><strong>${new Date().toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" })}</strong><small>${new Date().toLocaleDateString("zh-CN", { month: "long", day: "numeric", weekday: "long" })}</small></div>` : ""}
           ${navModuleVisible("weather-text") ? `<div class="easy-panel-chip"><strong>${prefs.weather_location ? h(prefs.weather_location) : "天气"}</strong><small>${prefs.weather_location ? "等待接入天气服务" : "未设置城市"}</small></div>` : ""}
+          ${navModuleVisible("search") && prefs.show_search ? renderEasyPanelSearch() : ""}
+          ${navModuleVisible("ai-chat") ? renderNavAiCommand() : ""}
           ${navModuleVisible("quick-actions") ? `<div class="easy-panel-actions"><button data-action="nav-edit-toggle">${state.navEditMode ? "退出编辑" : "调整布局"}</button><button data-action="nav-settings-open">设置</button></div>` : ""}
         </div>
       </header>
-      ${navModuleVisible("search") && prefs.show_search ? renderEasyPanelSearch() : ""}
-      ${navModuleVisible("ai-chat") ? renderNavAiCommand() : ""}
-      ${renderDashboardWidgets()}
-      ${renderCards()}
+      <div class="easy-panel-canvas">
+        ${renderCards()}
+      </div>
       ${renderNavSettingsModal()}
       ${renderCardContextMenu()}
       ${renderCardModal()}
@@ -1134,60 +1135,6 @@ function renderNavAiCommand() {
       <input placeholder="${prefs.ai_enabled ? "输入指令，后续可接入 AI 助手" : "AI 助手未启用，可在设置中开启"}" disabled />
       <button data-action="nav-settings-open" data-tab="ai">配置</button>
     </div>
-  `;
-}
-
-function renderDashboardWidgets() {
-  const overview = state.overview || {};
-  const visible = state.dashboardWidgets.filter((widget) => widget.visible);
-  const hidden = state.dashboardWidgets.filter((widget) => !widget.visible);
-  return `
-    <section class="dashboard-widget-panel nav-section">
-      <div class="panel-head">
-        <div>
-          <h3>状态模块</h3>
-          <span class="muted">类似 Easy Panel 顶部模块，可隐藏或添加 NAS 监控卡片。</span>
-        </div>
-        <form id="dashboardWidgetForm" class="widget-form ${state.navEditMode ? "" : "hidden-input"}">
-          <input name="title" placeholder="小卡片标题" />
-          <select name="type">
-            <option value="host">物理机运行状态</option>
-            <option value="docker">Docker 状态</option>
-            <option value="containers">容器监控</option>
-          </select>
-          <button type="submit">添加</button>
-        </form>
-      </div>
-      ${
-        visible.length
-          ? `<div class="dashboard-widget-grid">${visible
-              .map((widget) => {
-                const info = dashboardWidgetValue(widget, overview);
-                return `
-                  <article class="dashboard-widget ${h(info.tone)}">
-                    <div>
-                      <span>${h(widget.title)}</span>
-                      <strong>${h(info.value)}</strong>
-                      <small>${h(info.detail)}</small>
-                    </div>
-                    ${state.navEditMode ? `<button data-action="dashboard-widget-hide" data-id="${h(widget.id)}">隐藏</button>` : ""}
-                  </article>
-                `;
-              })
-              .join("")}</div>`
-          : `<div class="empty">状态小卡片已全部隐藏。</div>`
-      }
-      ${
-        hidden.length
-          ? `<div class="hidden-widgets">${hidden
-              .map(
-                (widget) =>
-                  `<button data-action="dashboard-widget-show" data-id="${h(widget.id)}">显示 ${h(widget.title)}</button>`
-              )
-              .join("")}</div>`
-          : ""
-      }
-    </section>
   `;
 }
 

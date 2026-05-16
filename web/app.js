@@ -525,6 +525,15 @@ function autoIconForCard(card) {
   return { icon: label, color: card.color || "#2f80ed" };
 }
 
+function cardHost(card) {
+  const url = String(card.internal_url || card.url || "");
+  try {
+    return new URL(url).host;
+  } catch {
+    return url.replace(/^https?:\/\//, "").split("/")[0] || "link";
+  }
+}
+
 function filteredCardGroups() {
   const query = state.navSearch.trim().toLowerCase();
   return cardGroups()
@@ -1090,7 +1099,12 @@ function renderDashboard() {
   return `
     <section class="nav-home nav-refactor nav-width-${h(prefs.layout_width)} nav-density-${h(prefs.density)} nav-style-${h(prefs.card_style)} nav-icon-${h(prefs.icon_size)} nav-title-${h(prefs.title_font_size)}" style="--nav-bg:${h(prefs.background)}">
       <button class="nav-settings-button" data-action="nav-settings-open" title="导航页设置">⚙</button>
-      <div class="nav-searchbar-wrap">
+      <div class="nav-command-center">
+        <div class="nav-command-title">
+          <span>DockPilot Navigation</span>
+          <strong>${h(prefs.title)}</strong>
+          ${prefs.subtitle ? `<small>${h(prefs.subtitle)}</small>` : ""}
+        </div>
         ${renderWebSearch(prefs)}
       </div>
       <div class="nav-bookmark-area">
@@ -1106,6 +1120,8 @@ function renderDashboard() {
 function renderWebSearch(prefs) {
   return `
     <form id="webSearchForm" class="nav-searchbar">
+      <span class="nav-search-icon">⌕</span>
+      <input id="webSearchInput" name="q" value="${h(state.webSearch)}" placeholder="搜索网页或直接输入关键词" autocomplete="off" />
       <select name="web_search_engine" aria-label="搜索引擎">
         <option value="google" ${prefs.web_search_engine === "google" ? "selected" : ""}>Google</option>
         <option value="bing" ${prefs.web_search_engine === "bing" ? "selected" : ""}>Bing</option>
@@ -1113,7 +1129,6 @@ function renderWebSearch(prefs) {
         <option value="duckduckgo" ${prefs.web_search_engine === "duckduckgo" ? "selected" : ""}>DuckDuckGo</option>
         <option value="custom" ${prefs.web_search_engine === "custom" ? "selected" : ""}>自定义</option>
       </select>
-      <input id="webSearchInput" name="q" value="${h(state.webSearch)}" placeholder="搜索网页" autocomplete="off" />
       <button type="submit">搜索</button>
     </form>
   `;
@@ -1124,21 +1139,32 @@ function renderCards() {
   const groups = filteredCardGroups();
   return `
     <section class="bookmark-board nav-section professional-bookmark-board">
+      <div class="nav-library-head">
+        <div>
+          <span>Service Library</span>
+          <h3>分类书签</h3>
+          <small>${state.cards.length} 个入口 · ${groups.length} 个分类</small>
+        </div>
+        <div class="nav-library-actions">
+          ${prefs.show_search ? `<input id="navSearch" value="${h(state.navSearch)}" placeholder="过滤书签、链接或描述" />` : ""}
+          <button class="primary" data-action="card-add" data-group="Docker">添加书签</button>
+        </div>
+      </div>
       ${groups
         .map(
           ([group, cards]) => `
             <div class="bookmark-group professional-bookmark-group" style="--group-color:${h(navGroupPrefs(group).color || "#2563eb")}">
               <div class="bookmark-group-head professional-group-head">
                 <div>
-                  <h3>${h(group)}</h3>
+                  <h3><i></i>${h(group)}</h3>
                   ${prefs.show_group_count ? `<span>${cards.length} 个入口</span>` : ""}
                 </div>
                 <div class="bookmark-group-tools">
-                  <button class="bookmark-round" title="折叠/展开" data-action="nav-group-collapse" data-group="${h(group)}">${navGroupPrefs(group).collapsed ? "▸" : "▾"}</button>
+                  <button class="bookmark-round" title="折叠/展开" data-action="nav-group-collapse" data-group="${h(group)}">${navGroupPrefs(group).collapsed ? "展开" : "收起"}</button>
                   <input type="color" title="分组颜色" data-action="nav-group-color" data-group="${h(group)}" value="${h(navGroupPrefs(group).color || "#2563eb")}" />
-                  <button class="bookmark-round" title="隐藏分组" data-action="nav-group-hide" data-group="${h(group)}">－</button>
-                  <button class="bookmark-round" title="添加书签" data-action="card-add" data-group="${h(group)}">＋</button>
-                  <button class="bookmark-round" title="分组设置" data-action="card-group-settings" data-group="${h(group)}">⚙</button>
+                  <button class="bookmark-round" title="添加书签" data-action="card-add" data-group="${h(group)}">添加</button>
+                  <button class="bookmark-round" title="分组设置" data-action="card-group-settings" data-group="${h(group)}">改名</button>
+                  <button class="bookmark-round subtle" title="隐藏分组" data-action="nav-group-hide" data-group="${h(group)}">隐藏</button>
                 </div>
               </div>
               ${
@@ -1177,50 +1203,63 @@ function renderNavSettingsModal() {
           <button type="button" data-action="nav-settings-close">×</button>
         </div>
         <div class="card-modal-body">
-          <div class="card-modal-grid">
-            <label class="field wide"><span>页面标题</span><input name="title" value="${h(prefs.title)}" /></label>
-            <label class="field wide"><span>副标题</span><input name="subtitle" value="${h(prefs.subtitle)}" /></label>
-            <label class="field"><span>背景颜色</span><input name="background" type="color" value="${h(prefs.background)}" /></label>
-            <label class="field"><span>默认搜索引擎</span><select name="web_search_engine">
-              <option value="google" ${prefs.web_search_engine === "google" ? "selected" : ""}>Google</option>
-              <option value="bing" ${prefs.web_search_engine === "bing" ? "selected" : ""}>Bing</option>
-              <option value="baidu" ${prefs.web_search_engine === "baidu" ? "selected" : ""}>百度</option>
-              <option value="duckduckgo" ${prefs.web_search_engine === "duckduckgo" ? "selected" : ""}>DuckDuckGo</option>
-              <option value="custom" ${prefs.web_search_engine === "custom" ? "selected" : ""}>自定义</option>
-            </select></label>
-            <label class="field wide"><span>自定义搜索地址</span><input name="custom_search_url" value="${h(prefs.custom_search_url || "")}" placeholder="https://www.google.com/search?q={keyword}" /></label>
-            <label class="field"><span>页面宽度</span><select name="layout_width">
-              <option value="compact" ${prefs.layout_width === "compact" ? "selected" : ""}>紧凑</option>
-              <option value="standard" ${prefs.layout_width === "standard" ? "selected" : ""}>标准</option>
-              <option value="wide" ${prefs.layout_width === "wide" ? "selected" : ""}>宽屏</option>
-            </select></label>
-            <label class="field"><span>卡片密度</span><select name="density">
-              <option value="compact" ${prefs.density === "compact" ? "selected" : ""}>紧凑</option>
-              <option value="comfortable" ${prefs.density === "comfortable" ? "selected" : ""}>舒适</option>
-              <option value="spacious" ${prefs.density === "spacious" ? "selected" : ""}>宽松</option>
-            </select></label>
-            <label class="field"><span>整体卡片样式</span><select name="card_style">
-              <option value="professional" ${prefs.card_style === "professional" ? "selected" : ""}>专业</option>
-              <option value="soft" ${prefs.card_style === "soft" ? "selected" : ""}>柔和</option>
-              <option value="outline" ${prefs.card_style === "outline" ? "selected" : ""}>描边</option>
-              <option value="glass" ${prefs.card_style === "glass" ? "selected" : ""}>玻璃</option>
-            </select></label>
-            <label class="field"><span>图标大小</span><select name="icon_size">
-              <option value="small" ${prefs.icon_size === "small" ? "selected" : ""}>小</option>
-              <option value="medium" ${prefs.icon_size === "medium" ? "selected" : ""}>中</option>
-              <option value="large" ${prefs.icon_size === "large" ? "selected" : ""}>大</option>
-            </select></label>
-            <label class="field"><span>标题字体</span><select name="title_font_size">
-              <option value="small" ${prefs.title_font_size === "small" ? "selected" : ""}>小</option>
-              <option value="medium" ${prefs.title_font_size === "medium" ? "selected" : ""}>中</option>
-              <option value="large" ${prefs.title_font_size === "large" ? "selected" : ""}>大</option>
-            </select></label>
-          </div>
-          <div class="card-modal-options">
-            <label class="check-option"><input name="show_search" type="checkbox" ${prefs.show_search ? "checked" : ""} />显示搜索</label>
-            <label class="check-option"><input name="show_status" type="checkbox" ${prefs.show_status ? "checked" : ""} />显示状态点</label>
-            <label class="check-option"><input name="show_group_count" type="checkbox" ${prefs.show_group_count ? "checked" : ""} />显示分组数量</label>
-          </div>
+          <section class="nav-settings-section">
+            <header><strong>页面</strong><span>控制导航页整体信息和背景。</span></header>
+            <div class="card-modal-grid">
+              <label class="field wide"><span>页面标题</span><input name="title" value="${h(prefs.title)}" /></label>
+              <label class="field wide"><span>副标题</span><input name="subtitle" value="${h(prefs.subtitle)}" /></label>
+              <label class="field"><span>背景颜色</span><input name="background" type="color" value="${h(prefs.background)}" /></label>
+              <label class="field"><span>页面宽度</span><select name="layout_width">
+                <option value="compact" ${prefs.layout_width === "compact" ? "selected" : ""}>紧凑</option>
+                <option value="standard" ${prefs.layout_width === "standard" ? "selected" : ""}>标准</option>
+                <option value="wide" ${prefs.layout_width === "wide" ? "selected" : ""}>宽屏</option>
+              </select></label>
+            </div>
+          </section>
+          <section class="nav-settings-section">
+            <header><strong>搜索</strong><span>网页搜索和书签过滤。</span></header>
+            <div class="card-modal-grid">
+              <label class="field"><span>默认搜索引擎</span><select name="web_search_engine">
+                <option value="google" ${prefs.web_search_engine === "google" ? "selected" : ""}>Google</option>
+                <option value="bing" ${prefs.web_search_engine === "bing" ? "selected" : ""}>Bing</option>
+                <option value="baidu" ${prefs.web_search_engine === "baidu" ? "selected" : ""}>百度</option>
+                <option value="duckduckgo" ${prefs.web_search_engine === "duckduckgo" ? "selected" : ""}>DuckDuckGo</option>
+                <option value="custom" ${prefs.web_search_engine === "custom" ? "selected" : ""}>自定义</option>
+              </select></label>
+              <label class="field wide"><span>自定义搜索地址</span><input name="custom_search_url" value="${h(prefs.custom_search_url || "")}" placeholder="https://www.google.com/search?q={keyword}" /></label>
+            </div>
+          </section>
+          <section class="nav-settings-section">
+            <header><strong>卡片</strong><span>控制分类、卡片密度、图标和标题尺寸。</span></header>
+            <div class="card-modal-grid">
+              <label class="field"><span>卡片密度</span><select name="density">
+                <option value="compact" ${prefs.density === "compact" ? "selected" : ""}>紧凑</option>
+                <option value="comfortable" ${prefs.density === "comfortable" ? "selected" : ""}>舒适</option>
+                <option value="spacious" ${prefs.density === "spacious" ? "selected" : ""}>宽松</option>
+              </select></label>
+              <label class="field"><span>整体卡片样式</span><select name="card_style">
+                <option value="professional" ${prefs.card_style === "professional" ? "selected" : ""}>专业</option>
+                <option value="soft" ${prefs.card_style === "soft" ? "selected" : ""}>柔和</option>
+                <option value="outline" ${prefs.card_style === "outline" ? "selected" : ""}>描边</option>
+                <option value="glass" ${prefs.card_style === "glass" ? "selected" : ""}>玻璃</option>
+              </select></label>
+              <label class="field"><span>图标大小</span><select name="icon_size">
+                <option value="small" ${prefs.icon_size === "small" ? "selected" : ""}>小</option>
+                <option value="medium" ${prefs.icon_size === "medium" ? "selected" : ""}>中</option>
+                <option value="large" ${prefs.icon_size === "large" ? "selected" : ""}>大</option>
+              </select></label>
+              <label class="field"><span>标题字体</span><select name="title_font_size">
+                <option value="small" ${prefs.title_font_size === "small" ? "selected" : ""}>小</option>
+                <option value="medium" ${prefs.title_font_size === "medium" ? "selected" : ""}>中</option>
+                <option value="large" ${prefs.title_font_size === "large" ? "selected" : ""}>大</option>
+              </select></label>
+            </div>
+            <div class="card-modal-options">
+              <label class="check-option"><input name="show_search" type="checkbox" ${prefs.show_search ? "checked" : ""} />显示书签过滤</label>
+              <label class="check-option"><input name="show_status" type="checkbox" ${prefs.show_status ? "checked" : ""} />显示状态点</label>
+              <label class="check-option"><input name="show_group_count" type="checkbox" ${prefs.show_group_count ? "checked" : ""} />显示分组数量</label>
+            </div>
+          </section>
         </div>
         <div class="card-modal-foot">
           <button type="button" data-action="nav-settings-close">取消</button>
@@ -1234,6 +1273,7 @@ function renderNavSettingsModal() {
 function renderBookmarkCard(card) {
   const description = String(card.description || "").split("\n").filter(Boolean).slice(0, 2).join(" / ");
   const prefs = navPrefs();
+  const host = cardHost(card);
   return `
     <button
       class="bookmark-card ${h(cardSize(card))} ${h(cardStyle(card))}"
@@ -1245,7 +1285,8 @@ function renderBookmarkCard(card) {
       <span class="bookmark-icon">${cardIconMarkup(card)}</span>
       <span class="bookmark-card-copy">
         <strong>${prefs.show_status ? `<i class="nav-card-status"></i>` : ""}${h(card.title)}</strong>
-        ${cardSize(card) === "large" && description ? `<small>${h(description)}</small>` : ""}
+        <small>${h(description || host)}</small>
+        <em>${h(host)}</em>
       </span>
     </button>
   `;

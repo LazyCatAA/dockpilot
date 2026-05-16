@@ -1706,13 +1706,13 @@ function renderComposeBackupModal() {
   const backups = state.compose.backups || [];
   return `
     <div class="modal-backdrop" data-action="compose-backup-close">
-      <div class="compose-backup-modal" onclick="event.stopPropagation()">
+      <div class="compose-backup-modal">
         <div class="panel-head">
           <div>
             <h3>恢复 Compose 备份</h3>
             <span class="muted">选择备份后可先预览，再恢复到当前项目或恢复为新项目。</span>
           </div>
-          <button data-action="compose-backup-close">关闭</button>
+          <button type="button" data-action="compose-backup-close">关闭</button>
         </div>
         <div class="compose-backup-list">
           ${
@@ -2232,6 +2232,7 @@ document.addEventListener("click", async (event) => {
       render();
     }
     if (action === "compose-backup-close") {
+      if (button.classList.contains("modal-backdrop") && event.target !== button) return;
       state.compose.backupModal = false;
       render();
     }

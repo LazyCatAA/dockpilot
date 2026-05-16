@@ -1838,42 +1838,27 @@ function renderSettings() {
   const composeRoots = (settings.compose_roots || []).join("\n");
   return `
     <section class="panel page-panel">
-      <form class="form-stack" id="settingsForm">
-        <div class="field">
-          <label>Docker socket 路径</label>
-          <input name="docker_socket" value="${h(settings.docker_socket)}" />
-        </div>
-        <div class="field">
-          <label>Compose 目录，每行一个绝对路径</label>
-          <textarea name="compose_roots">${h(composeRoots)}</textarea>
-        </div>
-        <div class="field">
-          <label>文件根目录，格式为 名称=/绝对路径</label>
-          <textarea name="file_roots">${h(fileRoots)}</textarea>
-        </div>
-        <div class="field">
-          <label>镜像代理前缀</label>
-          <input name="image_registry_proxy" value="${h(settings.image_registry_proxy || "")}" placeholder="例如 docker.1ms.run" />
-        </div>
-        <div class="field">
-          <label>局域网网络代理</label>
-          <input name="network_proxy" value="${h(settings.network_proxy || "")}" placeholder="例如 192.168.1.2:7890 或 socks5://192.168.1.2:7890" />
-        </div>
-        <div class="field">
-          <label><input type="checkbox" name="compose_ai_enabled" value="1" ${settings.compose_ai_enabled ? "checked" : ""} /> 启用 Compose AI 修正</label>
-        </div>
-        <div class="field">
-          <label>AI Base URL（OpenAI 兼容）</label>
-          <input name="compose_ai_base_url" value="${h(settings.compose_ai_base_url || "")}" placeholder="例如 https://api.openai.com/v1 或 http://oneapi:3000/v1" />
-        </div>
-        <div class="field">
-          <label>AI 模型名</label>
-          <input name="compose_ai_model" value="${h(settings.compose_ai_model || "")}" placeholder="例如 gpt-4.1-mini / qwen-plus / deepseek-chat" />
-        </div>
-        <div class="field">
-          <label>AI API Key${settings.compose_ai_api_key_set ? "（已配置，留空不修改）" : ""}</label>
-          <input name="compose_ai_api_key" type="password" autocomplete="off" placeholder="${settings.compose_ai_api_key_set ? "已配置，留空不修改" : "请输入 API Key"}" />
-        </div>
+      <form class="settings-grid-form" id="settingsForm">
+        <section class="settings-card">
+          <h4>基础路径</h4>
+          <label class="field"><span>Docker socket 路径</span><input name="docker_socket" value="${h(settings.docker_socket)}" /></label>
+          <label class="field"><span>Compose 目录</span><textarea name="compose_roots">${h(composeRoots)}</textarea></label>
+          <label class="field"><span>文件根目录</span><textarea name="file_roots">${h(fileRoots)}</textarea></label>
+        </section>
+        <section class="settings-card">
+          <h4>镜像网络</h4>
+          <label class="field"><span>镜像代理前缀</span><input name="image_registry_proxy" value="${h(settings.image_registry_proxy || "")}" placeholder="例如 docker.1ms.run" /></label>
+          <label class="field"><span>局域网网络代理</span><input name="network_proxy" value="${h(settings.network_proxy || "")}" placeholder="例如 192.168.1.2:7890 或 socks5://192.168.1.2:7890" /></label>
+        </section>
+        <section class="settings-card">
+          <div class="settings-card-title">
+            <h4>Compose AI</h4>
+            <label class="settings-switch"><input type="checkbox" name="compose_ai_enabled" value="1" ${settings.compose_ai_enabled ? "checked" : ""} /><span>启用</span></label>
+          </div>
+          <label class="field"><span>AI Base URL（OpenAI 兼容）</span><input name="compose_ai_base_url" value="${h(settings.compose_ai_base_url || "")}" placeholder="例如 https://api.openai.com/v1 或 http://oneapi:3000/v1" /></label>
+          <label class="field"><span>AI 模型名</span><input name="compose_ai_model" value="${h(settings.compose_ai_model || "")}" placeholder="例如 gpt-4.1-mini / qwen-plus / deepseek-chat" /></label>
+          <label class="field"><span>AI API Key${settings.compose_ai_api_key_set ? "（已配置，留空不修改）" : ""}</span><input name="compose_ai_api_key" type="password" autocomplete="off" placeholder="${settings.compose_ai_api_key_set ? "已配置，留空不修改" : "请输入 API Key"}" /></label>
+        </section>
         <button class="primary" type="submit">保存设置</button>
       </form>
     </section>

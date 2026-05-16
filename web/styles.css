@@ -2324,6 +2324,11 @@ td.actions button {
   box-shadow: none;
 }
 
+.code-input::placeholder {
+  color: rgba(203, 213, 225, 0.62);
+  -webkit-text-fill-color: rgba(203, 213, 225, 0.62);
+}
+
 .yaml-key {
   color: #7dd3fc;
 }
@@ -2758,14 +2763,14 @@ td.actions button {
 }
 
 .compose-monitor-layout {
-  border-color: #dbe5f1;
-  background: linear-gradient(180deg, #f8fbff 0%, #eef5ff 100%);
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+  border-color: #d9e2ee;
+  background: linear-gradient(180deg, #f6f8fb 0%, #edf2f8 100%);
+  box-shadow: 0 24px 58px rgba(15, 23, 42, 0.11);
 }
 
 .compose-monitor-sidebar {
-  border-right-color: #dce7f4;
-  background: #f2f7ff;
+  border-right-color: #d9e2ee;
+  background: #eef3f9;
 }
 
 .compose-monitor-title h3,
@@ -2782,22 +2787,22 @@ td.actions button {
 
 .compose-run-overview div:nth-child(1),
 .compose-status-strip div:nth-child(1) {
-  background: #dbeafe;
+  background: #e8eef7;
 }
 
 .compose-run-overview div:nth-child(2),
 .compose-status-strip div:nth-child(2) {
-  background: #dcfce7;
+  background: #e7f2ed;
 }
 
 .compose-run-overview div:nth-child(3),
 .compose-status-strip div:nth-child(3) {
-  background: #fef3c7;
+  background: #f3eee2;
 }
 
 .compose-run-overview div:nth-child(4),
 .compose-status-strip div:nth-child(4) {
-  background: #fce7f3;
+  background: #eeeaf6;
 }
 
 .compose-run-overview div,
@@ -2817,18 +2822,10 @@ td.actions button {
 }
 
 .compose-project-card {
-  border-color: #d9e3f0;
-  background: #e0f2fe;
+  border-color: #d7e0ec;
+  background: #f8fafc;
   color: #111827;
-  box-shadow: 0 12px 26px rgba(15, 23, 42, 0.08);
-}
-
-.compose-project-card:nth-child(3n + 2) {
-  background: #dcfce7;
-}
-
-.compose-project-card:nth-child(3n) {
-  background: #fef3c7;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.07);
 }
 
 .compose-project-card small,
@@ -2843,8 +2840,8 @@ td.actions button {
 .compose-project-card.active {
   border-color: #2563eb;
   border-left-color: #2563eb;
-  background: #bfdbfe;
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12), 0 18px 36px rgba(37, 99, 235, 0.14);
+  background: #eef5ff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1), 0 16px 32px rgba(37, 99, 235, 0.12);
 }
 
 .compose-command-card,
@@ -2858,7 +2855,7 @@ td.actions button {
 }
 
 .compose-command-card {
-  background: #fff7ed;
+  background: #f8fafc;
 }
 
 .compose-inline-create {
@@ -2867,9 +2864,9 @@ td.actions button {
   gap: 10px;
   align-items: center;
   padding: 14px;
-  border: 1px solid #dce7f4;
+  border: 1px solid #d9e2ee;
   border-radius: 18px;
-  background: #ecfeff;
+  background: #f8fafc;
 }
 
 .compose-inline-create strong,
@@ -2905,13 +2902,13 @@ td.actions button {
 .compose-dark-editor,
 .compose-ai-preview-shell,
 .compose-dark-console {
-  border-color: #d7e2ef;
-  background: #f8fafc;
-  color: #111827;
+  border-color: #111827;
+  background: #050b16;
+  color: #d8e4f0;
 }
 
 .compose-ai-preview {
-  color: #111827;
+  color: #d8e4f0;
 }
 
 .compose-dark-note {

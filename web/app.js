@@ -1608,16 +1608,6 @@ function renderCompose() {
               : `<div class="compose-dark-empty">配置的目录中没有找到 Compose 文件。</div>`
           }
         </div>
-        <form class="compose-command-card" id="composeCommandForm">
-          <strong>命令转 Compose</strong>
-          <span>粘贴 docker run 命令，可转为 Compose 后部署。</span>
-          <input name="name" placeholder="my-app" required />
-          <textarea name="command" placeholder="docker run -d --name app -p 8080:80 nginx:alpine" required></textarea>
-          <div class="form-actions">
-            <button type="submit" data-deploy="0">转 Compose</button>
-            <button type="submit" class="primary" data-deploy="1">转并部署</button>
-          </div>
-        </form>
       </aside>
       <main class="compose-monitor-main">
         <form class="compose-inline-create" id="composeNewForm">
@@ -1633,6 +1623,7 @@ function renderCompose() {
           <div class="top-actions compose-action-bar">
             <button data-action="compose-action" data-command="config" ${state.compose.selected ? "" : "disabled"}>检查</button>
             <button data-action="compose-repair">AI 修正</button>
+            <button data-action="compose-convert-command-ai">AI 转 Compose</button>
             <button data-action="compose-apply-ai" ${state.compose.aiContent ? "" : "disabled"}>应用 AI 修正</button>
             <button data-action="compose-save" class="primary" ${state.compose.selected ? "" : "disabled"}>保存</button>
             <button data-action="compose-action" data-command="pull" ${state.compose.selected ? "" : "disabled"}>拉取</button>
@@ -1663,17 +1654,15 @@ function renderCompose() {
           <section class="compose-code-panel">
             <div class="compose-panel-caption">
               <strong>compose.yml</strong>
-              <span>左侧为当前编辑内容。</span>
             </div>
             <div class="editor-shell compose-dark-editor">
               <pre id="composeHighlight" class="code-highlight" aria-hidden="true">${highlightYaml(state.compose.content)}\n</pre>
-              <textarea id="composeEditor" class="code-input" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off">${h(state.compose.content)}</textarea>
+              <textarea id="composeEditor" class="code-input" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="粘贴 compose.yml，或粘贴 docker run 命令后点击 AI 转 Compose">${h(state.compose.content)}</textarea>
             </div>
           </section>
           <aside class="compose-runtime-panel">
             <div class="compose-panel-caption">
               <strong>AI 修正预览</strong>
-              <span>右侧只展示 AI 返回内容，确认后再应用。</span>
             </div>
             <div class="editor-shell compose-ai-preview-shell">
               <pre id="composeAiPreview" class="code-highlight compose-ai-preview">${state.compose.aiContent ? highlightYaml(state.compose.aiContent) : "点击 AI 修正后，这里会显示修正后的 compose.yml。"}\n</pre>
@@ -1880,23 +1869,6 @@ document.addEventListener("submit", async (event) => {
       form.reset();
       await refreshCurrent();
       await selectCompose(result.project.path);
-      render();
-    }
-    if (form.id === "composeCommandForm") {
-      const data = Object.fromEntries(new FormData(form));
-      const deploy = event.submitter?.dataset.deploy === "1";
-      const result = await api("/api/compose/from-command", {
-        method: "POST",
-        body: { name: data.name, command: data.command, deploy },
-      });
-      state.tab = "compose";
-      state.compose.selected = result.project.path;
-      state.compose.output = result.output ? `$ docker compose up -d\n\n${result.output}` : "";
-      form.reset();
-      await refreshCurrent();
-      await selectCompose(result.project.path);
-      state.compose.output = result.output ? `$ docker compose up -d\n\n${result.output}` : "";
-      state.error = deploy ? "命令已转为 Compose 并完成部署。" : "命令已转为 Compose 项目。";
       render();
     }
     if (form.id === "settingsForm") {
@@ -2226,6 +2198,19 @@ document.addEventListener("click", async (event) => {
         state.compose.repairLines = [];
         state.error = (result.changes || []).join("；") || "未发现可自动修正的问题。";
       }
+      render();
+    }
+    if (action === "compose-convert-command-ai") {
+      const editor = document.getElementById("composeEditor");
+      const projectName = selectedComposeProject()?.name || "app";
+      const result = await api("/api/compose/convert-command-ai", {
+        method: "POST",
+        body: { command: editor.value, project_name: projectName },
+      });
+      state.compose.repair = result;
+      state.compose.aiContent = result.content || "";
+      state.compose.repairLines = result.repaired_lines || [];
+      state.error = "AI 已将命令转换为 Compose，请在右侧确认后应用。";
       render();
     }
     if (action === "compose-apply-ai") {

@@ -20,6 +20,7 @@ from dockpilot.server import (
     normalize_registry_mirrors,
     proxied_image_reference,
     recreate_standalone_container,
+    convert_command_to_compose_ai,
     repair_compose_content,
 )
 
@@ -280,6 +281,21 @@ def test_compose_repair_uses_ai_compatible_result_without_rule_fallback() -> Non
     assert_true(result["repaired_lines"], "Compose AI 修正应返回差异行用于高亮")
 
 
+def test_compose_command_convert_uses_ai_preview_content() -> None:
+    original_settings = server.compose_ai_settings
+    original_call = server.call_ai_compose_command_convert
+    try:
+        server.compose_ai_settings = lambda: {"base_url": "http://ai.local/v1", "api_key": "test", "model": "compose-fixer"}
+        server.call_ai_compose_command_convert = lambda command, project_name, settings: "services:\n  app:\n    image: nginx:alpine\n    ports:\n      - \"8080:80\"\n"
+        result = convert_command_to_compose_ai("docker run -p 8080:80 nginx:alpine", "app")
+    finally:
+        server.compose_ai_settings = original_settings
+        server.call_ai_compose_command_convert = original_call
+    assert_true(result["changed"] is True, "命令转 Compose 应返回可预览内容")
+    assert_true("image: nginx:alpine" in result["content"], "命令转 Compose 应使用 AI 返回内容")
+    assert_true(result["repaired_lines"], "命令转 Compose 应返回差异行用于高亮")
+
+
 def test_ai_cloudflare_error_is_translated() -> None:
     message = server.format_ai_http_error(
         403,
@@ -312,6 +328,7 @@ def main() -> int:
     test_network_proxy_url_is_normalized_for_lan_proxy()
     test_network_proxy_treats_registry_auth_response_as_connected()
     test_compose_repair_uses_ai_compatible_result_without_rule_fallback()
+    test_compose_command_convert_uses_ai_preview_content()
     test_ai_cloudflare_error_is_translated()
     print("PASS: DockPilot 单元测试全部通过")
     return 0

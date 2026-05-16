@@ -1224,6 +1224,10 @@ class AppHandler(BaseHTTPRequestHandler):
                 data = self.read_json()
                 self.write_json(repair_compose_content(str(data.get("content", "")), str(data.get("error", ""))))
                 return
+            if path == "/api/compose/convert-command-ai" and self.command == "POST":
+                data = self.read_json()
+                self.write_json(convert_command_to_compose_ai(str(data.get("command", "")), str(data.get("project_name", ""))))
+                return
         except FileExistsError:
             self.write_json({"error": "project already exists"}, status=409)
             return
@@ -1791,6 +1795,22 @@ def repair_compose_content(content: str, error: str = "") -> dict[str, Any]:
     }
 
 
+def convert_command_to_compose_ai(command: str, project_name: str = "") -> dict[str, Any]:
+    source = str(command or "").strip()
+    if not source:
+        raise RuntimeError("请先在左侧编辑窗口粘贴 docker run 命令。")
+    fixed_content = extract_ai_compose_content(call_ai_compose_command_convert(source, safe_name(project_name or "app", "app"), compose_ai_settings()))
+    if not fixed_content:
+        raise RuntimeError("AI 没有返回 compose.yml。")
+    return {
+        "ok": True,
+        "content": fixed_content,
+        "changed": True,
+        "changes": ["AI 已将命令转换为 Compose，请在右侧预览确认后应用。"],
+        "repaired_lines": changed_line_numbers(source, fixed_content),
+    }
+
+
 def compose_from_container_inspect(inspect_data: dict[str, Any]) -> str:
     config = inspect_data.get("Config") or {}
     host_config = inspect_data.get("HostConfig") or {}
@@ -2264,6 +2284,55 @@ def call_ai_compose_repair(content: str, error: str, settings: dict[str, str]) -
     choices = payload.get("choices") or []
     if not choices:
         raise RuntimeError("AI 接口没有返回修正内容。")
+    message = choices[0].get("message") or {}
+    return str(message.get("content") or "")
+
+
+def call_ai_compose_command_convert(command: str, project_name: str, settings: dict[str, str]) -> str:
+    system_prompt = (
+        "你是 Docker Compose 转换器。"
+        "只把用户提供的 docker run 命令转换为 compose.yml。"
+        "必须保留镜像名、tag、端口映射、挂载路径、环境变量、网络、容器名、重启策略和命令参数的原始含义。"
+        "不要新增用户命令中没有表达的服务、端口、卷、环境变量或网络。"
+        "服务名使用用户给出的项目名。"
+        "只输出 compose.yml 原文，不要解释，不要 Markdown。"
+    )
+    user_prompt = f"项目名：{project_name}\n\ndocker run 命令：\n{command}"
+    payload = {
+        "model": settings["model"],
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        "temperature": 0,
+    }
+    origin = ai_request_origin(settings["base_url"])
+    request = urllib.request.Request(
+        openai_chat_completions_url(settings["base_url"]),
+        data=json_dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {settings['api_key']}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 DockPilot/1.0",
+            "Origin": origin,
+            "Referer": f"{origin}/",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=90) as response:
+            raw = response.read()
+    except urllib.error.HTTPError as exc:
+        message = exc.read().decode("utf-8", "replace") or exc.reason
+        raise RuntimeError(format_ai_http_error(int(exc.code), message, str(exc.reason))) from exc
+    except urllib.error.URLError as exc:
+        reason = str(exc.reason) if getattr(exc, "reason", "") else str(exc)
+        raise RuntimeError(f"AI 接口连接失败：{reason}") from exc
+    payload = json.loads(raw.decode("utf-8")) if raw else {}
+    choices = payload.get("choices") or []
+    if not choices:
+        raise RuntimeError("AI 接口没有返回 Compose 内容。")
     message = choices[0].get("message") or {}
     return str(message.get("content") or "")
 

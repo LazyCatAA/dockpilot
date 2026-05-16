@@ -844,7 +844,7 @@ function render() {
       </aside>
       <main class="content">
         ${
-          state.tab === "containers" || state.tab === "compose"
+          ["containers", "images", "compose"].includes(state.tab)
             ? ""
             : `<div class="topbar">
                 <div>

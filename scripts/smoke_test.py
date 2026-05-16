@@ -160,7 +160,7 @@ def main() -> int:
         assert_true("compose-project-card:nth-child(3n + 2)" not in styles_css, "Compose 项目卡片不应再使用杂色分层")
         assert_true("compose-backup-modal" in styles_css, "Compose 备份恢复应使用选择弹窗")
         assert_true("compose-backup-restore-new" in app_js, "Compose 备份应支持恢复为新项目")
-        assert_true('state.tab === "compose"' in app_js, "Compose 页面应隐藏顶部用户栏")
+        assert_true('["containers", "images", "compose"].includes(state.tab)' in app_js, "容器、镜像库和 Compose 页面应隐藏顶部用户栏")
         _, update_job = client.request("POST", "/api/docker/containers/fake-container/update-job", expect=202)
         job_id = update_job["job"]["id"]
         _, job_state = client.request("GET", f"/api/docker/jobs/{job_id}")

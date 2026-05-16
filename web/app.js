@@ -11,7 +11,7 @@ const state = {
   cardContextMenu: { open: false, x: 0, y: 0, id: null },
   containers: [],
   containerBackups: [],
-  images: { items: [], query: "", remoteQuery: "", searchResults: [], pullOutput: "", proxy: "", registryMirrors: [], networkProxy: "", proxyTest: "", proxyOk: null, pullMode: "proxy" },
+  images: { items: [], query: "", remoteQuery: "", searchResults: [], pullOutput: "", proxy: "", registryMirrors: [], networkProxy: "", proxyTest: "", proxyOk: null, pullMode: "proxy", configOpen: false },
   imagePullJob: null,
   containerView: "card",
   containerFilter: "all",
@@ -1307,8 +1307,24 @@ function renderImageGroup(title, note, items, tone) {
         </div>
         <b>${items.length}</b>
       </div>
-      <div class="image-grid">${items.map(renderImageCard).join("")}</div>
+      <div class="image-compact-list">${items.map(renderImageRow).join("")}</div>
     </section>
+  `;
+}
+
+function renderImageRow(image) {
+  const id = image.Id || image.ID || "";
+  const tone = imageCardTone(image);
+  return `
+    <div class="image-compact-row ${h(tone)}">
+      <span class="image-status-dot ${h(tone)}"></span>
+      <strong title="${h(imageTitle(image))}">${h(imageTitle(image))}</strong>
+      <code title="${h(imageShortDigest(image))}">${h(imageShortDigest(image))}</code>
+      <span>${fmtBytes(image.Size)}</span>
+      <span class="image-usage ${h(tone)}">${imageUsageLabel(image)}</span>
+      <span>${h(imageCreatedText(image))}</span>
+      <button class="danger" title="删除镜像" data-action="image-remove" data-id="${h(id)}">${tone === "dangling" ? "清理" : "删除"}</button>
+    </div>
   `;
 }
 
@@ -1365,72 +1381,68 @@ function renderImages() {
           <h3>镜像库</h3>
           <span class="muted">管理本地 Docker 镜像，支持搜索、拉取、删除和清理悬空镜像。</span>
         </div>
-        <button data-action="image-prune">清理悬空镜像</button>
+        <div class="top-actions">
+          <button data-action="image-config-toggle">配置</button>
+          <button data-action="image-prune">清理悬空镜像</button>
+        </div>
       </div>
-      <div class="image-summary">
+      <div class="image-command-bar">
+        <form id="imagePullForm" class="image-pull-form">
+          <input name="image" placeholder="拉取镜像，例如 nginx:latest" required />
+          <select id="imagePullMode" name="pull_mode">
+            <option value="proxy" ${state.images.pullMode !== "direct" ? "selected" : ""}>使用代理</option>
+            <option value="direct" ${state.images.pullMode === "direct" ? "selected" : ""}>直接拉取</option>
+          </select>
+          <button class="primary" type="submit">拉取</button>
+        </form>
+        <label>
+          <input id="imageSearch" value="${h(state.images.query)}" placeholder="搜索本地镜像、标签或 ID" />
+        </label>
+        <form id="imageRemoteSearchForm" class="image-remote-form">
+          <input id="imageRemoteSearch" name="q" value="${h(state.images.remoteQuery)}" placeholder="搜索 Docker Hub 镜像" required />
+          <button type="submit">搜索</button>
+        </form>
+        <div class="image-config-status">
+          <i class="${state.images.proxyOk === true ? "ok" : state.images.proxyOk === false ? "bad" : "pending"}"></i>
+          <span>${h(state.images.proxy || "未设置加速源")} · ${proxyStatusText()}</span>
+        </div>
+      </div>
+      ${
+        state.images.configOpen
+          ? `<div class="image-config-panel">
+              <section class="image-tool-card accent-purple">
+                <h4>镜像加速源</h4>
+                <form id="imageMirrorsForm" class="form-stack">
+                  <label class="field">
+                    <span>每行一个加速源</span>
+                    <textarea name="registry_mirrors" placeholder="docker.1ms.run&#10;docker.1panel.live">${h(mirrorText)}</textarea>
+                  </label>
+                  <button type="submit">保存加速源</button>
+                </form>
+              </section>
+              <section class="image-tool-card accent-orange">
+                <h4>镜像代理</h4>
+                <form id="imageNetworkProxyForm" class="inline-form">
+                  <label class="field">
+                    <span>代理地址</span>
+                    <input name="network_proxy" value="${h(state.images.networkProxy)}" placeholder="例如 192.168.1.2:7890" />
+                  </label>
+                  <button type="submit">保存</button>
+                </form>
+                <div class="proxy-status">
+                  <i class="${state.images.proxyOk === true ? "ok" : state.images.proxyOk === false ? "bad" : "pending"}"></i>
+                  <small class="proxy-test-result">${proxyStatusText()}</small>
+                </div>
+              </section>
+            </div>`
+          : ""
+      }
+      <div class="image-summary compact">
         <div class="blue"><strong>${state.images.items.length}</strong><span>本地镜像</span></div>
         <div class="green"><strong>${usedCount}</strong><span>已使用</span></div>
         <div class="slate"><strong>${unusedCount}</strong><span>未使用</span></div>
         <div class="orange"><strong>${danglingCount}</strong><span>悬空镜像</span></div>
         <div class="purple"><strong>${fmtBytes(totalSize)}</strong><span>占用空间</span></div>
-        <div class="cyan"><strong>${h(state.images.proxy || "未设置")}</strong><span>镜像加速源</span></div>
-      </div>
-      <div class="image-sections">
-        <section class="image-tool-card accent-blue">
-          <h4>镜像拉取</h4>
-          <form id="imagePullForm" class="image-pull-form">
-          <label class="field">
-            <span>拉取镜像</span>
-            <input name="image" placeholder="nginx:latest 或 ghcr.io/user/app:latest" required />
-          </label>
-          <label class="field">
-            <span>下载方式</span>
-            <select id="imagePullMode" name="pull_mode">
-              <option value="proxy" ${state.images.pullMode !== "direct" ? "selected" : ""}>使用代理</option>
-              <option value="direct" ${state.images.pullMode === "direct" ? "selected" : ""}>直接拉取</option>
-            </select>
-          </label>
-          <button class="primary" type="submit">拉取</button>
-          </form>
-        </section>
-        <section class="image-tool-card accent-green">
-          <h4>搜索</h4>
-          <label class="field">
-            <span>本地搜索</span>
-            <input id="imageSearch" value="${h(state.images.query)}" placeholder="输入镜像名、标签或 ID" />
-          </label>
-          <form id="imageRemoteSearchForm" class="inline-form">
-          <label class="field">
-            <span>远程搜索</span>
-            <input id="imageRemoteSearch" name="q" value="${h(state.images.remoteQuery)}" placeholder="搜索 Docker Hub 镜像" required />
-          </label>
-          <button type="submit">搜索</button>
-          </form>
-        </section>
-        <section class="image-tool-card accent-purple">
-          <h4>镜像加速源</h4>
-          <form id="imageMirrorsForm" class="form-stack">
-          <label class="field">
-            <span>每行一个加速源</span>
-            <textarea name="registry_mirrors" placeholder="docker.1ms.run&#10;docker.1panel.live">${h(mirrorText)}</textarea>
-          </label>
-          <button type="submit">保存加速源</button>
-          </form>
-        </section>
-        <section class="image-tool-card accent-orange">
-          <h4>镜像代理</h4>
-          <form id="imageNetworkProxyForm" class="inline-form">
-          <label class="field">
-            <span>代理地址</span>
-            <input name="network_proxy" value="${h(state.images.networkProxy)}" placeholder="例如 192.168.1.2:7890" />
-          </label>
-          <button type="submit">保存</button>
-          </form>
-          <div class="proxy-status">
-            <i class="${state.images.proxyOk === true ? "ok" : state.images.proxyOk === false ? "bad" : "pending"}"></i>
-            <small class="proxy-test-result">${proxyStatusText()}</small>
-          </div>
-        </section>
       </div>
       ${renderImagePullProgress()}
       ${
@@ -2038,6 +2050,10 @@ document.addEventListener("click", async (event) => {
       render();
     }
     if (action === "refresh") await refreshCurrent();
+    if (action === "image-config-toggle") {
+      state.images.configOpen = !state.images.configOpen;
+      render();
+    }
     if (action === "container-view") {
       state.containerView = button.dataset.view;
       render();

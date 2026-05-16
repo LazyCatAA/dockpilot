@@ -290,6 +290,10 @@ function imageTags(image) {
   return tags.filter((tag) => tag && tag !== "<none>:<none>");
 }
 
+function isDanglingImage(image) {
+  return !imageTags(image).length;
+}
+
 function imageTitle(image) {
   const tags = imageTags(image);
   if (tags.length) return tags[0];
@@ -307,6 +311,30 @@ function imageCreatedText(image) {
   const created = Number(image.Created || 0);
   if (!created) return "-";
   return new Date(created * 1000).toLocaleDateString("zh-CN");
+}
+
+function imageCardTone(image) {
+  if (isDanglingImage(image)) return "dangling";
+  return image.DockPilot?.used ? "used" : "unused";
+}
+
+function imageUsageLabel(image) {
+  if (isDanglingImage(image)) return "悬空镜像";
+  return image.DockPilot?.used ? "已使用" : "未使用";
+}
+
+function imageRegistryName(image) {
+  const title = imageTitle(image);
+  if (!title.includes("/")) return "Docker Hub";
+  return title.split("/")[0];
+}
+
+function imageShortDigest(image) {
+  const digests = image.RepoDigests || [];
+  const digest = digests[0] || image.Id || image.ID || "";
+  if (!digest) return "无 digest";
+  const value = String(digest).includes("@") ? String(digest).split("@").pop() : String(digest);
+  return value.replace(/^sha256:/, "sha256:").slice(0, 19);
 }
 
 function jobProgressText(job) {
@@ -1243,9 +1271,66 @@ function renderContainerBackups() {
   `;
 }
 
+function renderImageGroup(title, note, items, tone) {
+  if (!items.length) return "";
+  return `
+    <section class="image-group-section ${h(tone)}">
+      <div class="image-group-head">
+        <div>
+          <h4>${h(title)}</h4>
+          <span>${h(note)}</span>
+        </div>
+        <b>${items.length}</b>
+      </div>
+      <div class="image-grid">${items.map(renderImageCard).join("")}</div>
+    </section>
+  `;
+}
+
+function renderImageCard(image) {
+  const id = image.Id || image.ID || "";
+  const tone = imageCardTone(image);
+  const title = imageTitle(image);
+  const subtitle = imageSubtitle(image);
+  return `
+    <article class="image-card-shell ${h(tone)}">
+      <div class="image-card-top">
+        <div class="image-mark" aria-hidden="true">
+          <span>${h(title.slice(0, 2).toUpperCase())}</span>
+        </div>
+        <div class="image-info">
+          <div class="image-title-row">
+            <strong title="${h(title)}">${h(title)}</strong>
+            <span class="image-status-dot ${h(tone)}"></span>
+          </div>
+          <small title="${h(subtitle)}">${h(subtitle)}</small>
+        </div>
+      </div>
+      <div class="image-facts">
+        <span><b>${fmtBytes(image.Size)}</b><small>大小</small></span>
+        <span><b>${h(imageCreatedText(image))}</b><small>创建</small></span>
+        <span><b>${h(imageRegistryName(image))}</b><small>来源</small></span>
+      </div>
+      <div class="image-card-bottom">
+        <span class="image-usage ${h(tone)}">${imageUsageLabel(image)}</span>
+        <code>${h(imageShortDigest(image))}</code>
+        <div class="image-card-actions">
+          <button class="danger" title="删除镜像" data-action="image-remove" data-id="${h(id)}">删除</button>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
 function renderImages() {
   const images = filteredImages();
   const totalSize = state.images.items.reduce((sum, image) => sum + Number(image.Size || 0), 0);
+  const usedCount = state.images.items.filter((image) => image.DockPilot?.used && !isDanglingImage(image)).length;
+  const danglingCount = state.images.items.filter(isDanglingImage).length;
+  const unusedCount = Math.max(0, state.images.items.length - usedCount - danglingCount);
+  const usedImages = images.filter((image) => image.DockPilot?.used && !isDanglingImage(image));
+  const danglingImages = images.filter(isDanglingImage);
+  const unusedImages = images.filter((image) => !image.DockPilot?.used && !isDanglingImage(image));
   const searchResults = state.images.searchResults || [];
   const mirrorText = (state.images.registryMirrors || []).join("\n");
   return `
@@ -1258,9 +1343,12 @@ function renderImages() {
         <button data-action="image-prune">清理悬空镜像</button>
       </div>
       <div class="image-summary">
-        <div><strong>${state.images.items.length}</strong><span>本地镜像</span></div>
-        <div><strong>${fmtBytes(totalSize)}</strong><span>占用空间</span></div>
-        <div><strong>${h(state.images.proxy || "未设置")}</strong><span>镜像加速源</span></div>
+        <div class="blue"><strong>${state.images.items.length}</strong><span>本地镜像</span></div>
+        <div class="green"><strong>${usedCount}</strong><span>已使用</span></div>
+        <div class="slate"><strong>${unusedCount}</strong><span>未使用</span></div>
+        <div class="orange"><strong>${danglingCount}</strong><span>悬空镜像</span></div>
+        <div class="purple"><strong>${fmtBytes(totalSize)}</strong><span>占用空间</span></div>
+        <div class="cyan"><strong>${h(state.images.proxy || "未设置")}</strong><span>镜像加速源</span></div>
       </div>
       <div class="image-sections">
         <section class="image-tool-card accent-blue">
@@ -1347,22 +1435,11 @@ function renderImages() {
       }
       ${
         images.length
-          ? `<div class="image-grid">${images
-              .map((image) => {
-                const id = image.Id || image.ID || "";
-                return `
-                  <article class="image-card">
-                    <div class="image-mark">IMG</div>
-                    <div class="image-info">
-                      <strong>${h(imageTitle(image))}</strong>
-                      <small>${h(shortId(id))} · ${fmtBytes(image.Size)} · ${h(imageCreatedText(image))}</small>
-                    </div>
-                    <span class="image-usage ${image.DockPilot?.used ? "used" : "unused"}">${image.DockPilot?.used ? "已使用" : "未使用"}</span>
-                    <button class="danger" data-action="image-remove" data-id="${h(id)}">删除</button>
-                  </article>
-                `;
-              })
-              .join("")}</div>`
+          ? `<div class="image-groups">
+              ${renderImageGroup("正在使用", "被容器引用的镜像，删除前需要先处理相关容器。", usedImages, "used")}
+              ${renderImageGroup("未使用", "当前没有容器引用，适合检查后清理。", unusedImages, "unused")}
+              ${renderImageGroup("悬空镜像", "没有有效标签的镜像，通常来自构建或更新残留。", danglingImages, "dangling")}
+            </div>`
           : `<div class="empty">没有匹配的镜像。</div>`
       }
     </section>

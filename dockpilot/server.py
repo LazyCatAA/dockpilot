@@ -2521,19 +2521,15 @@ def search_docker_hub_images(query: str, limit: int = 12) -> list[dict[str, Any]
     if not keyword:
         raise ValueError("image search query is required")
     url = "https://hub.docker.com/v2/search/repositories/?query=" + urllib.parse.quote(keyword) + f"&page_size={max(1, min(limit, 25))}"
-    results: list[dict[str, Any]] = []
-    if looks_like_image_reference(source):
-        results.append(direct_image_search_result(source))
+    results: list[dict[str, Any]] = [direct_image_search_result(source)]
     try:
         payload = fetch_json_url(url, timeout=10)
         for item in normalize_docker_hub_search_results(payload, limit=limit):
             if item["name"] not in {result["name"] for result in results}:
                 results.append(item)
     except Exception as exc:
-        if results:
-            results[0]["description"] = f"远程搜索暂不可用，可直接拉取。{translate_docker_error(str(exc))}"
-            return results
-        raise
+        results[0]["description"] = f"远程搜索暂不可用，可直接拉取。{translate_docker_error(str(exc))}"
+        return results
     return results[:limit]
 
 

@@ -243,6 +243,17 @@ def test_remote_image_search_strips_tag_from_full_reference() -> None:
     assert_true(direct["pull_name"] == "shenxianmq/symedia:latest", "完整镜像引用应保留为可直接拉取结果")
 
 
+def test_remote_image_search_returns_direct_fallback_for_simple_name() -> None:
+    original_fetch = server.fetch_json_url
+    try:
+        server.fetch_json_url = lambda url, timeout=10: (_ for _ in ()).throw(RuntimeError("timeout"))
+        results = server.search_docker_hub_images("nginx")
+    finally:
+        server.fetch_json_url = original_fetch
+    assert_true(results[0]["pull_name"] == "nginx:latest", "远程搜索失败时普通镜像名也应提供直接拉取结果")
+    assert_true("远程搜索暂不可用" in results[0]["description"], "远程搜索失败时应给出中文兜底提示")
+
+
 def test_network_proxy_url_is_normalized_for_lan_proxy() -> None:
     assert_true(
         normalize_network_proxy_url("192.168.1.2:7890") == "http://192.168.1.2:7890",
@@ -325,6 +336,7 @@ def main() -> int:
     test_container_card_uses_repo_tag_when_summary_image_is_digest()
     test_images_are_marked_used_when_container_references_image_id()
     test_remote_image_search_strips_tag_from_full_reference()
+    test_remote_image_search_returns_direct_fallback_for_simple_name()
     test_network_proxy_url_is_normalized_for_lan_proxy()
     test_network_proxy_treats_registry_auth_response_as_connected()
     test_compose_repair_uses_ai_compatible_result_without_rule_fallback()

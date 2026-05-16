@@ -1516,9 +1516,7 @@ function renderComposeProjectCard(project) {
     <button class="compose-project-card ${state.compose.selected === project.path ? "active" : ""} ${h(tone)}" data-action="compose-select" data-path="${h(project.path)}">
       <span>
         <strong>${h(project.name)}</strong>
-        <small>${h((project.services || []).join(" / ") || "未识别到服务")}</small>
       </span>
-      <em>${h(composeStatusLabel(tone))}</em>
     </button>
   `;
 }

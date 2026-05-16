@@ -1649,7 +1649,7 @@ a {
 }
 
 .image-tool-card .inline-form {
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .image-tool-card .inline-form button {
@@ -2470,6 +2470,23 @@ td.actions button {
   box-shadow: 0 16px 34px rgba(0, 0, 0, 0.14);
 }
 
+.compose-project-card::after {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  justify-self: end;
+  background: #94a3b8;
+}
+
+.compose-project-card.running::after {
+  background: #22c55e;
+}
+
+.compose-project-card.missing::after {
+  background: #f59e0b;
+}
+
 .compose-project-card.running {
   border-left-color: #22c55e;
 }
@@ -2949,6 +2966,64 @@ td.actions button {
   background: rgba(255, 255, 255, 0.55);
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(10px);
+}
+
+.compose-backup-modal {
+  width: min(880px, 100%);
+  max-height: 82vh;
+  display: grid;
+  gap: 14px;
+  overflow: hidden;
+  border: 1px solid #d9e2ee;
+  border-radius: 18px;
+  background: #fff;
+  padding: 18px;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.24);
+}
+
+.compose-backup-list {
+  display: grid;
+  gap: 10px;
+  overflow: auto;
+}
+
+.compose-backup-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: #f8fafc;
+  padding: 12px;
+}
+
+.compose-backup-item strong,
+.compose-backup-item span,
+.compose-backup-item small {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compose-backup-item span,
+.compose-backup-item small {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .compose-panel {
   position: relative;
   overflow: hidden;
@@ -3360,6 +3435,10 @@ td.actions button {
   .compose-project-card,
   .compose-service-status-card {
     grid-template-columns: 1fr;
+  }
+
+  .compose-project-card {
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .compose-dark-editor {

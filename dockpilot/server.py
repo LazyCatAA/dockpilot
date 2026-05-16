@@ -1166,6 +1166,15 @@ class AppHandler(BaseHTTPRequestHandler):
                     containers = []
                 self.write_json({"projects": discover_compose_projects(self.compose_roots(), containers)})
                 return
+            if path == "/api/compose/backups" and self.command == "GET":
+                self.write_json({"backups": list_compose_backups()})
+                return
+            if path == "/api/compose/backups" and self.command == "POST":
+                data = self.read_json()
+                file_path = self.resolve_compose_file(str(data.get("path", "")))
+                content = str(data.get("content", file_path.read_text(encoding="utf-8", errors="replace")))
+                self.write_json({"backup": create_compose_backup(file_path, content, str(data.get("note", "")))}, status=201)
+                return
             if path == "/api/compose/projects" and self.command == "POST":
                 data = self.read_json()
                 roots = self.compose_roots()
@@ -1228,6 +1237,24 @@ class AppHandler(BaseHTTPRequestHandler):
                 data = self.read_json()
                 self.write_json(convert_command_to_compose_ai(str(data.get("command", "")), str(data.get("project_name", ""))))
                 return
+            parts = [part for part in path.strip("/").split("/") if part]
+            if len(parts) >= 4 and parts[:3] == ["api", "compose", "backups"]:
+                backup_name = urllib.parse.unquote(parts[3])
+                if len(parts) == 4 and self.command == "GET":
+                    self.write_json({"backup": read_compose_backup(backup_name)})
+                    return
+                if len(parts) == 4 and self.command == "DELETE":
+                    self.write_json(delete_compose_backup(backup_name))
+                    return
+                if len(parts) == 5 and parts[4] == "restore" and self.command == "POST":
+                    data = self.read_json()
+                    target = self.resolve_compose_file(str(data.get("path", "")))
+                    self.write_json({"project": restore_compose_backup_to_file(backup_name, target)})
+                    return
+                if len(parts) == 5 and parts[4] == "restore-new" and self.command == "POST":
+                    data = self.read_json()
+                    self.write_json({"project": restore_compose_backup_to_new_project(backup_name, self.compose_roots(), str(data.get("name", "")))}, status=201)
+                    return
         except FileExistsError:
             self.write_json({"error": "project already exists"}, status=409)
             return
@@ -1752,6 +1779,101 @@ def restore_container_backup(backup_name: str, roots: list[Path]) -> dict[str, A
 
 def delete_container_backup(backup_name: str) -> dict[str, Any]:
     path = backup_file_path(backup_name)
+    if not path.exists():
+        raise FileNotFoundError("backup not found")
+    path.unlink()
+    return {"ok": True, "name": path.name}
+
+
+def compose_backup_dir() -> Path:
+    path = DATA_DIR / "backups" / "compose"
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def compose_backup_file_path(name: str) -> Path:
+    clean = Path(name).name
+    if not clean.endswith(".json"):
+        clean += ".json"
+    target = (compose_backup_dir() / clean).resolve()
+    if not is_relative_to(target, compose_backup_dir().resolve()):
+        raise ValueError("invalid backup name")
+    return target
+
+
+def compose_backup_summary(path: Path, payload: dict[str, Any]) -> dict[str, Any]:
+    stat = path.stat()
+    return {
+        "name": path.name,
+        "project_name": payload.get("project_name", ""),
+        "path": payload.get("path", ""),
+        "note": payload.get("note", ""),
+        "created_at": payload.get("created_at", ""),
+        "size": stat.st_size,
+    }
+
+
+def create_compose_backup(compose_file: Path, content: str, note: str = "") -> dict[str, Any]:
+    created_at = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+    file_name = f"{safe_name(compose_file.parent.name, 'compose')}-{created_at}-{uuid.uuid4().hex[:6]}.json"
+    payload = {
+        "version": 1,
+        "created_at": created_at,
+        "project_name": compose_file.parent.name,
+        "path": str(compose_file),
+        "note": str(note or ""),
+        "content": str(content or ""),
+    }
+    path = compose_backup_file_path(file_name)
+    path.write_text(json_dumps(payload), encoding="utf-8")
+    return compose_backup_summary(path, payload)
+
+
+def list_compose_backups() -> list[dict[str, Any]]:
+    backups: list[dict[str, Any]] = []
+    for path in sorted(compose_backup_dir().glob("*.json"), key=lambda item: item.stat().st_mtime, reverse=True):
+        try:
+            backups.append(compose_backup_summary(path, json.loads(path.read_text(encoding="utf-8"))))
+        except (OSError, json.JSONDecodeError):
+            continue
+    return backups
+
+
+def read_compose_backup(backup_name: str) -> dict[str, Any]:
+    path = compose_backup_file_path(backup_name)
+    if not path.exists():
+        raise FileNotFoundError("backup not found")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    summary = compose_backup_summary(path, payload)
+    summary["content"] = str(payload.get("content", ""))
+    return summary
+
+
+def restore_compose_backup_to_file(backup_name: str, target_file: Path) -> dict[str, Any]:
+    backup = read_compose_backup(backup_name)
+    current = target_file.read_text(encoding="utf-8", errors="replace") if target_file.exists() else ""
+    create_compose_backup(target_file, current, "恢复前自动备份")
+    target_file.write_text(str(backup.get("content", "")), encoding="utf-8")
+    return compose_project_info(target_file)
+
+
+def restore_compose_backup_to_new_project(backup_name: str, roots: list[Path], name: str = "") -> dict[str, Any]:
+    if not roots:
+        raise ValueError("no compose roots configured")
+    backup = read_compose_backup(backup_name)
+    stamp = time.strftime("%Y%m%d-%H%M%S", time.localtime())
+    project_name = safe_name(name or f"restore-{backup.get('project_name') or 'compose'}-{stamp}", "restore-compose")
+    target_dir = (roots[0] / project_name).resolve()
+    if not is_relative_to(target_dir, roots[0].resolve()):
+        raise ValueError("restore target is outside compose root")
+    target_dir.mkdir(parents=True, exist_ok=False)
+    target_file = target_dir / "compose.yml"
+    target_file.write_text(str(backup.get("content", "")), encoding="utf-8")
+    return compose_project_info(target_file)
+
+
+def delete_compose_backup(backup_name: str) -> dict[str, Any]:
+    path = compose_backup_file_path(backup_name)
     if not path.exists():
         raise FileNotFoundError("backup not found")
     path.unlink()

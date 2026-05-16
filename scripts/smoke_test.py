@@ -158,6 +158,9 @@ def main() -> int:
         assert_true("compose-terminal-tabs" in styles_css, "Compose 管理应提供日志终端样式")
         assert_true("compose-inline-create" in styles_css, "Compose 新建项目应有顶部输入区域样式")
         assert_true("compose-project-card:nth-child(3n + 2)" not in styles_css, "Compose 项目卡片不应再使用杂色分层")
+        assert_true("compose-backup-modal" in styles_css, "Compose 备份恢复应使用选择弹窗")
+        assert_true("compose-backup-restore-new" in app_js, "Compose 备份应支持恢复为新项目")
+        assert_true('state.tab === "compose"' in app_js, "Compose 页面应隐藏顶部用户栏")
         _, update_job = client.request("POST", "/api/docker/containers/fake-container/update-job", expect=202)
         job_id = update_job["job"]["id"]
         _, job_state = client.request("GET", f"/api/docker/jobs/{job_id}")
@@ -204,11 +207,31 @@ def main() -> int:
         compose_path = urllib.parse.quote(project["project"]["path"], safe="")
         _, compose_file = client.request("GET", f"/api/compose/file?path={compose_path}")
         assert_true("services:" in compose_file["content"], "Compose 文件应可读取")
+        _, compose_backup = client.request("POST", "/api/compose/backups", {"path": project["project"]["path"], "content": compose_file["content"]}, expect=201)
+        backup_name = compose_backup["backup"]["name"]
+        _, compose_backups = client.request("GET", "/api/compose/backups")
+        assert_true(any(item["name"] == backup_name for item in compose_backups["backups"]), "Compose 备份列表应显示备份")
+        _, compose_backup_read = client.request("GET", f"/api/compose/backups/{urllib.parse.quote(backup_name, safe='')}")
+        assert_true("services:" in compose_backup_read["backup"]["content"], "Compose 备份应可预览内容")
         client.request(
             "PUT",
             "/api/compose/file",
             {"path": project["project"]["path"], "content": compose_file["content"] + "\n# smoke\n"},
         )
+        _, restored = client.request(
+            "POST",
+            f"/api/compose/backups/{urllib.parse.quote(backup_name, safe='')}/restore",
+            {"path": project["project"]["path"]},
+        )
+        assert_true(restored["project"]["path"] == project["project"]["path"], "Compose 备份应可恢复到当前项目")
+        _, restored_new = client.request(
+            "POST",
+            f"/api/compose/backups/{urllib.parse.quote(backup_name, safe='')}/restore-new",
+            {"name": "demo-restored"},
+            expect=201,
+        )
+        assert_true(restored_new["project"]["name"] == "demo-restored", "Compose 备份应可恢复为新项目")
+        client.request("DELETE", f"/api/compose/backups/{urllib.parse.quote(backup_name, safe='')}")
         _, from_command = client.request(
             "POST",
             "/api/compose/from-command",

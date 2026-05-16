@@ -20,7 +20,7 @@ const state = {
   containerUpdateCheck: { active: false, done: 0, total: 0, failed: 0 },
   sidebarCollapsed: false,
   logs: { id: "", text: "" },
-  compose: { projects: [], selected: "", content: "", output: "", repair: null, repairLines: [], aiContent: "" },
+  compose: { projects: [], selected: "", content: "", output: "", repair: null, repairLines: [], aiContent: "", backups: [], backupModal: false },
   files: { roots: [], root: "", path: "", items: [], editPath: "", content: "" },
   settings: null,
 };
@@ -800,6 +800,11 @@ async function selectCompose(path) {
   state.compose.repairLines = [];
 }
 
+async function loadComposeBackups() {
+  const data = await api("/api/compose/backups");
+  state.compose.backups = data.backups || [];
+}
+
 async function loadFiles() {
   if (!state.files.roots.length) {
     const roots = await api("/api/files/roots");
@@ -839,7 +844,7 @@ function render() {
       </aside>
       <main class="content">
         ${
-          state.tab === "containers"
+          state.tab === "containers" || state.tab === "compose"
             ? ""
             : `<div class="topbar">
                 <div>
@@ -854,6 +859,7 @@ function render() {
         }
         ${state.error ? `<div class="notice">${h(state.error)}</div>` : ""}
         ${state.loading ? `<div class="empty">正在加载当前页面...</div>` : renderCurrent()}
+        ${state.compose.backupModal ? renderComposeBackupModal() : ""}
       </main>
     </section>
   `;
@@ -1623,6 +1629,8 @@ function renderCompose() {
             <button data-action="compose-repair">AI 修正</button>
             <button data-action="compose-convert-command-ai">AI 转 Compose</button>
             <button data-action="compose-apply-ai" ${state.compose.aiContent ? "" : "disabled"}>应用 AI 修正</button>
+            <button data-action="compose-backup" ${state.compose.selected ? "" : "disabled"}>备份</button>
+            <button data-action="compose-restore">恢复</button>
             <button data-action="compose-save" class="primary" ${state.compose.selected ? "" : "disabled"}>保存</button>
             <button data-action="compose-action" data-command="pull" ${state.compose.selected ? "" : "disabled"}>拉取</button>
             <button data-action="compose-action" data-command="up" class="primary" ${state.compose.selected ? "" : "disabled"}>部署</button>
@@ -1689,6 +1697,45 @@ function renderCompose() {
           <pre class="console compose-dark-console">${h(state.compose.output || "$ docker compose ps\n等待执行检查、部署或日志命令。")}</pre>
         </section>
       </main>
+    </div>
+  `;
+}
+
+function renderComposeBackupModal() {
+  const currentPath = state.compose.selected;
+  const backups = state.compose.backups || [];
+  return `
+    <div class="modal-backdrop" data-action="compose-backup-close">
+      <div class="compose-backup-modal" onclick="event.stopPropagation()">
+        <div class="panel-head">
+          <div>
+            <h3>恢复 Compose 备份</h3>
+            <span class="muted">选择备份后可先预览，再恢复到当前项目或恢复为新项目。</span>
+          </div>
+          <button data-action="compose-backup-close">关闭</button>
+        </div>
+        <div class="compose-backup-list">
+          ${
+            backups.length
+              ? backups.map((item) => `
+                  <div class="compose-backup-item">
+                    <div>
+                      <strong>${h(item.project_name || "compose")}</strong>
+                      <span>${h(item.created_at || item.name)} · ${fmtBytes(item.size || 0)}</span>
+                      ${item.note ? `<small>${h(item.note)}</small>` : ""}
+                    </div>
+                    <div class="mini-actions">
+                      <button data-action="compose-backup-preview" data-name="${h(item.name)}">预览</button>
+                      <button data-action="compose-backup-restore" data-name="${h(item.name)}" ${currentPath ? "" : "disabled"}>恢复到当前</button>
+                      <button data-action="compose-backup-restore-new" data-name="${h(item.name)}">恢复为新项目</button>
+                      <button class="danger" data-action="compose-backup-delete" data-name="${h(item.name)}">删除</button>
+                    </div>
+                  </div>
+                `).join("")
+              : `<div class="empty">还没有 Compose 备份。</div>`
+          }
+        </div>
+      </div>
     </div>
   `;
 }
@@ -2170,6 +2217,59 @@ document.addEventListener("click", async (event) => {
         body: { path: state.compose.selected, content: document.getElementById("composeEditor").value },
       });
       await refreshCurrent();
+    }
+    if (action === "compose-backup") {
+      await api("/api/compose/backups", {
+        method: "POST",
+        body: { path: state.compose.selected, content: document.getElementById("composeEditor").value },
+      });
+      state.error = "Compose 备份已创建。";
+      render();
+    }
+    if (action === "compose-restore") {
+      await loadComposeBackups();
+      state.compose.backupModal = true;
+      render();
+    }
+    if (action === "compose-backup-close") {
+      state.compose.backupModal = false;
+      render();
+    }
+    if (action === "compose-backup-preview") {
+      const data = await api(`/api/compose/backups/${encodeURIComponent(button.dataset.name)}`);
+      state.compose.aiContent = data.backup.content || "";
+      state.compose.repair = { changed: true, changes: ["已加载备份预览，请确认后应用或恢复。"] };
+      state.compose.backupModal = false;
+      render();
+    }
+    if (action === "compose-backup-restore") {
+      if (!state.compose.selected) throw new Error("请先选择当前项目。");
+      if (confirm("恢复会覆盖当前 compose.yml，系统会先自动备份当前内容。继续吗？")) {
+        const data = await api(`/api/compose/backups/${encodeURIComponent(button.dataset.name)}/restore`, {
+          method: "POST",
+          body: { path: state.compose.selected },
+        });
+        state.compose.backupModal = false;
+        await selectCompose(data.project.path);
+        state.error = "已恢复到当前项目。";
+        render();
+      }
+    }
+    if (action === "compose-backup-restore-new") {
+      const data = await api(`/api/compose/backups/${encodeURIComponent(button.dataset.name)}/restore-new`, { method: "POST", body: {} });
+      state.compose.backupModal = false;
+      state.compose.selected = data.project.path;
+      await refreshCurrent();
+      await selectCompose(data.project.path);
+      state.error = "已恢复为新项目。";
+      render();
+    }
+    if (action === "compose-backup-delete") {
+      if (confirm("确定删除这个 Compose 备份吗？")) {
+        await api(`/api/compose/backups/${encodeURIComponent(button.dataset.name)}`, { method: "DELETE" });
+        await loadComposeBackups();
+        render();
+      }
     }
     if (action === "compose-repair") {
       const editor = document.getElementById("composeEditor");

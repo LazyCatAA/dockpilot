@@ -185,11 +185,11 @@ a {
 .layout {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 92px minmax(0, 1fr);
+  grid-template-columns: 86px minmax(0, 1fr);
 }
 
 .layout.sidebar-collapsed {
-  grid-template-columns: 92px minmax(0, 1fr);
+  grid-template-columns: 86px minmax(0, 1fr);
 }
 
 .sidebar {
@@ -253,14 +253,14 @@ a {
 
 .nav {
   display: grid;
-  gap: 12px;
-  width: 58px;
+  gap: 9px;
+  width: 62px;
   justify-self: center;
   justify-items: center;
   border: 1px solid rgba(216, 225, 237, 0.95);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: 0 18px 44px rgba(15, 23, 42, 0.12);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.1);
   padding: 14px 0;
   backdrop-filter: blur(16px);
 }
@@ -292,9 +292,20 @@ a {
 
 .nav button.active,
 .nav button:hover {
+  background: #eff6ff;
+  color: #2563eb;
+  box-shadow: none;
+}
+
+.nav button.active::before {
+  content: "";
+  position: absolute;
+  left: -9px;
+  top: 11px;
+  width: 3px;
+  height: 20px;
+  border-radius: 999px;
   background: #2563eb;
-  color: #fff;
-  box-shadow: 0 10px 22px rgba(37, 99, 235, 0.22);
 }
 
 .nav button::after {
@@ -3475,31 +3486,36 @@ td.actions button {
 
 @media (max-width: 720px) {
   body {
-    padding-bottom: 86px;
+    padding-bottom: 0;
   }
 
   .layout {
-    display: block;
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
   }
 
   .layout.sidebar-collapsed {
-    display: block;
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr);
   }
 
   .sidebar {
     position: fixed;
-    left: 10px;
-    right: 10px;
-    bottom: 10px;
-    top: auto;
+    left: 8px;
+    right: auto;
+    top: 12px;
+    bottom: 12px;
+    width: 50px;
     height: auto;
     z-index: 50;
-    padding: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    border-radius: 18px;
-    background: rgba(17, 24, 39, 0.94);
-    box-shadow: 0 18px 44px rgba(20, 35, 60, 0.28);
-    backdrop-filter: blur(14px);
+    display: grid;
+    align-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
   }
 
   .sidebar .brand,
@@ -3509,37 +3525,55 @@ td.actions button {
   }
 
   .sidebar-collapsed .nav button span:not(.nav-icon) {
-    display: inline;
+    display: none;
   }
 
   .nav {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 4px;
+    grid-template-columns: 1fr;
+    gap: 7px;
+    width: 50px;
+    border: 1px solid rgba(216, 225, 237, 0.95);
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.84);
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+    padding: 10px 0;
+    backdrop-filter: blur(14px);
   }
 
   .nav-group {
-    display: contents;
+    display: grid;
+    gap: 7px;
   }
 
   .nav button {
-    min-height: 58px;
-    flex-direction: column;
-    justify-content: center;
-    gap: 4px;
-    padding: 6px 4px;
-    border-radius: 14px;
+    width: 36px;
+    min-height: 36px;
+    justify-self: center;
+    padding: 0;
+    border-radius: 12px;
     font-size: 10px;
     text-align: center;
   }
 
+  .nav button::after {
+    display: none;
+  }
+
+  .nav button.active::before {
+    left: -7px;
+    top: 9px;
+    height: 18px;
+  }
+
   .nav-icon {
-    width: 24px;
-    height: 24px;
+    width: 22px;
+    height: 22px;
   }
 
   .content {
-    padding: 16px 12px 22px;
+    padding: 12px 8px 22px 0;
+    min-width: 0;
   }
 
   .topbar,

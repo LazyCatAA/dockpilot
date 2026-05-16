@@ -8,6 +8,7 @@ const state = {
   navPrefs: null,
   navSettingsOpen: false,
   navSearch: "",
+  webSearch: "",
   cards: [],
   editingCard: null,
   cardModal: { open: false, iconMime: "", iconBase64: "", clearIcon: false },
@@ -466,6 +467,10 @@ function defaultNavPrefs() {
     density: "comfortable",
     card_style: "professional",
     background: "#eef5fb",
+    web_search_engine: "google",
+    custom_search_url: "",
+    icon_size: "medium",
+    title_font_size: "medium",
     show_search: true,
     show_status: true,
     show_group_count: true,
@@ -480,6 +485,44 @@ function navPrefs() {
 function navGroupPrefs(group) {
   const prefs = navPrefs();
   return prefs.groups?.[group] || { color: "#2563eb", collapsed: false, hidden: false };
+}
+
+function webSearchUrl(query) {
+  const prefs = navPrefs();
+  const q = encodeURIComponent(query);
+  const engines = {
+    google: `https://www.google.com/search?q=${q}`,
+    bing: `https://www.bing.com/search?q=${q}`,
+    baidu: `https://www.baidu.com/s?wd=${q}`,
+    duckduckgo: `https://duckduckgo.com/?q=${q}`,
+  };
+  if (prefs.web_search_engine === "custom" && prefs.custom_search_url) {
+    return prefs.custom_search_url.includes("{keyword}")
+      ? prefs.custom_search_url.replace("{keyword}", q)
+      : `${prefs.custom_search_url}${q}`;
+  }
+  return engines[prefs.web_search_engine] || engines.google;
+}
+
+function autoIconForCard(card) {
+  const text = [card.title, card.url, card.internal_url].join(" ").toLowerCase();
+  const presets = [
+    ["github", "GH", "#111827"],
+    ["gitea", "GT", "#dc2626"],
+    ["qb", "qb", "#60a5fa"],
+    ["qbit", "qb", "#60a5fa"],
+    ["emby", "E", "#22c55e"],
+    ["jellyfin", "JF", "#7c3aed"],
+    ["movie", "MP", "#8b5cf6"],
+    ["docker", "🐳", "#2563eb"],
+    ["alist", "A", "#06b6d4"],
+    ["homeassistant", "HA", "#0ea5e9"],
+  ];
+  const hit = presets.find(([key]) => text.includes(key));
+  if (hit) return { icon: hit[1], color: hit[2] };
+  const parsed = String(card.url || card.internal_url || "").replace(/^https?:\/\//, "").split(/[./:-]/).filter(Boolean);
+  const label = (parsed[0] || card.title || "APP").slice(0, 2).toUpperCase();
+  return { icon: label, color: card.color || "#2f80ed" };
 }
 
 function filteredCardGroups() {
@@ -983,7 +1026,7 @@ function render() {
       </aside>
       <main class="content">
         ${
-          ["containers", "images", "volumes", "compose"].includes(state.tab)
+          ["dashboard", "containers", "images", "volumes", "compose"].includes(state.tab)
             ? ""
             : `<div class="topbar">
                 <div>
@@ -1045,21 +1088,14 @@ function renderCurrent() {
 function renderDashboard() {
   const prefs = navPrefs();
   return `
-    <section class="nav-home nav-pro nav-width-${h(prefs.layout_width)} nav-density-${h(prefs.density)} nav-style-${h(prefs.card_style)}" style="--nav-bg:${h(prefs.background)}">
-      <div class="nav-pro-hero">
-        <div>
-          <span>DockPilot Navigation</span>
-          <h2>${h(prefs.title)}</h2>
-          <p>${h(prefs.subtitle)}</p>
-        </div>
-        <div class="nav-pro-actions">
-          ${prefs.show_search ? `<input id="navSearch" value="${h(state.navSearch)}" placeholder="搜索服务、链接或描述" />` : ""}
-          <button data-action="nav-settings-open">外观设置</button>
-          <button class="primary" data-action="card-add" data-group="Docker">添加入口</button>
-        </div>
+    <section class="nav-home nav-refactor nav-width-${h(prefs.layout_width)} nav-density-${h(prefs.density)} nav-style-${h(prefs.card_style)} nav-icon-${h(prefs.icon_size)} nav-title-${h(prefs.title_font_size)}" style="--nav-bg:${h(prefs.background)}">
+      <button class="nav-settings-button" data-action="nav-settings-open" title="导航页设置">⚙</button>
+      <div class="nav-searchbar-wrap">
+        ${renderWebSearch(prefs)}
       </div>
-      ${renderDashboardWidgets()}
-      ${renderCards()}
+      <div class="nav-bookmark-area">
+        ${renderCards()}
+      </div>
       ${renderNavSettingsModal()}
       ${renderCardContextMenu()}
       ${renderCardModal()}
@@ -1067,57 +1103,19 @@ function renderDashboard() {
   `;
 }
 
-function renderDashboardWidgets() {
-  const overview = state.overview || {};
-  const visible = state.dashboardWidgets.filter((widget) => widget.visible);
-  const hidden = state.dashboardWidgets.filter((widget) => !widget.visible);
+function renderWebSearch(prefs) {
   return `
-    <section class="dashboard-widget-panel nav-section">
-      <div class="panel-head">
-        <div>
-          <h3>状态小卡片</h3>
-          <span class="muted">可自定义显示主机状态、Docker 状态或容器监控。</span>
-        </div>
-        <form id="dashboardWidgetForm" class="widget-form">
-          <input name="title" placeholder="小卡片标题" />
-          <select name="type">
-            <option value="host">物理机运行状态</option>
-            <option value="docker">Docker 状态</option>
-            <option value="containers">容器监控</option>
-          </select>
-          <button type="submit">添加</button>
-        </form>
-      </div>
-      ${
-        visible.length
-          ? `<div class="dashboard-widget-grid">${visible
-              .map((widget) => {
-                const info = dashboardWidgetValue(widget, overview);
-                return `
-                  <article class="dashboard-widget ${h(info.tone)}">
-                    <div>
-                      <span>${h(widget.title)}</span>
-                      <strong>${h(info.value)}</strong>
-                      <small>${h(info.detail)}</small>
-                    </div>
-                    <button data-action="dashboard-widget-hide" data-id="${h(widget.id)}">隐藏</button>
-                  </article>
-                `;
-              })
-              .join("")}</div>`
-          : `<div class="empty">状态小卡片已全部隐藏。</div>`
-      }
-      ${
-        hidden.length
-          ? `<div class="hidden-widgets">${hidden
-              .map(
-                (widget) =>
-                  `<button data-action="dashboard-widget-show" data-id="${h(widget.id)}">显示 ${h(widget.title)}</button>`
-              )
-              .join("")}</div>`
-          : ""
-      }
-    </section>
+    <form id="webSearchForm" class="nav-searchbar">
+      <select name="web_search_engine" aria-label="搜索引擎">
+        <option value="google" ${prefs.web_search_engine === "google" ? "selected" : ""}>Google</option>
+        <option value="bing" ${prefs.web_search_engine === "bing" ? "selected" : ""}>Bing</option>
+        <option value="baidu" ${prefs.web_search_engine === "baidu" ? "selected" : ""}>百度</option>
+        <option value="duckduckgo" ${prefs.web_search_engine === "duckduckgo" ? "selected" : ""}>DuckDuckGo</option>
+        <option value="custom" ${prefs.web_search_engine === "custom" ? "selected" : ""}>自定义</option>
+      </select>
+      <input id="webSearchInput" name="q" value="${h(state.webSearch)}" placeholder="搜索网页" autocomplete="off" />
+      <button type="submit">搜索</button>
+    </form>
   `;
 }
 
@@ -1183,6 +1181,14 @@ function renderNavSettingsModal() {
             <label class="field wide"><span>页面标题</span><input name="title" value="${h(prefs.title)}" /></label>
             <label class="field wide"><span>副标题</span><input name="subtitle" value="${h(prefs.subtitle)}" /></label>
             <label class="field"><span>背景颜色</span><input name="background" type="color" value="${h(prefs.background)}" /></label>
+            <label class="field"><span>默认搜索引擎</span><select name="web_search_engine">
+              <option value="google" ${prefs.web_search_engine === "google" ? "selected" : ""}>Google</option>
+              <option value="bing" ${prefs.web_search_engine === "bing" ? "selected" : ""}>Bing</option>
+              <option value="baidu" ${prefs.web_search_engine === "baidu" ? "selected" : ""}>百度</option>
+              <option value="duckduckgo" ${prefs.web_search_engine === "duckduckgo" ? "selected" : ""}>DuckDuckGo</option>
+              <option value="custom" ${prefs.web_search_engine === "custom" ? "selected" : ""}>自定义</option>
+            </select></label>
+            <label class="field wide"><span>自定义搜索地址</span><input name="custom_search_url" value="${h(prefs.custom_search_url || "")}" placeholder="https://www.google.com/search?q={keyword}" /></label>
             <label class="field"><span>页面宽度</span><select name="layout_width">
               <option value="compact" ${prefs.layout_width === "compact" ? "selected" : ""}>紧凑</option>
               <option value="standard" ${prefs.layout_width === "standard" ? "selected" : ""}>标准</option>
@@ -1198,6 +1204,16 @@ function renderNavSettingsModal() {
               <option value="soft" ${prefs.card_style === "soft" ? "selected" : ""}>柔和</option>
               <option value="outline" ${prefs.card_style === "outline" ? "selected" : ""}>描边</option>
               <option value="glass" ${prefs.card_style === "glass" ? "selected" : ""}>玻璃</option>
+            </select></label>
+            <label class="field"><span>图标大小</span><select name="icon_size">
+              <option value="small" ${prefs.icon_size === "small" ? "selected" : ""}>小</option>
+              <option value="medium" ${prefs.icon_size === "medium" ? "selected" : ""}>中</option>
+              <option value="large" ${prefs.icon_size === "large" ? "selected" : ""}>大</option>
+            </select></label>
+            <label class="field"><span>标题字体</span><select name="title_font_size">
+              <option value="small" ${prefs.title_font_size === "small" ? "selected" : ""}>小</option>
+              <option value="medium" ${prefs.title_font_size === "medium" ? "selected" : ""}>中</option>
+              <option value="large" ${prefs.title_font_size === "large" ? "selected" : ""}>大</option>
             </select></label>
           </div>
           <div class="card-modal-options">
@@ -1325,13 +1341,28 @@ function renderCardModal() {
           <div class="card-icon-editor">
             <div>
               <h4>图标样式</h4>
-              <p>支持上传图片，也可以只使用文字或 Emoji。</p>
+              <p>支持自动匹配、图标库、上传图片，也可以只使用文字或 Emoji。</p>
               <div class="mini-actions">
+                <button type="button" data-action="card-icon-auto">自动匹配</button>
                 <button type="button" data-action="card-icon-pick">上传图片</button>
                 <button type="button" data-action="card-icon-clear">清除图片</button>
               </div>
             </div>
             <div class="card-icon-preview">${cardIconMarkup(card)}</div>
+          </div>
+          <div class="icon-library-grid">
+            ${[
+              ["QB", "#60a5fa"],
+              ["MP", "#8b5cf6"],
+              ["GH", "#111827"],
+              ["🐳", "#2563eb"],
+              ["A", "#06b6d4"],
+              ["JF", "#7c3aed"],
+              ["E", "#22c55e"],
+              ["HA", "#0ea5e9"],
+            ]
+              .map(([icon, color]) => `<button type="button" data-action="card-icon-library" data-icon="${h(icon)}" data-color="${h(color)}" style="--icon-color:${h(color)}">${h(icon)}</button>`)
+              .join("")}
           </div>
         </div>
         <div class="card-modal-foot">
@@ -2380,9 +2411,13 @@ document.addEventListener("submit", async (event) => {
         title: data.title || "私人导航",
         subtitle: data.subtitle || "",
         background: data.background || "#eef5fb",
+        web_search_engine: data.web_search_engine || "google",
+        custom_search_url: data.custom_search_url || "",
         layout_width: data.layout_width || "wide",
         density: data.density || "comfortable",
         card_style: data.card_style || "professional",
+        icon_size: data.icon_size || "medium",
+        title_font_size: data.title_font_size || "medium",
         show_search: data.show_search === "on",
         show_status: data.show_status === "on",
         show_group_count: data.show_group_count === "on",
@@ -2390,6 +2425,15 @@ document.addEventListener("submit", async (event) => {
       state.navSettingsOpen = false;
       state.error = "导航外观已保存。";
       render();
+    }
+    if (form.id === "webSearchForm") {
+      const data = Object.fromEntries(new FormData(form));
+      state.webSearch = String(data.q || "").trim();
+      const engine = String(data.web_search_engine || navPrefs().web_search_engine || "google");
+      if (engine !== navPrefs().web_search_engine) {
+        await saveNavPrefs({ ...navPrefs(), web_search_engine: engine });
+      }
+      if (state.webSearch) window.open(webSearchUrl(state.webSearch), "_blank", "noreferrer");
     }
     if (form.id === "composeNewForm") {
       const data = Object.fromEntries(new FormData(form));
@@ -2624,6 +2668,27 @@ document.addEventListener("click", async (event) => {
     }
     if (action === "card-icon-pick") {
       document.getElementById("cardIconUpload")?.click();
+    }
+    if (action === "card-icon-auto") {
+      if (state.editingCard) {
+        const icon = autoIconForCard(state.editingCard);
+        state.editingCard.icon = icon.icon;
+        state.editingCard.color = icon.color;
+        state.cardModal.clearIcon = true;
+        state.cardModal.iconMime = "";
+        state.cardModal.iconBase64 = "";
+      }
+      render();
+    }
+    if (action === "card-icon-library") {
+      if (state.editingCard) {
+        state.editingCard.icon = button.dataset.icon || state.editingCard.icon;
+        state.editingCard.color = button.dataset.color || state.editingCard.color;
+        state.cardModal.clearIcon = true;
+        state.cardModal.iconMime = "";
+        state.cardModal.iconBase64 = "";
+      }
+      render();
     }
     if (action === "card-icon-clear") {
       if (state.editingCard) state.editingCard.icon_data = "";
@@ -3137,6 +3202,9 @@ document.addEventListener("input", (event) => {
   if (event.target.id === "navSearch") {
     state.navSearch = event.target.value;
     render();
+  }
+  if (event.target.id === "webSearchInput") {
+    state.webSearch = event.target.value;
   }
   if (event.target.id === "volumeSearch") {
     state.volumes.query = event.target.value;

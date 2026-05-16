@@ -1239,6 +1239,135 @@ a {
   border-radius: 16px;
 }
 
+.nav-refactor {
+  position: relative;
+  min-height: calc(100vh - 44px);
+  align-content: start;
+  gap: 28px;
+  padding: 28px clamp(22px, 4vw, 56px) 48px;
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 22% 8%, rgba(96, 165, 250, 0.16), transparent 28%),
+    radial-gradient(circle at 78% 4%, rgba(168, 85, 247, 0.1), transparent 24%),
+    linear-gradient(180deg, rgba(255,255,255,0.94), rgba(248,250,252,0.9)),
+    var(--nav-bg, #eef5fb);
+}
+
+.nav-searchbar-wrap {
+  display: grid;
+  justify-items: center;
+  padding: 10px 54px 4px;
+}
+
+.nav-searchbar {
+  width: min(760px, 100%);
+  min-height: 54px;
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr) 96px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid rgba(203, 213, 225, 0.9);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+}
+
+.nav-searchbar select,
+.nav-searchbar input,
+.nav-searchbar button {
+  min-height: 38px;
+  border-radius: 12px;
+}
+
+.nav-searchbar input {
+  border: 0;
+  background: #f8fafc;
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.nav-searchbar button {
+  border: 0;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 900;
+}
+
+.nav-settings-button {
+  position: absolute;
+  top: 24px;
+  right: 28px;
+  z-index: 5;
+  width: 42px;
+  height: 42px;
+  min-height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(255,255,255,0.94);
+  color: #334155;
+  padding: 0;
+  box-shadow: 0 10px 24px rgba(15,23,42,0.08);
+}
+
+.nav-bookmark-area .bookmark-board {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.nav-icon-small .bookmark-icon {
+  width: 38px;
+  height: 38px;
+  flex-basis: 38px;
+  font-size: 14px;
+}
+
+.nav-icon-medium .bookmark-icon {
+  width: 48px;
+  height: 48px;
+  flex-basis: 48px;
+}
+
+.nav-icon-large .bookmark-icon {
+  width: 58px;
+  height: 58px;
+  flex-basis: 58px;
+  font-size: 20px;
+}
+
+.nav-title-small .bookmark-card-copy strong {
+  font-size: 14px;
+}
+
+.nav-title-medium .bookmark-card-copy strong {
+  font-size: 16px;
+}
+
+.nav-title-large .bookmark-card-copy strong {
+  font-size: 18px;
+}
+
+.icon-library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(46px, 1fr));
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.icon-library-grid button {
+  min-height: 44px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--icon-color, #2563eb) 14%, #fff);
+  color: var(--icon-color, #2563eb);
+  font-weight: 900;
+}
+
 .nav-settings-modal {
   width: min(760px, 100%);
 }
@@ -4755,5 +4884,350 @@ td.actions button {
   .code-input {
     padding: 14px;
     font-size: 12px;
+  }
+
+  html,
+  body,
+  .app-shell {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  .layout,
+  .layout.sidebar-collapsed {
+    grid-template-columns: 1fr;
+  }
+
+  .content {
+    width: 100%;
+    max-width: 100vw;
+    padding: 10px 10px 96px 68px;
+    overflow-x: hidden;
+  }
+
+  .sidebar {
+    left: 8px;
+    top: 50%;
+    bottom: auto;
+    width: 50px;
+    max-height: calc(100vh - 24px);
+    transform: translateY(-50%);
+  }
+
+  .nav {
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+  }
+
+  .panel,
+  .page-panel,
+  .main-panel,
+  .hero-panel,
+  .nav-home,
+  .image-library,
+  .volume-library,
+  .compose-monitor-layout,
+  .container-card,
+  .settings-panel,
+  .card-modal,
+  .modal,
+  .compose-backup-modal {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    max-width: 100%;
+  }
+
+  .container-cards,
+  .image-grid,
+  .image-sections,
+  .image-command-bar,
+  .image-config-panel,
+  .image-pull-form,
+  .image-remote-form,
+  .compose-monitor-layout,
+  .compose-monitor-grid,
+  .compose-inline-create,
+  .settings-grid,
+  .settings-grid-form,
+  .volume-create-form,
+  .professional-bookmark-grid,
+  .card-modal-grid,
+  .card-modal-options {
+    grid-template-columns: 1fr !important;
+  }
+
+  .topbar {
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .top-actions,
+  .container-title-actions,
+  .compose-action-bar,
+  .image-library .panel-head .top-actions,
+  .volume-detail-head-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+  }
+
+  .top-actions button,
+  .container-title-actions button,
+  .compose-action-bar button,
+  .volume-detail-head-actions button {
+    min-width: 0;
+  }
+
+  .container-titlebar {
+    margin-bottom: 12px;
+  }
+
+  .container-statbar,
+  .image-summary-bar,
+  .volume-summary-bar,
+  .compose-run-overview {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0;
+  }
+
+  .container-cards {
+    gap: 10px;
+  }
+
+  .container-card {
+    min-height: 0;
+    padding: 9px;
+  }
+
+  .container-actions,
+  .card-toolbar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .container-actions button,
+  .card-toolbar button {
+    min-height: 30px;
+    padding: 0 6px;
+    font-size: 11px;
+  }
+
+  .image-command-bar,
+  .image-config-panel,
+  .volume-library .image-command-bar {
+    grid-template-columns: 1fr !important;
+  }
+
+  .image-card-shell {
+    min-height: 104px;
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .image-card-bottom,
+  .image-card-actions {
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+  }
+
+  .image-card-actions button {
+    width: 100%;
+  }
+
+  .volume-table-head {
+    display: none;
+  }
+
+  .volume-table-row {
+    grid-template-columns: 12px minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: start;
+    min-height: 0;
+    padding: 10px;
+  }
+
+  .volume-table-row code,
+  .volume-table-row > span:nth-of-type(2),
+  .volume-table-row > span:nth-of-type(3),
+  .volume-table-row > span:nth-of-type(4) {
+    display: none;
+  }
+
+  .volume-risk {
+    justify-self: end;
+  }
+
+  .volume-row-actions {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .volume-row-actions button {
+    min-width: 0;
+    padding: 0 4px;
+    font-size: 11px;
+  }
+
+  .compose-monitor-layout {
+    display: grid;
+    gap: 10px;
+  }
+
+  .compose-monitor-sidebar,
+  .compose-monitor-main {
+    padding: 10px;
+  }
+
+  .compose-project-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+  }
+
+  .compose-project-card {
+    min-width: 0;
+  }
+
+  .compose-monitor-head {
+    grid-template-columns: 1fr;
+  }
+
+  .compose-action-bar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .compose-code-panel,
+  .compose-runtime-panel {
+    grid-template-rows: auto minmax(260px, 44vh) auto;
+    padding: 10px;
+  }
+
+  .compose-dark-editor,
+  .compose-ai-preview-shell {
+    height: 44vh;
+    min-height: 260px;
+    max-height: 420px;
+  }
+
+  .nav-refactor {
+    min-height: calc(100vh - 20px);
+    gap: 14px;
+    padding: 12px 10px 20px;
+    border-radius: 18px;
+  }
+
+  .nav-searchbar-wrap {
+    padding: 44px 0 0;
+  }
+
+  .nav-settings-button {
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    min-height: 36px;
+  }
+
+  .nav-searchbar {
+    grid-template-columns: 1fr;
+    width: 100%;
+    gap: 8px;
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  .nav-searchbar select,
+  .nav-searchbar input,
+  .nav-searchbar button {
+    min-height: 40px;
+  }
+
+  .professional-bookmark-board {
+    gap: 12px;
+  }
+
+  .professional-bookmark-group {
+    padding: 12px;
+    border-radius: 16px;
+  }
+
+  .professional-group-head,
+  .bookmark-group-head {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .bookmark-group-tools {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .bookmark-round,
+  .bookmark-group-tools input[type="color"] {
+    width: 100%;
+    height: 34px;
+    min-height: 34px;
+  }
+
+  .bookmark-card,
+  .bookmark-card.large {
+    min-height: 62px;
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .bookmark-icon {
+    width: 42px;
+    height: 42px;
+    flex-basis: 42px;
+  }
+
+  .card-modal-backdrop,
+  .modal-backdrop {
+    align-items: flex-start;
+    padding: 8px;
+    overflow-y: auto;
+  }
+
+  .card-modal,
+  .compose-backup-modal,
+  .modal {
+    width: 100%;
+    max-height: none;
+    min-height: auto;
+  }
+
+  .card-modal-head,
+  .card-modal-foot {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .card-modal-body {
+    padding: 12px;
+  }
+
+  .icon-library-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    padding: 10px;
+  }
+
+  .settings-panel,
+  .settings-card,
+  .setting-card {
+    padding: 12px;
+    border-radius: 14px;
   }
 }

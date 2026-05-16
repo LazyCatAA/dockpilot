@@ -50,6 +50,10 @@ DEFAULT_NAV_PREFS = {
     "density": "comfortable",
     "card_style": "professional",
     "background": "#eef5fb",
+    "web_search_engine": "google",
+    "custom_search_url": "",
+    "icon_size": "medium",
+    "title_font_size": "medium",
     "show_search": True,
     "show_status": True,
     "show_group_count": True,
@@ -157,6 +161,10 @@ def normalize_nav_prefs(value: Any) -> dict[str, Any]:
     prefs["density"] = str(prefs.get("density", "comfortable")) if str(prefs.get("density", "comfortable")) in {"compact", "comfortable", "spacious"} else "comfortable"
     prefs["card_style"] = str(prefs.get("card_style", "professional")) if str(prefs.get("card_style", "professional")) in {"professional", "soft", "outline", "glass"} else "professional"
     prefs["background"] = normalize_color(str(prefs.get("background", "#eef5fb")), "#eef5fb")
+    prefs["web_search_engine"] = str(prefs.get("web_search_engine", "google")) if str(prefs.get("web_search_engine", "google")) in {"google", "bing", "baidu", "duckduckgo", "custom"} else "google"
+    prefs["custom_search_url"] = str(prefs.get("custom_search_url", "")).strip()[:500]
+    prefs["icon_size"] = str(prefs.get("icon_size", "medium")) if str(prefs.get("icon_size", "medium")) in {"small", "medium", "large"} else "medium"
+    prefs["title_font_size"] = str(prefs.get("title_font_size", "medium")) if str(prefs.get("title_font_size", "medium")) in {"small", "medium", "large"} else "medium"
     for key in ("show_search", "show_status", "show_group_count"):
         prefs[key] = bool(prefs.get(key))
     groups: dict[str, Any] = {}

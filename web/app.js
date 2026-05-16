@@ -836,7 +836,7 @@ function render() {
         ${state.error ? `<div class="notice">${h(state.error)}</div>` : ""}
         ${state.loading ? `<div class="empty">正在加载当前页面...</div>` : renderCurrent()}
       </main>
-    </div>
+    </section>
   `;
 }
 
@@ -1462,6 +1462,61 @@ function renderImagePullProgress() {
   `;
 }
 
+function selectedComposeProject() {
+  return state.compose.projects.find((project) => project.path === state.compose.selected) || state.compose.projects[0] || null;
+}
+
+function composeStatusLabel(tone) {
+  if (tone === "running") return "运行中";
+  if (tone === "missing") return "未部署";
+  return "已停止";
+}
+
+function composeProjectStats(projects) {
+  const running = projects.filter((project) => projectStateTone(project) === "running").length;
+  const missing = projects.filter((project) => projectStateTone(project) === "missing").length;
+  const services = projects.reduce((sum, project) => sum + Math.max((project.containers || []).length, (project.services || []).length), 0);
+  return {
+    total: projects.length,
+    running,
+    stopped: Math.max(projects.length - running - missing, 0),
+    services,
+  };
+}
+
+function composeServiceItems(project) {
+  if (!project) return [];
+  const containers = project.containers || [];
+  if (containers.length) return containers;
+  return (project.services || []).map((service) => ({ service, state: "missing", image: "" }));
+}
+
+function renderComposeProjectCard(project) {
+  const tone = projectStateTone(project);
+  return `
+    <button class="compose-project-card ${state.compose.selected === project.path ? "active" : ""} ${h(tone)}" data-action="compose-select" data-path="${h(project.path)}">
+      <span>
+        <strong>${h(project.name)}</strong>
+        <small>${h((project.services || []).join(" / ") || "未识别到服务")}</small>
+      </span>
+      <em>${h(composeStatusLabel(tone))}</em>
+    </button>
+  `;
+}
+
+function renderComposeServiceCard(item) {
+  const stateValue = String(item.state || "missing").toLowerCase();
+  return `
+    <div class="compose-service-status-card ${h(stateValue)}">
+      <div>
+        <strong>${h(item.service || item.name || "service")}</strong>
+        <small>${h(item.image || item.container || zhServiceState(stateValue))}</small>
+      </div>
+      <span class="pill ${h(stateValue)}"><i class="state-dot ${h(stateValue)}"></i>${h(zhServiceState(stateValue))}</span>
+    </div>
+  `;
+}
+
 function renderContainerDetail() {
   const detail = state.containerDetail || {};
   const config = detail.Config || {};
@@ -1509,86 +1564,123 @@ function maskEnv(value) {
 }
 
 function renderCompose() {
+  const selected = selectedComposeProject();
+  const stats = composeProjectStats(state.compose.projects);
+  const services = composeServiceItems(selected);
+  const runningServices = services.filter((item) => String(item.state || "").toLowerCase() === "running").length;
+  const selectedTone = selected ? projectStateTone(selected) : "missing";
   return `
-    <div class="split compose-page">
-      <section class="panel compose-panel project-panel">
-        <div class="panel-head"><h3>项目列表</h3></div>
-        <form class="form-stack" id="composeNewForm">
-          <div class="field"><label>新建项目</label><input name="name" placeholder="nginx-demo" /></div>
-          <button type="submit" class="primary">创建</button>
-        </form>
-        <div class="list" style="margin-top:14px">
+    <section class="compose-monitor-layout">
+      <aside class="compose-monitor-sidebar">
+        <div class="compose-monitor-title">
+          <h3>Compose 管理</h3>
+          <p>以服务运行状态为中心管理 Compose 项目。</p>
+        </div>
+        <div class="compose-run-overview">
+          <div><b>${stats.total}</b><span>项目</span></div>
+          <div><b>${stats.services}</b><span>服务</span></div>
+          <div><b>${stats.running}</b><span>运行中</span></div>
+          <div><b>${stats.stopped}</b><span>已停止</span></div>
+        </div>
+        <div class="compose-project-list">
           ${
             state.compose.projects.length
-              ? state.compose.projects
-                  .map(
-                    (project) => `
-                    <button class="list-item ${state.compose.selected === project.path ? "active" : ""}" data-action="compose-select" data-path="${h(project.path)}">
-                      <span class="project-row">
-                        <strong>${h(project.name)}</strong>
-                        <span class="service-pill ${h(projectStateTone(project))}">${h(projectStateTone(project) === "running" ? "运行中" : projectStateTone(project) === "missing" ? "未部署" : "已停止")}</span>
-                      </span>
-                      <span class="compose-services">
-                        ${(project.containers || [])
-                          .map(
-                            (item) => `
-                            <span class="compose-service">
-                              <i class="state-dot ${h(item.state)}"></i>
-                              <b>${h(item.service)}</b>
-                              <small>${h(zhServiceState(item.state))}</small>
-                            </span>
-                          `
-                          )
-                          .join("") || `<span class="muted">${h(project.services.join(", ") || "未识别到服务")}</span>`}
-                      </span>
-                    </button>
-                  `
-                  )
-                  .join("")
-              : `<div class="empty">配置的目录中没有找到 Compose 文件。</div>`
+              ? state.compose.projects.map(renderComposeProjectCard).join("")
+              : `<div class="compose-dark-empty">配置的目录中没有找到 Compose 文件。</div>`
           }
         </div>
-        <form class="form-stack command-deploy compose-panel command-panel" id="composeCommandForm">
-          <div class="panel-head"><h3>命令部署</h3><span class="muted">粘贴 docker run 命令，可转为 Compose 后部署。</span></div>
-          <div class="field"><label>项目名称</label><input name="name" placeholder="my-app" required /></div>
-          <div class="field"><label>Docker run 命令</label><textarea name="command" placeholder="docker run -d --name app -p 8080:80 nginx:alpine" required></textarea></div>
+        <form class="compose-create-card" id="composeNewForm">
+          <strong>新建项目</strong>
+          <input name="name" placeholder="nginx-demo" />
+          <button type="submit" class="primary">创建</button>
+        </form>
+        <form class="compose-command-card" id="composeCommandForm">
+          <strong>命令转 Compose</strong>
+          <span>粘贴 docker run 命令，可转为 Compose 后部署。</span>
+          <input name="name" placeholder="my-app" required />
+          <textarea name="command" placeholder="docker run -d --name app -p 8080:80 nginx:alpine" required></textarea>
           <div class="form-actions">
             <button type="submit" data-deploy="0">转 Compose</button>
-            <button type="submit" class="primary" data-deploy="1">转 Compose 并部署</button>
+            <button type="submit" class="primary" data-deploy="1">转并部署</button>
           </div>
         </form>
-      </section>
-      <section class="panel compose-panel editor-panel">
-        <div class="panel-head">
+      </aside>
+      <main class="compose-monitor-main">
+        <div class="compose-monitor-head">
           <div>
-            <h3>Compose 编辑器</h3>
-            <span class="muted">${h(state.compose.selected || "请选择左侧项目")}</span>
+            <h3>${h(selected?.name || "请选择项目")}</h3>
+            <span>${h(state.compose.selected || "左侧选择 Compose 项目后编辑 compose.yml")}</span>
           </div>
-          <div class="top-actions">
+          <div class="top-actions compose-action-bar">
             <button data-action="compose-action" data-command="config">检查</button>
-            <button data-action="compose-repair">检查并修正</button>
+            <button data-action="compose-repair">智能修正</button>
+            <button data-action="compose-save" class="primary">保存</button>
             <button data-action="compose-action" data-command="pull">拉取</button>
             <button data-action="compose-action" data-command="up" class="primary">部署</button>
             <button data-action="compose-action" data-command="restart">重启</button>
-            <button data-action="compose-action" data-command="logs">日志</button>
             <button data-action="compose-action" data-command="down" class="danger">停止</button>
           </div>
         </div>
-        <div class="editor-shell">
-          <pre id="composeHighlight" class="code-highlight" aria-hidden="true">${highlightYaml(state.compose.content)}\n</pre>
-          <textarea id="composeEditor" class="code-input" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off">${h(state.compose.content)}</textarea>
+        <div class="compose-status-strip">
+          <div>
+            <b>${runningServices}/${services.length || 0}</b>
+            <span>服务在线</span>
+          </div>
+          <div>
+            <b>${h(composeStatusLabel(selectedTone))}</b>
+            <span>项目状态</span>
+          </div>
+          <div>
+            <b>${h(services[0]?.service || "-")}</b>
+            <span>主服务</span>
+          </div>
+          <div>
+            <b>${h(state.compose.repair?.changed ? "有修正" : "正常")}</b>
+            <span>修正状态</span>
+          </div>
         </div>
-        <div class="toolbar"><button data-action="compose-save" class="primary">保存 compose.yml</button></div>
-        ${
-          state.compose.repair
-            ? `<div class="compose-repair-note">
-                <strong>${state.compose.repair.changed ? "已生成修正内容" : "未发现可自动修正的问题"}</strong>
-                <span>${h((state.compose.repair.changes || []).join("；") || "可继续使用检查功能确认配置。")}</span>
-              </div>`
-            : ""
-        }
-        ${state.compose.output ? `<pre class="console">${h(state.compose.output)}</pre>` : ""}
-      </section>
+        <div class="compose-monitor-grid">
+          <section class="compose-code-panel">
+            <div class="compose-panel-caption">
+              <strong>compose.yml</strong>
+              <span>修正只处理格式错误，不重写你的结构。</span>
+            </div>
+            <div class="editor-shell compose-dark-editor">
+              <pre id="composeHighlight" class="code-highlight" aria-hidden="true">${highlightYaml(state.compose.content)}\n</pre>
+              <textarea id="composeEditor" class="code-input" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off">${h(state.compose.content)}</textarea>
+            </div>
+          </section>
+          <aside class="compose-runtime-panel">
+            <div class="compose-panel-caption">
+              <strong>服务状态</strong>
+              <span>当前项目容器运行情况</span>
+            </div>
+            <div class="compose-service-stack">
+              ${services.length ? services.map(renderComposeServiceCard).join("") : `<div class="compose-dark-empty">还没有识别到服务。</div>`}
+            </div>
+            ${
+              state.compose.repair
+                ? `<div class="compose-repair-note compose-dark-note">
+                    <strong>${state.compose.repair.changed ? "已生成修正内容" : "未发现可自动修正的问题"}</strong>
+                    <span>${h((state.compose.repair.changes || []).join("；") || "可继续使用检查功能确认配置。")}</span>
+                  </div>`
+                : `<div class="compose-repair-note compose-dark-note">
+                    <strong>智能修正</strong>
+                    <span>点击智能修正后，会先检查错误，再只修正可识别的格式问题。</span>
+                  </div>`
+            }
+          </aside>
+        </div>
+        <section class="compose-terminal-panel">
+          <div class="compose-terminal-tabs">
+            <span class="active">日志 / 输出</span>
+            <span>检查</span>
+            <span>修正</span>
+            <span>事件</span>
+          </div>
+          <pre class="console compose-dark-console">${h(state.compose.output || "$ docker compose ps\n等待执行检查、部署或日志命令。")}</pre>
+        </section>
+      </main>
     </div>
   `;
 }

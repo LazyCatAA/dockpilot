@@ -2361,6 +2361,388 @@ td.actions button {
   align-items: start;
 }
 
+.compose-monitor-layout {
+  display: grid;
+  grid-template-columns: 360px minmax(0, 1fr);
+  min-height: 760px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at 100% 0, rgba(37, 99, 235, 0.2), transparent 30%),
+    linear-gradient(135deg, #0b1120, #111827 52%, #111f2d);
+  box-shadow: 0 30px 80px rgba(15, 23, 42, 0.24);
+}
+
+.compose-monitor-sidebar {
+  min-width: 0;
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  padding: 22px;
+  border-right: 1px solid rgba(148, 163, 184, 0.14);
+  background: rgba(6, 12, 24, 0.42);
+}
+
+.compose-monitor-title h3,
+.compose-monitor-head h3 {
+  margin: 0;
+  color: #f8fafc;
+  font-size: 23px;
+}
+
+.compose-monitor-title p,
+.compose-monitor-head span,
+.compose-panel-caption span,
+.compose-command-card span {
+  color: #9fb0c7;
+  font-size: 13px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.compose-monitor-title p {
+  margin: 6px 0 0;
+}
+
+.compose-run-overview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.compose-run-overview div,
+.compose-status-strip div {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.compose-run-overview b,
+.compose-status-strip b {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  color: #f8fafc;
+  font-size: 23px;
+  line-height: 1.1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compose-run-overview span,
+.compose-status-strip span {
+  display: block;
+  margin-top: 6px;
+  color: #9fb0c7;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.compose-project-list {
+  display: grid;
+  gap: 10px;
+}
+
+.compose-project-card {
+  width: 100%;
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-left-width: 5px;
+  border-left-color: #64748b;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.07);
+  color: #e5edf8;
+  padding: 13px;
+  text-align: left;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.14);
+}
+
+.compose-project-card.running {
+  border-left-color: #22c55e;
+}
+
+.compose-project-card.stopped {
+  border-left-color: #64748b;
+}
+
+.compose-project-card.missing {
+  border-left-color: #f59e0b;
+}
+
+.compose-project-card.active {
+  border-color: rgba(56, 189, 248, 0.52);
+  border-left-color: #38bdf8;
+  background: rgba(37, 99, 235, 0.24);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.1), 0 18px 42px rgba(0, 0, 0, 0.2);
+}
+
+.compose-project-card strong,
+.compose-project-card small {
+  min-width: 0;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compose-project-card small {
+  margin-top: 4px;
+  color: #9fb0c7;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.compose-project-card em {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.compose-create-card,
+.compose-command-card {
+  display: grid;
+  gap: 10px;
+  padding: 15px;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.compose-create-card strong,
+.compose-command-card strong,
+.compose-panel-caption strong {
+  color: #f8fafc;
+}
+
+.compose-create-card input,
+.compose-command-card input,
+.compose-command-card textarea {
+  border-color: rgba(148, 163, 184, 0.24);
+  background: rgba(15, 23, 42, 0.72);
+  color: #e5edf8;
+}
+
+.compose-command-card textarea {
+  min-height: 108px;
+  font-size: 12px;
+}
+
+.compose-monitor-main {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 16px;
+  padding: 22px;
+}
+
+.compose-monitor-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+}
+
+.compose-action-bar {
+  justify-content: flex-end;
+}
+
+.compose-action-bar button {
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: #e5edf8;
+}
+
+.compose-action-bar button.primary {
+  border-color: #2563eb;
+  background: linear-gradient(135deg, #0ea5e9, #2563eb);
+  color: #fff;
+}
+
+.compose-action-bar button.danger {
+  border-color: rgba(248, 113, 113, 0.35);
+  color: #fecaca;
+}
+
+.compose-status-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.compose-monitor-grid {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) 360px;
+  gap: 16px;
+}
+
+.compose-code-panel,
+.compose-runtime-panel,
+.compose-terminal-panel {
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05), 0 20px 50px rgba(0, 0, 0, 0.16);
+}
+
+.compose-code-panel,
+.compose-runtime-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px;
+}
+
+.compose-panel-caption {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.compose-dark-editor {
+  min-height: 500px;
+  border-color: rgba(148, 163, 184, 0.12);
+  border-radius: 18px;
+  background: #050b16;
+}
+
+.compose-service-stack {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+}
+
+.compose-service-status-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 13px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.compose-service-status-card strong,
+.compose-service-status-card small {
+  min-width: 0;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compose-service-status-card strong {
+  color: #f8fafc;
+}
+
+.compose-service-status-card small {
+  margin-top: 4px;
+  color: #9fb0c7;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 999px;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.pill.running {
+  background: rgba(34, 197, 94, 0.14);
+  color: #86efac;
+}
+
+.pill.exited,
+.pill.dead,
+.pill.stopped {
+  background: rgba(248, 113, 113, 0.13);
+  color: #fecaca;
+}
+
+.pill.missing {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fde68a;
+}
+
+.compose-dark-note {
+  margin-top: 2px;
+  border-color: rgba(34, 197, 94, 0.24);
+  background: rgba(22, 101, 52, 0.18);
+}
+
+.compose-dark-note strong {
+  color: #bbf7d0;
+}
+
+.compose-dark-note span {
+  color: #a8b7ca;
+}
+
+.compose-terminal-panel {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+}
+
+.compose-terminal-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.compose-terminal-tabs span {
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #9fb0c7;
+  padding: 7px 11px;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.compose-terminal-tabs .active {
+  background: #e5edf8;
+  color: #0f172a;
+}
+
+.compose-dark-console {
+  min-height: 160px;
+  max-height: 260px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 16px;
+  background: #050b16;
+  color: #cbd5e1;
+}
+
+.compose-dark-empty {
+  padding: 14px;
+  border: 1px dashed rgba(148, 163, 184, 0.24);
+  border-radius: 16px;
+  color: #9fb0c7;
+  font-weight: 700;
+}
+
 .compose-panel {
   position: relative;
   overflow: hidden;
@@ -2551,6 +2933,24 @@ td.actions button {
   .image-sections {
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
   }
+
+  .compose-monitor-layout,
+  .compose-monitor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .compose-monitor-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.14);
+  }
+
+  .compose-monitor-head {
+    grid-template-columns: 1fr;
+  }
+
+  .compose-action-bar {
+    justify-content: flex-start;
+  }
 }
 
 @media (max-width: 720px) {
@@ -2730,6 +3130,30 @@ td.actions button {
   .image-library {
     padding: 14px;
     border-radius: 18px;
+  }
+
+  .compose-monitor-layout {
+    min-height: 0;
+    border-radius: 18px;
+  }
+
+  .compose-monitor-sidebar,
+  .compose-monitor-main {
+    padding: 14px;
+  }
+
+  .compose-run-overview,
+  .compose-status-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .compose-project-card,
+  .compose-service-status-card {
+    grid-template-columns: 1fr;
+  }
+
+  .compose-dark-editor {
+    min-height: 420px;
   }
 
   .image-card-actions {

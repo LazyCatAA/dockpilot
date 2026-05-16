@@ -1598,7 +1598,19 @@ function renderVolumeGroup(title, note, items, tone) {
         </div>
         <b>${items.length}</b>
       </div>
-      <div class="volume-table-list">${items.map(renderVolumeRow).join("")}</div>
+      <div class="volume-table-list">
+        <div class="volume-table-head">
+          <span></span>
+          <span>卷名称 / 挂载路径</span>
+          <span>使用容器</span>
+          <span>大小</span>
+          <span>状态</span>
+          <span>创建时间</span>
+          <span>风险</span>
+          <span>操作</span>
+        </div>
+        ${items.map(renderVolumeRow).join("")}
+      </div>
     </section>
   `;
 }
@@ -1635,12 +1647,20 @@ function renderVolumeCreatePanel() {
   return `
     <section class="image-config-panel volume-create-panel">
       <section class="image-tool-card accent-blue">
-        <h4>新增 Docker 卷</h4>
+        <div class="volume-tool-title">
+          <div>
+            <h4>新增 Docker 卷</h4>
+            <span>默认创建 local 卷；高级参数只在需要指定驱动选项时填写。</span>
+          </div>
+        </div>
         <form id="volumeCreateForm" class="volume-create-form">
-          <label class="field"><span>卷名</span><input name="name" placeholder="例如 moviepilot_config" required /></label>
-          <label class="field"><span>Driver</span><input name="driver" value="local" /></label>
-          <label class="field"><span>Labels，每行一个 key=value</span><textarea name="labels" placeholder="app=moviepilot&#10;owner=dockpilot"></textarea></label>
-          <label class="field"><span>Driver 参数，每行一个 key=value</span><textarea name="driver_opts" placeholder="可选"></textarea></label>
+          <label class="field volume-create-name"><span>卷名称</span><input name="name" placeholder="例如 moviepilot_config" required /></label>
+          <label class="field"><span>驱动程序</span><input name="driver" value="local" /></label>
+          <label class="field volume-create-labels"><span>标签，每行一个 key=value</span><textarea name="labels" placeholder="app=moviepilot&#10;owner=dockpilot"></textarea></label>
+          <details class="volume-advanced">
+            <summary>高级参数</summary>
+            <label class="field"><span>Driver 参数，每行一个 key=value</span><textarea name="driver_opts" placeholder="例如 type=nfs&#10;o=addr=192.168.1.10,rw&#10;device=:/data"></textarea></label>
+          </details>
           <button class="primary" type="submit">创建卷</button>
         </form>
       </section>
@@ -1669,36 +1689,51 @@ function renderVolumeDetailModal() {
   if (!volume) return "";
   const labels = volume.Labels || {};
   const mounts = volume.DockPilot?.mounts || [];
+  const labelText = Object.keys(labels).length ? Object.entries(labels).map(([key, value]) => `${key}${value ? `=${value}` : ""}`).join("\n") : "无标签";
   return `
     <div class="modal-backdrop" data-action="volume-detail-close">
       <div class="compose-backup-modal volume-detail-modal">
         <div class="modal-head">
           <div>
-            <h3>${h(volume.Name || "卷详情")}</h3>
-            <span class="muted">${h(volume.Mountpoint || "未记录挂载点")}</span>
+            <h3>卷详情信息</h3>
+            <span class="muted">${h(volume.Name || "未命名卷")}</span>
           </div>
-          <button type="button" data-action="volume-detail-close">关闭</button>
+          <div class="volume-detail-head-actions">
+            <button class="danger" type="button" data-action="volume-remove" data-name="${h(volume.Name || "")}" ${volumeTone(volume) === "used" ? "disabled" : ""}>删除此卷</button>
+            <button type="button" data-action="volume-detail-close">关闭</button>
+          </div>
         </div>
-        <div class="volume-detail-grid">
-          <div><b>${fmtBytes(volumeSize(volume))}</b><span>占用空间</span></div>
-          <div><b>${h(volume.Driver || "local")}</b><span>Driver</span></div>
-          <div><b>${h(volumeCreatedText(volume))}</b><span>创建时间</span></div>
-          <div><b>${h(String(volumeRefCount(volume)))}</b><span>关联容器</span></div>
-        </div>
-        <section class="volume-detail-section">
-          <h4>容器挂载</h4>
+
+        <section class="volume-detail-card">
+          <div class="volume-detail-card-title"><span class="volume-detail-icon">▣</span><h4>卷详细信息</h4></div>
+          <div class="volume-info-table">
+            <div><span>ID / 名称</span><strong>${h(volume.Name || "-")}</strong></div>
+            <div><span>创建时间</span><strong>${h(volumeCreatedText(volume))}</strong></div>
+            <div><span>挂载路径</span><strong title="${h(volume.Mountpoint || "-")}">${h(volume.Mountpoint || "-")}</strong></div>
+            <div><span>驱动程序</span><strong>${h(volume.Driver || "local")}</strong></div>
+            <div><span>占用空间</span><strong>${fmtBytes(volumeSize(volume))}</strong></div>
+            <div><span>标签</span><pre>${h(labelText)}</pre></div>
+          </div>
+        </section>
+
+        <section class="volume-detail-card">
+          <div class="volume-detail-card-title"><span class="volume-detail-icon">◎</span><h4>权限控制</h4></div>
+          <div class="volume-permission-row">
+            <span>所有权</span>
+            <strong>管理员</strong>
+            <small>当前仅展示权限归属，不直接修改宿主机文件权限。</small>
+          </div>
+        </section>
+
+        <section class="volume-detail-card">
+          <div class="volume-detail-card-title"><span class="volume-detail-icon">◇</span><h4>使用此卷的容器</h4></div>
           ${
             mounts.length
-              ? mounts.map((item) => `<p><strong>${h(item.container)}</strong><span>${h(item.destination || "-")} ${item.mode ? `· ${h(item.mode)}` : ""}</span></p>`).join("")
-              : `<div class="empty">当前没有容器引用。</div>`
-          }
-        </section>
-        <section class="volume-detail-section">
-          <h4>Labels</h4>
-          ${
-            Object.keys(labels).length
-              ? Object.entries(labels).map(([key, value]) => `<p><strong>${h(key)}</strong><span>${h(value)}</span></p>`).join("")
-              : `<div class="empty">没有标签。</div>`
+              ? `<div class="volume-mount-table">
+                  <div class="volume-mount-head"><span>容器名称</span><span>挂载位置</span><span>模式</span></div>
+                  ${mounts.map((item) => `<div><strong>${h(item.container)}</strong><span>${h(item.destination || "-")}</span><code>${h(item.mode || "rw")}</code></div>`).join("")}
+                </div>`
+              : `<div class="empty">当前没有容器使用此卷。</div>`
           }
         </section>
       </div>

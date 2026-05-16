@@ -3640,8 +3640,122 @@ td.actions button {
   }
 
   .image-library {
-    padding: 14px;
+    gap: 10px;
+    padding: 10px;
     border-radius: 18px;
+  }
+
+  .image-library .panel-head {
+    gap: 10px;
+    align-items: stretch;
+  }
+
+  .image-library .panel-head h3 {
+    font-size: 20px;
+  }
+
+  .image-library .panel-head .muted {
+    display: none;
+  }
+
+  .image-library .panel-head .top-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .image-summary-bar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-radius: 16px;
+  }
+
+  .image-summary-bar > div:not(.image-ratio-track) {
+    min-height: 62px;
+    padding: 10px 12px;
+  }
+
+  .image-summary-bar > div:nth-child(5) {
+    grid-column: 1 / -1;
+  }
+
+  .image-summary-bar strong {
+    font-size: 20px;
+  }
+
+  .image-ratio-track {
+    height: 6px;
+  }
+
+  .image-command-bar {
+    gap: 8px;
+    padding: 10px;
+    border-radius: 16px;
+  }
+
+  .image-command-bar input,
+  .image-command-bar select,
+  .image-command-bar button {
+    min-height: 42px;
+  }
+
+  .image-config-status {
+    min-height: 36px;
+    justify-content: center;
+    white-space: normal;
+  }
+
+  .image-config-panel {
+    gap: 8px;
+  }
+
+  .image-tool-card {
+    padding: 12px;
+    border-radius: 14px;
+  }
+
+  .image-tool-card textarea {
+    min-height: 72px;
+  }
+
+  .image-group-head {
+    align-items: center;
+  }
+
+  .image-group-head span {
+    display: none;
+  }
+
+  .image-compact-list {
+    border-radius: 14px;
+  }
+
+  .image-compact-row {
+    min-height: 46px;
+    grid-template-columns: 14px minmax(0, 1fr) 68px 58px;
+    gap: 8px;
+    padding: 7px 9px;
+  }
+
+  .image-compact-row .image-status-dot {
+    width: 8px;
+    height: 8px;
+  }
+
+  .image-compact-row strong {
+    font-size: 13px;
+  }
+
+  .image-compact-row > span:nth-of-type(2) {
+    display: block;
+  }
+
+  .image-compact-row > span:nth-of-type(3),
+  .image-compact-row > span:nth-of-type(4) {
+    display: none;
+  }
+
+  .image-compact-row button {
+    min-height: 30px;
+    padding: 0 8px;
   }
 
   .compose-monitor-layout {

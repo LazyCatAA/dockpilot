@@ -1374,6 +1374,10 @@ function renderImages() {
   const unusedImages = images.filter((image) => !image.DockPilot?.used && !isDanglingImage(image));
   const searchResults = state.images.searchResults || [];
   const mirrorText = (state.images.registryMirrors || []).join("\n");
+  const totalCount = Math.max(state.images.items.length, 1);
+  const usedPct = (usedCount / totalCount) * 100;
+  const unusedPct = (unusedCount / totalCount) * 100;
+  const danglingPct = (danglingCount / totalCount) * 100;
   return `
     <section class="image-library">
       <div class="panel-head">
@@ -1437,12 +1441,17 @@ function renderImages() {
             </div>`
           : ""
       }
-      <div class="image-summary compact">
-        <div class="blue"><strong>${state.images.items.length}</strong><span>本地镜像</span></div>
-        <div class="green"><strong>${usedCount}</strong><span>已使用</span></div>
-        <div class="slate"><strong>${unusedCount}</strong><span>未使用</span></div>
-        <div class="orange"><strong>${danglingCount}</strong><span>悬空镜像</span></div>
-        <div class="purple"><strong>${fmtBytes(totalSize)}</strong><span>占用空间</span></div>
+      <div class="image-summary-bar">
+        <div><strong class="blue">${state.images.items.length}</strong><span>本地镜像</span></div>
+        <div><strong class="green">${usedCount}</strong><span>已使用</span></div>
+        <div><strong class="slate">${unusedCount}</strong><span>未使用</span></div>
+        <div><strong class="orange">${danglingCount}</strong><span>悬空镜像</span></div>
+        <div><strong class="purple">${fmtBytes(totalSize)}</strong><span>占用空间</span></div>
+        <div class="image-ratio-track" title="已使用 / 未使用 / 悬空镜像比例">
+          <i class="used" style="width:${usedPct}%"></i>
+          <i class="unused" style="width:${unusedPct}%"></i>
+          <i class="dangling" style="width:${danglingPct}%"></i>
+        </div>
       </div>
       ${renderImagePullProgress()}
       ${

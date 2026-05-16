@@ -2592,6 +2592,7 @@ td.actions button {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) 360px;
   gap: 16px;
+  align-items: stretch;
 }
 
 .compose-code-panel,
@@ -2607,7 +2608,7 @@ td.actions button {
 .compose-code-panel,
 .compose-runtime-panel {
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 12px;
   padding: 16px;
 }
@@ -2922,6 +2923,12 @@ td.actions button {
 
 .compose-dark-note span {
   color: #536176;
+}
+
+.compose-note-spacer {
+  visibility: hidden;
+  min-height: 45px;
+  pointer-events: none;
 }
 
 .compose-terminal-tabs span {

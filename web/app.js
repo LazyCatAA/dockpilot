@@ -1394,7 +1394,7 @@ function renderImages() {
         <form id="imagePullForm" class="image-pull-form">
           <input name="image" placeholder="拉取镜像，例如 nginx:latest" required />
           <select id="imagePullMode" name="pull_mode">
-            <option value="proxy" ${state.images.pullMode !== "direct" ? "selected" : ""}>使用代理</option>
+            <option value="proxy" ${state.images.pullMode !== "direct" ? "selected" : ""}>使用加速源</option>
             <option value="direct" ${state.images.pullMode === "direct" ? "selected" : ""}>直接拉取</option>
           </select>
           <button class="primary" type="submit">拉取</button>

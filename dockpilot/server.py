@@ -1712,6 +1712,8 @@ class AppHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", mimetypes.guess_type(target.name)[0] or "application/octet-stream")
         if target.suffix in {".html", ".js", ".css"}:
             self.send_header("Cache-Control", "no-store, max-age=0")
+            self.send_header("Pragma", "no-cache")
+            self.send_header("Expires", "0")
         else:
             self.send_header("Cache-Control", "public, max-age=3600")
         self.send_header("Content-Length", str(len(data)))

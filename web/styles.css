@@ -7558,7 +7558,9 @@ td.actions button {
 
 .compose-reference-top {
   min-width: 0;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr;
+  align-items: start;
   gap: 16px;
 }
 
@@ -7616,7 +7618,7 @@ td.actions button {
 
 .compose-reference-actions {
   flex-wrap: wrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
   gap: 10px;
 }
 
@@ -7628,9 +7630,9 @@ td.actions button {
   justify-content: center;
   gap: 7px;
   border: 1px solid rgba(215, 226, 243, 0.8);
-  border-radius: 9px;
+  border-radius: 10px;
   padding: 0 14px;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.9);
   color: #25324d;
   font-size: 12px;
   font-weight: 850;
@@ -7650,7 +7652,7 @@ td.actions button {
 .compose-reference-workbench {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(290px, 1fr) minmax(220px, 0.72fr) minmax(176px, 0.55fr);
+  grid-template-columns: minmax(360px, 1.12fr) minmax(300px, 0.88fr) minmax(210px, 0.62fr);
   gap: 12px;
 }
 
@@ -7674,6 +7676,36 @@ td.actions button {
   box-shadow: none;
 }
 
+.compose-editor-titlebar {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 14px 0 18px;
+  border: 1px solid rgba(18, 31, 52, 0.16);
+  border-bottom: 0;
+  border-radius: 14px 14px 0 0;
+  background: #121d2d;
+  color: #d8e6f7;
+}
+
+.compose-editor-titlebar strong {
+  color: #d8e6f7;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.compose-editor-titlebar button {
+  width: 28px;
+  height: 28px;
+  border-color: rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.04);
+  color: #93a4bd;
+}
+
 .compose-reference-panelhead {
   justify-content: space-between;
   min-height: 40px;
@@ -7695,13 +7727,13 @@ td.actions button {
   min-height: 0;
   height: 100%;
   border: 1px solid rgba(18, 31, 52, 0.16);
-  border-radius: 14px;
+  border-radius: 0 0 14px 14px;
   background: #0d1725 !important;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 18px 38px rgba(16, 30, 52, 0.2);
 }
 
 .compose-reference-layout .compose-dark-editor::before {
-  content: "";
+  content: none;
   position: absolute;
   left: 0;
   right: 0;
@@ -7715,9 +7747,9 @@ td.actions button {
 
 .compose-reference-layout .code-highlight,
 .compose-reference-layout .code-input {
-  top: 42px;
+  top: 0;
   bottom: 34px;
-  padding: 18px 20px 18px 52px;
+  padding: 18px 20px 18px 0;
   color: #c8d5e8;
   font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
   font-size: 12px;
@@ -7740,12 +7772,30 @@ td.actions button {
   background: transparent !important;
   color: transparent !important;
   caret-color: #d8e6f7;
+  padding-left: 44px;
   -webkit-text-fill-color: transparent !important;
 }
 
 .compose-reference-layout .code-input::placeholder {
   color: rgba(216, 230, 247, 0.58);
   -webkit-text-fill-color: rgba(216, 230, 247, 0.58);
+}
+
+.code-line {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  min-height: 20px;
+}
+
+.code-line-number {
+  padding-right: 12px;
+  color: #607086;
+  text-align: right;
+  user-select: none;
+}
+
+.code-line-content {
+  min-width: 0;
 }
 
 .compose-editor-statusbar {

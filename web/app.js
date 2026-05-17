@@ -72,7 +72,8 @@ function highlightYaml(value) {
   return String(value || "")
     .split("\n")
     .map((line, index) => {
-      if (/^\s*#/.test(line)) return `<span class="yaml-comment">${h(line)}</span>`;
+      const number = `<span class="code-line-number">${index + 1}</span>`;
+      if (/^\s*#/.test(line)) return `<span class="code-line">${number}<span class="code-line-content"><span class="yaml-comment">${h(line)}</span></span></span>`;
       let escaped = h(line);
       escaped = escaped.replace(
         /^(\s*)([A-Za-z0-9_.-]+)(:)/,
@@ -82,7 +83,8 @@ function highlightYaml(value) {
       escaped = escaped.replace(/\b(true|false|null|yes|no|on|off)\b/gi, `<span class="yaml-bool">$1</span>`);
       escaped = escaped.replace(/(^|\s)(-\s)/g, `$1<span class="yaml-list">$2</span>`);
       escaped = escaped.replace(/(#.*)$/g, `<span class="yaml-comment">$1</span>`);
-      return state.compose.repairLines.includes(index + 1) ? `<span class="yaml-repaired">${escaped}</span>` : escaped;
+      const content = state.compose.repairLines.includes(index + 1) ? `<span class="yaml-repaired">${escaped}</span>` : escaped;
+      return `<span class="code-line">${number}<span class="code-line-content">${content || " "}</span></span>`;
     })
     .join("\n");
 }
@@ -2242,8 +2244,8 @@ function renderCompose() {
         </header>
         <div class="compose-reference-workbench">
           <section class="compose-reference-editor">
-            <div class="compose-reference-panelhead">
-              <strong>docker-compose.yml</strong>
+            <div class="compose-editor-titlebar">
+              <strong>${h(selected?.file || "docker-compose.yml")}</strong>
               <button data-action="compose-apply-ai" ${state.compose.aiContent ? "" : "disabled"} title="应用 AI 修正">⇱</button>
             </div>
             <div class="editor-shell compose-dark-editor">

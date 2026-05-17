@@ -22,6 +22,7 @@ from dockpilot.server import (
     proxied_image_reference,
     recreate_standalone_container,
     convert_command_to_compose_ai,
+    discover_compose_projects,
     repair_compose_content,
 )
 
@@ -346,6 +347,19 @@ def test_ai_cloudflare_error_is_translated() -> None:
     assert_true("browser_signature_banned" not in message, "AI 1010 错误不应直接暴露原始英文代码")
 
 
+def test_compose_discovery_stops_on_large_roots() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        for index in range(180):
+            (root / f"folder-{index}").mkdir()
+        (root / "zzz-compose").mkdir()
+        (root / "zzz-compose" / "compose.yml").write_text("services:\n  app:\n    image: nginx\n", encoding="utf-8")
+
+        projects = discover_compose_projects([root], max_scanned_dirs=80)
+
+    assert_true(projects == [], "Compose 目录过大时应停止扫描并快速返回，避免页面一直加载")
+
+
 def main() -> int:
     test_standalone_update_retries_when_docker_reports_same_rename_name()
     test_image_proxy_keeps_original_reference_shape()
@@ -368,6 +382,7 @@ def main() -> int:
     test_compose_repair_uses_ai_compatible_result_without_rule_fallback()
     test_compose_command_convert_uses_ai_preview_content()
     test_ai_cloudflare_error_is_translated()
+    test_compose_discovery_stops_on_large_roots()
     print("PASS: DockPilot 单元测试全部通过")
     return 0
 

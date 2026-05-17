@@ -1754,6 +1754,20 @@ class AppHandler(BaseHTTPRequestHandler):
 
 
 COMPOSE_FILE_NAMES = {"compose.yml", "compose.yaml", "docker-compose.yml", "docker-compose.yaml"}
+COMPOSE_DISCOVERY_MAX_DIRS = 1200
+COMPOSE_DISCOVERY_SKIP_DIRS = {
+    ".git",
+    ".svn",
+    ".trash",
+    "@eaDir",
+    "__pycache__",
+    "node_modules",
+    "cache",
+    "logs",
+    "log",
+    "tmp",
+    "temp",
+}
 
 
 def normalize_paths(values: Any) -> list[str]:
@@ -3478,20 +3492,29 @@ def compose_from_docker_run(command: str, project_name: str) -> str:
     return "\n".join(lines) + "\n"
 
 
-def discover_compose_projects(roots: list[Path], containers: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
+def discover_compose_projects(
+    roots: list[Path],
+    containers: list[dict[str, Any]] | None = None,
+    max_scanned_dirs: int = COMPOSE_DISCOVERY_MAX_DIRS,
+) -> list[dict[str, Any]]:
     projects: list[dict[str, Any]] = []
     seen: set[Path] = set()
     containers = containers or []
+    scanned_dirs = 0
     for root in roots:
         if not root.exists():
             continue
         for dirpath, dirnames, filenames in os.walk(root):
+            scanned_dirs += 1
+            if scanned_dirs > max_scanned_dirs:
+                projects.sort(key=lambda item: item["name"].lower())
+                return projects
             current = Path(dirpath)
             depth = len(current.relative_to(root).parts)
             if depth > 4:
                 dirnames[:] = []
                 continue
-            dirnames[:] = [name for name in dirnames if not name.startswith(".") and name not in {"node_modules", "__pycache__"}]
+            dirnames[:] = [name for name in dirnames if not name.startswith(".") and name not in COMPOSE_DISCOVERY_SKIP_DIRS]
             for name in sorted(COMPOSE_FILE_NAMES):
                 if name in filenames:
                     compose_file = (current / name).resolve()

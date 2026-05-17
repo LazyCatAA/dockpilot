@@ -1052,20 +1052,6 @@ function render() {
         <nav class="nav">${renderNav()}</nav>
       </aside>
       <main class="content">
-        ${
-          ["dashboard", "containers", "images", "volumes", "compose"].includes(state.tab)
-            ? ""
-            : `<div class="topbar">
-                <div>
-                  <h2>${h(pageTitle())}</h2>
-                  <div class="muted">当前用户：${h(state.session.user?.username || "admin")}</div>
-                </div>
-                <div class="top-actions">
-                  <button class="circle" title="刷新" data-action="refresh">⟳</button>
-                  <button class="circle" title="退出登录" data-action="logout">⎋</button>
-                </div>
-              </div>`
-        }
         ${state.error ? `<div class="notice">${h(state.error)}</div>` : ""}
         ${state.loading ? `<div class="empty">正在加载当前页面...</div>` : renderCurrent()}
         ${state.compose.backupModal ? renderComposeBackupModal() : ""}

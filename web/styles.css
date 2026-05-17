@@ -7702,6 +7702,7 @@ td.actions button {
   height: 42px;
   border-bottom: 1px solid rgba(114, 132, 158, 0.14);
   background: rgba(17, 29, 47, 0.88);
+  z-index: 0;
   pointer-events: none;
 }
 
@@ -7718,12 +7719,18 @@ td.actions button {
 
 .compose-reference-layout .code-highlight {
   counter-reset: yaml-line;
-  z-index: 1;
+  z-index: 3;
   opacity: 1;
+  pointer-events: none;
+  background: transparent !important;
+  filter: none;
+  text-shadow: none;
+  -webkit-text-fill-color: initial;
 }
 
 .compose-reference-layout .code-input {
   z-index: 2;
+  background: transparent !important;
   color: transparent !important;
   caret-color: #d8e6f7;
   -webkit-text-fill-color: transparent !important;
@@ -7749,6 +7756,7 @@ td.actions button {
   font-size: 11px;
   font-weight: 760;
   background: rgba(8, 17, 30, 0.72);
+  z-index: 4;
 }
 
 .compose-reference-preview {

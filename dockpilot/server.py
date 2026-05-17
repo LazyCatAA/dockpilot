@@ -1710,7 +1710,10 @@ class AppHandler(BaseHTTPRequestHandler):
         data = target.read_bytes()
         self.send_response(200)
         self.send_header("Content-Type", mimetypes.guess_type(target.name)[0] or "application/octet-stream")
-        self.send_header("Cache-Control", "no-cache" if target.name == "index.html" else "public, max-age=3600")
+        if target.suffix in {".html", ".js", ".css"}:
+            self.send_header("Cache-Control", "no-store, max-age=0")
+        else:
+            self.send_header("Cache-Control", "public, max-age=3600")
         self.send_header("Content-Length", str(len(data)))
         self.end_headers()
         self.wfile.write(data)

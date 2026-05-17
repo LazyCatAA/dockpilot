@@ -2109,7 +2109,7 @@ function renderComposeProjectCard(project) {
   const tone = projectStateTone(project);
   return `
     <button class="compose-project-card ${state.compose.selected === project.path ? "active" : ""} ${h(tone)}" data-action="compose-select" data-path="${h(project.path)}">
-      <i class="compose-project-lock">${icons.compose}</i>
+      <i class="compose-project-lock">${navIcon("compose")}</i>
       <span>
         <strong>${h(project.name)}</strong>
         <small>${h(project.directory || project.path || "")}</small>

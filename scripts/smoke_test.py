@@ -133,6 +133,7 @@ def main() -> int:
         assert_true("compose-ai-issue-card" in app_js, "Compose AI 预览应使用问题卡片")
         assert_true("compose-settings-switch" in app_js, "Compose 项目设置应提供开关控件")
         assert_true("compose-editor-statusbar" in app_js, "Compose 编辑器应提供底部状态栏")
+        assert_true("API_TIMEOUT_MS" in app_js, "前端 API 请求应有超时保护，避免页面一直加载")
         assert_true("compose_ai_base_url" in app_js, "系统设置应支持 AI 兼容接口地址")
         assert_true("compose_ai_model" in app_js, "系统设置应支持配置 AI 模型")
         assert_true("container-backups-clear" in app_js, "容器备份应支持一键清理")

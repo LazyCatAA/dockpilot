@@ -57,6 +57,7 @@ const navGroups = [
 ];
 
 const app = document.getElementById("app");
+const API_TIMEOUT_MS = 20000;
 
 function h(value) {
   return String(value ?? "")
@@ -738,23 +739,35 @@ function zhError(message) {
 
 async function api(path, options = {}) {
   const config = { ...options, headers: { ...(options.headers || {}) } };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  config.signal = controller.signal;
   if (config.body && typeof config.body !== "string") {
     config.headers["Content-Type"] = "application/json";
     config.body = JSON.stringify(config.body);
   }
-  const response = await fetch(path, config);
-  const type = response.headers.get("Content-Type") || "";
-  const payload = type.includes("application/json") ? await response.json() : await response.text();
-  if (response.status === 401 && path !== "/api/session") {
-    state.session = { setup_required: false, authenticated: false, user: null };
-    state.error = "登录已过期，请重新登录。";
-    render();
-    throw new Error("需要先登录。");
+  try {
+    const response = await fetch(path, config);
+    const type = response.headers.get("Content-Type") || "";
+    const payload = type.includes("application/json") ? await response.json() : await response.text();
+    if (response.status === 401 && path !== "/api/session") {
+      state.session = { setup_required: false, authenticated: false, user: null };
+      state.error = "登录已过期，请重新登录。";
+      render();
+      throw new Error("需要先登录。");
+    }
+    if (!response.ok) {
+      throw new Error(zhError(payload.error || payload || `请求失败：${response.status}`));
+    }
+    return payload;
+  } catch (error) {
+    if (error.name === "AbortError") {
+      throw new Error("请求超时，请检查 Docker 或网络连接后重试。");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
   }
-  if (!response.ok) {
-    throw new Error(zhError(payload.error || payload || `请求失败：${response.status}`));
-  }
-  return payload;
 }
 
 async function boot() {

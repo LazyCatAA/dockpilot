@@ -1124,6 +1124,7 @@ function renderDashboard() {
         <div class="nav-minimal-title">
           <strong>${h(prefs.title)}</strong>
         </div>
+        <div class="nav-minimal-section-title"><i></i><span>${h(prefs.section_title || "应用")}</span></div>
         ${renderWebSearch(prefs)}
       </div>
       <div class="nav-bookmark-area">
@@ -1159,7 +1160,7 @@ function renderCards() {
   return `
     <section class="nav-minimal-board">
       <div class="nav-minimal-library">
-        <h3>${h(prefs.section_title || "应用")}</h3>
+        <span></span>
         <div class="nav-minimal-library-tools">
           ${prefs.show_search ? `<input id="navSearch" value="${h(state.navSearch)}" placeholder="过滤书签" />` : ""}
           <button data-action="card-add" data-group="Docker" title="添加书签">＋</button>

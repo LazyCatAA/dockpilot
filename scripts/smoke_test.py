@@ -140,6 +140,7 @@ def main() -> int:
         assert_true("webSearchForm" in app_js, "导航页顶部应提供网页搜索框")
         assert_true("web_search_engine" in app_js, "导航页应支持切换网页搜索引擎")
         assert_true("section_title" in app_js, "导航页应用区标题应支持自定义")
+        assert_true("nav-minimal-section-title" in app_js, "导航页应用区标题应移动到顶部主区域")
         assert_true("分类书签" not in app_js, "导航页不应再固定显示分类书签文案")
         assert_true("dashboardWidgetForm" not in app_js, "导航页内容应移除状态小卡片")
         assert_true("renderDashboardWidgets()" not in app_js, "导航页不应渲染状态模块")

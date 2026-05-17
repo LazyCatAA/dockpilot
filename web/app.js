@@ -43,6 +43,8 @@ const tabs = [
   ["images", "镜像"],
   ["volumes", "卷"],
   ["compose", "Compose"],
+  ["vps", "VPS"],
+  ["ssh", "SSH"],
   ["files", "文件"],
   ["settings", "设置"],
 ];
@@ -50,6 +52,7 @@ const tabs = [
 const navGroups = [
   { title: "发现", items: [["dashboard", "首页导航", "home"]] },
   { title: "Docker", items: [["containers", "容器管理", "containers"], ["images", "镜像库", "images"], ["volumes", "Docker 卷", "volumes"], ["compose", "Compose", "compose"]] },
+  { title: "远程", items: [["vps", "VPS 管理", "vps"], ["ssh", "SSH 终端", "ssh"]] },
   { title: "系统", items: [["files", "文件管理", "files"], ["settings", "系统设置", "settings"]] },
 ];
 
@@ -641,6 +644,8 @@ function navIcon(name) {
     images: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 5.2a3.8 3.8 0 1 1 0 7.6 3.8 3.8 0 0 1 0-7.6Z"/></svg>`,
     volumes: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5A2.5 2.5 0 0 1 7.5 3h9A2.5 2.5 0 0 1 19 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 5 18.5v-13Zm3 2v7h8v-7H8Zm2 10.5h4v-2h-4v2Z"/></svg>`,
     compose: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8.5 4.7L12 12.4 3.5 7.7 12 3Zm-6.8 8.1L12 14.9l6.8-3.8 1.7 1L12 16.8l-8.5-4.7 1.7-1Zm0 4.4L12 19.3l6.8-3.8 1.7 1L12 21.2l-8.5-4.7 1.7-1Z"/></svg>`,
+    vps: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v7A2.5 2.5 0 0 1 17.5 15H13v3h3.5v2H7.5v-2H11v-3H6.5A2.5 2.5 0 0 1 4 12.5v-7Zm3 1.3v4.4h10V6.8H7Z"/></svg>`,
+    ssh: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18.5v-13Zm3 3.2 3.1 3.3L7 15.3l1.5 1.4 4.4-4.7-4.4-4.7L7 8.7Zm6.2 7.6H18v-2h-4.8v2Z"/></svg>`,
     files: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7A2.5 2.5 0 0 1 6 4.5h4.4l2 2H18A2.5 2.5 0 0 1 20.5 9v8A2.5 2.5 0 0 1 18 19.5H6A2.5 2.5 0 0 1 3.5 17V7Z"/></svg>`,
     settings: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.2 3h3.6l.6 2.4c.6.2 1.1.4 1.6.7l2.2-1.3 2.5 2.5-1.3 2.2c.3.5.5 1 .7 1.6l2.3.6v3.6l-2.3.6c-.2.6-.4 1.1-.7 1.6l1.3 2.2-2.5 2.5-2.2-1.3c-.5.3-1 .5-1.6.7l-.6 2.4h-3.6l-.6-2.4c-.6-.2-1.1-.4-1.6-.7l-2.2 1.3-2.5-2.5 1.3-2.2c-.3-.5-.5-1-.7-1.6L1 15.3v-3.6l2.3-.6c.2-.6.4-1.1.7-1.6L2.7 7.3l2.5-2.5 2.2 1.3c.5-.3 1-.5 1.6-.7L10.2 3Zm1.8 6.1a2.9 2.9 0 1 0 0 5.8 2.9 2.9 0 0 0 0-5.8Z"/></svg>`,
   };
@@ -1102,9 +1107,25 @@ function renderCurrent() {
   if (state.tab === "images") return renderImages();
   if (state.tab === "volumes") return renderVolumes();
   if (state.tab === "compose") return renderCompose();
+  if (state.tab === "vps") return renderPlaceholder("VPS 管理", "用于后续管理 VPS 主机、运行状态、标签分组和连接入口。");
+  if (state.tab === "ssh") return renderPlaceholder("SSH 终端", "用于后续保存 SSH 连接、打开 Web 终端和管理密钥。");
   if (state.tab === "files") return renderFiles();
   if (state.tab === "settings") return renderSettings();
   return "";
+}
+
+function renderPlaceholder(title, detail) {
+  return `
+    <section class="panel page-panel">
+      <div class="panel-head">
+        <div>
+          <h3>${h(title)}</h3>
+          <span class="muted">${h(detail)}</span>
+        </div>
+      </div>
+      <div class="empty">功能已预留，后续继续开发。</div>
+    </section>
+  `;
 }
 
 function renderDashboard() {

@@ -1119,12 +1119,16 @@ function renderDashboard() {
   const prefs = navPrefs();
   return `
     <section class="nav-home nav-minimal nav-width-${h(prefs.layout_width)} nav-density-${h(prefs.density)} nav-style-${h(prefs.card_style)} nav-icon-${h(prefs.icon_size)} nav-title-${h(prefs.title_font_size)}" style="--nav-bg:${h(prefs.background)}">
-      <button class="nav-minimal-settings" data-action="nav-settings-open" title="导航页设置">•••</button>
-      <div class="nav-minimal-hero">
-        <div class="nav-minimal-title">
-          <strong>${h(prefs.title)}</strong>
+      <div class="nav-minimal-topbar">
+        <div class="nav-minimal-brand">
+          <div class="nav-minimal-title">
+            <strong>${h(prefs.title)}</strong>
+          </div>
+          <div class="nav-minimal-section-title"><i></i><span>${h(prefs.section_title || "应用")}</span></div>
         </div>
-        <div class="nav-minimal-section-title"><i></i><span>${h(prefs.section_title || "应用")}</span></div>
+        <button class="nav-minimal-settings" data-action="nav-settings-open" title="导航页设置">设置</button>
+      </div>
+      <div class="nav-minimal-hero">
         ${renderWebSearch(prefs)}
       </div>
       <div class="nav-bookmark-area">

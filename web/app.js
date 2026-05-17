@@ -26,7 +26,7 @@ const state = {
   containerUpdateCheck: { active: false, done: 0, total: 0, failed: 0 },
   sidebarCollapsed: false,
   logs: { id: "", text: "" },
-  compose: { projects: [], selected: "", content: "", output: "", repair: null, repairLines: [], aiContent: "", backups: [], backupModal: false },
+  compose: { projects: [], selected: "", content: "", output: "", repair: null, repairLines: [], aiContent: "", backups: [], backupModal: false, logsAutoScroll: true },
   files: { roots: [], root: "", path: "", items: [], editPath: "", content: "" },
   settings: null,
 };
@@ -102,6 +102,12 @@ function syncComposeAiHighlight() {
   const preview = document.getElementById("composeAiPreview");
   if (!preview) return;
   preview.innerHTML = `${highlightYaml(state.compose.aiContent || "")}\n`;
+}
+
+function syncComposeLogScroll() {
+  const consoleEl = document.getElementById("composeLogConsole");
+  if (!consoleEl || !state.compose.logsAutoScroll) return;
+  consoleEl.scrollTop = consoleEl.scrollHeight;
 }
 
 function fmtBytes(bytes) {
@@ -1023,6 +1029,7 @@ async function selectCompose(path) {
   state.compose.selected = path;
   const data = await api(`/api/compose/file?path=${encodeURIComponent(path)}`);
   state.compose.content = data.content || "";
+  state.compose.output = "";
   state.compose.aiContent = "";
   state.compose.repair = null;
   state.compose.repairLines = [];
@@ -1077,6 +1084,7 @@ function render() {
       </main>
     </section>
   `;
+  if (state.tab === "compose") syncComposeLogScroll();
 }
 
 function renderAuth() {
@@ -2137,6 +2145,21 @@ function renderComposeServiceCard(item) {
   `;
 }
 
+function composeLogRows(text) {
+  const lines = String(text || "")
+    .split("\n")
+    .filter((line) => line.trim())
+    .slice(-220);
+  return lines.map((line) => {
+    const lower = line.toLowerCase();
+    const tone = lower.includes("error") || lower.includes("failed") || lower.includes("fatal") ? "error" : lower.includes("warn") ? "warn" : "info";
+    const match = line.match(/^(\S+)\s+(.*)$/);
+    const time = match && /^\d{4}-\d{2}-\d{2}|^\$/.test(match[1]) ? match[1] : "";
+    const message = time ? match[2] : line;
+    return `<div class="compose-log-row ${tone}">${time ? `<time>${h(time)}</time>` : "<time></time>"}<code>${h(message)}</code></div>`;
+  });
+}
+
 function renderContainerDetail() {
   const detail = state.containerDetail || {};
   const config = detail.Config || {};
@@ -2191,11 +2214,11 @@ function renderCompose() {
   const selectedTone = selected ? projectStateTone(selected) : "missing";
   const selectedName = selected?.name || "moviepilot";
   const selectedPath = selected?.path || state.compose.selected || "/data/compose/moviepilot/docker-compose.yml";
-  const selectedNetwork = services.find((item) => item.network)?.network || "proxy";
-  const restartPolicy = services.find((item) => item.restart)?.restart || "unless-stopped";
   const lineCount = Math.max(String(state.compose.content || "").split("\n").length, 1);
   const issueCount = state.compose.repair ? Math.max((state.compose.repair.changes || []).length, state.compose.repair.changed ? 1 : 0) : 2;
   const repairSummary = (state.compose.repair?.changes || []).join("；") || "可继续使用检查功能确认配置。";
+  const logRows = composeLogRows(state.compose.output);
+  const logStatusText = selected ? `${services.length || 0} 个服务` : "未选择项目";
   const aiPreviewText = state.compose.aiContent
     ? highlightYaml(state.compose.aiContent)
     : `healthcheck:\n  test: ["CMD", "curl", "-f", "http://localhost:3000"]\n  interval: 30s\n  timeout: 10s\n  retries: 3`;
@@ -2287,22 +2310,41 @@ function renderCompose() {
               <span>${state.compose.repair ? h(repairSummary) : "AI 只允许修正格式，不应改变服务、镜像、端口含义、挂载路径和环境变量含义。"}</span>
             </div>
           </section>
-          <aside class="compose-reference-settings">
-            <div class="compose-reference-panelhead">
-              <strong>项目设置</strong>
+          <aside class="compose-reference-settings compose-log-panel">
+            <div class="compose-reference-panelhead compose-log-head">
+              <div>
+                <strong>容器日志</strong>
+                <span>${h(logStatusText)}</span>
+              </div>
+              <button data-action="compose-action" data-command="logs" ${state.compose.selected ? "" : "disabled"} title="刷新日志">↻</button>
             </div>
-            <label class="compose-setting-field"><span>项目名称</span><input value="${h(selectedName)}" readonly /></label>
-            <label class="compose-setting-field"><span>项目路径</span><input value="${h(selected?.directory || selectedPath)}" readonly /></label>
-            <label class="compose-setting-field"><span>网络</span><select disabled><option>${h(selectedNetwork)}</option></select></label>
-            <label class="compose-setting-field"><span>重启策略</span><select disabled><option>${h(restartPolicy)}</option></select></label>
-            <label class="compose-settings-switch"><span>开机自启</span><input type="checkbox" checked disabled /><i></i></label>
-            <label class="compose-settings-switch"><span>自动更新</span><input type="checkbox" disabled /><i></i></label>
-            <div class="compose-reference-extra">
+            <div class="compose-log-service-strip">
+              ${
+                services.length
+                  ? services.slice(0, 4).map((item) => {
+                      const stateValue = String(item.state || "missing").toLowerCase();
+                      return `<span class="${h(stateValue)}"><i class="state-dot ${h(stateValue)}"></i>${h(item.service || item.name || "service")}</span>`;
+                    }).join("")
+                  : `<span class="missing"><i class="state-dot missing"></i>未部署</span>`
+              }
+            </div>
+            <div class="compose-log-toolbar">
+              <button data-action="compose-action" data-command="logs" ${state.compose.selected ? "" : "disabled"}>刷新</button>
+              <button data-action="compose-copy-logs" ${state.compose.output ? "" : "disabled"}>复制</button>
+              <button data-action="compose-toggle-log-scroll" class="${state.compose.logsAutoScroll ? "active" : ""}">自动滚动</button>
+            </div>
+            <div class="compose-log-console" id="composeLogConsole">
+              ${
+                logRows.length
+                  ? logRows.join("")
+                  : `<div class="compose-log-empty"><strong>暂无日志</strong><span>${selected ? "点击刷新读取最近 200 行容器日志。" : "请选择一个 Compose 项目。"}</span></div>`
+              }
+            </div>
+            <div class="compose-reference-extra compose-log-extra">
               <button data-action="compose-backup" ${state.compose.selected ? "" : "disabled"}>备份</button>
               <button data-action="compose-restore">恢复</button>
               <button data-action="compose-action" data-command="pull" ${state.compose.selected ? "" : "disabled"}>拉取</button>
             </div>
-            <button class="compose-delete-project danger" disabled>删除项目</button>
           </aside>
         </div>
         <div class="compose-reference-metrics" aria-hidden="true">
@@ -3103,6 +3145,16 @@ document.addEventListener("click", async (event) => {
       state.error = "已应用 AI 修正，请检查后保存或部署。";
       render();
       syncComposeHighlight();
+    }
+    if (action === "compose-copy-logs") {
+      if (!state.compose.output) throw new Error("当前没有可复制的日志。");
+      await navigator.clipboard.writeText(state.compose.output);
+      state.error = "日志已复制。";
+      render();
+    }
+    if (action === "compose-toggle-log-scroll") {
+      state.compose.logsAutoScroll = !state.compose.logsAutoScroll;
+      render();
     }
     if (action === "compose-action") {
       if (!state.compose.selected) throw new Error("请先选择一个 Compose 项目。");

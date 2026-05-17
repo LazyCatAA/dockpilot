@@ -216,9 +216,9 @@ a {
 
 .layout:has(.sidebar:hover),
 .layout:has(.sidebar:focus-within) {
-  grid-template-columns: 218px minmax(0, 1fr);
+  grid-template-columns: 184px minmax(0, 1fr);
   background:
-    linear-gradient(90deg, rgba(219, 234, 254, 0.82) 0, rgba(239, 246, 255, 0.72) 218px, transparent 218px),
+    linear-gradient(90deg, rgba(219, 234, 254, 0.82) 0, rgba(239, 246, 255, 0.72) 184px, transparent 184px),
     var(--bg);
 }
 
@@ -305,20 +305,20 @@ a {
 
 .sidebar:hover,
 .sidebar:focus-within {
-  width: 218px;
+  width: 184px;
 }
 
 .sidebar:hover .nav,
 .sidebar:focus-within .nav {
-  width: 184px;
-  border-radius: 24px;
+  width: 150px;
+  border-radius: 20px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(239, 246, 255, 0.82));
   box-shadow: 0 22px 54px rgba(37, 99, 235, 0.16);
 }
 
 .nav-title {
-  min-width: 156px;
+  min-width: 122px;
   margin: 4px 8px 6px;
   color: #758aa6;
   font-size: 12px;
@@ -345,11 +345,11 @@ a {
 .nav button {
   position: relative;
   display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
-  gap: 10px;
+  grid-template-columns: 36px minmax(0, 1fr);
+  gap: 8px;
   align-items: center;
-  width: 172px;
-  min-height: 50px;
+  width: 138px;
+  min-height: 46px;
   border-color: transparent;
   background: transparent;
   color: #48617e;
@@ -409,8 +409,8 @@ a {
 }
 
 .nav-icon {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   display: grid;
   place-items: center;
   border-radius: 14px;
@@ -421,8 +421,8 @@ a {
 }
 
 .nav-icon svg {
-  width: 25px;
-  height: 25px;
+  width: 22px;
+  height: 22px;
   display: block;
   fill: currentColor;
 }
@@ -437,7 +437,7 @@ a {
 .nav button span:not(.nav-icon) {
   min-width: 0;
   overflow: hidden;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 850;
   opacity: 0;
   text-overflow: ellipsis;
@@ -8044,6 +8044,158 @@ td.actions button {
   font-weight: 900;
 }
 
+.compose-log-panel {
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 14px;
+}
+
+.compose-log-head {
+  min-height: 38px;
+  padding: 0;
+}
+
+.compose-log-head div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.compose-log-head span {
+  overflow: hidden;
+  color: #7b8da8;
+  font-size: 11px;
+  font-weight: 760;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compose-log-service-strip {
+  min-width: 0;
+  display: flex;
+  gap: 7px;
+  overflow: auto;
+  padding-bottom: 2px;
+}
+
+.compose-log-service-strip span {
+  min-height: 26px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid rgba(218, 228, 243, 0.82);
+  border-radius: 999px;
+  padding: 0 9px;
+  background: rgba(248, 251, 255, 0.88);
+  color: #52647f;
+  font-size: 11px;
+  font-weight: 820;
+}
+
+.compose-log-service-strip span.running {
+  border-color: rgba(34, 197, 94, 0.22);
+  background: rgba(236, 253, 245, 0.82);
+  color: #157a4a;
+}
+
+.compose-log-service-strip span.exited,
+.compose-log-service-strip span.stopped {
+  border-color: rgba(245, 158, 11, 0.2);
+  background: rgba(255, 247, 237, 0.8);
+  color: #a86108;
+}
+
+.compose-log-toolbar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.compose-log-toolbar button {
+  min-height: 30px;
+  padding: 0 8px;
+  border-radius: 8px;
+  color: #33445f;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.compose-log-toolbar button.active {
+  border-color: rgba(37, 99, 235, 0.24);
+  background: rgba(239, 246, 255, 0.96);
+  color: #2563eb;
+}
+
+.compose-log-console {
+  min-height: 0;
+  overflow: auto;
+  border: 1px solid rgba(18, 31, 52, 0.18);
+  border-radius: 12px;
+  background:
+    linear-gradient(180deg, rgba(15, 25, 41, 0.96), rgba(9, 17, 29, 0.98)),
+    #0d1725;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  padding: 10px 0;
+}
+
+.compose-log-row {
+  display: grid;
+  grid-template-columns: minmax(58px, 0.34fr) minmax(0, 1fr);
+  gap: 8px;
+  padding: 4px 11px;
+  color: #cbd5e1;
+  font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
+  font-size: 10px;
+  line-height: 1.55;
+}
+
+.compose-log-row time {
+  overflow: hidden;
+  color: #71829c;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compose-log-row code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.compose-log-row.warn code {
+  color: #fbbf24;
+}
+
+.compose-log-row.error code {
+  color: #fca5a5;
+}
+
+.compose-log-empty {
+  min-height: 100%;
+  display: grid;
+  place-content: center;
+  gap: 5px;
+  padding: 28px 18px;
+  color: #8fa1ba;
+  text-align: center;
+}
+
+.compose-log-empty strong {
+  color: #d8e6f7;
+  font-size: 13px;
+}
+
+.compose-log-empty span {
+  color: #8fa1ba;
+  font-size: 11px;
+  font-weight: 720;
+}
+
+.compose-log-extra {
+  padding-top: 2px;
+}
+
 .compose-reference-metrics,
 .compose-terminal-tabs[aria-hidden="true"],
 .compose-run-overview[aria-hidden="true"],
@@ -8060,6 +8212,11 @@ td.actions button {
     grid-column: 1 / -1;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     grid-template-rows: auto;
+  }
+
+  .compose-log-panel {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto minmax(240px, 1fr) auto;
   }
 
   .compose-reference-settings .compose-reference-panelhead,

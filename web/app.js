@@ -466,6 +466,7 @@ function defaultNavPrefs() {
   return {
     title: "私人导航",
     subtitle: "清晰分组的服务入口，支持内外网地址和自定义图标",
+    section_title: "应用",
     layout_width: "wide",
     density: "comfortable",
     card_style: "professional",
@@ -1158,7 +1159,7 @@ function renderCards() {
   return `
     <section class="nav-minimal-board">
       <div class="nav-minimal-library">
-        <h3>分类书签</h3>
+        <h3>${h(prefs.section_title || "应用")}</h3>
         <div class="nav-minimal-library-tools">
           ${prefs.show_search ? `<input id="navSearch" value="${h(state.navSearch)}" placeholder="过滤书签" />` : ""}
           <button data-action="card-add" data-group="Docker" title="添加书签">＋</button>
@@ -1220,6 +1221,7 @@ function renderNavSettingsModal() {
             <header><strong>页面</strong><span>控制导航页整体信息和背景。</span></header>
             <div class="card-modal-grid">
               <label class="field wide"><span>页面标题</span><input name="title" value="${h(prefs.title)}" /></label>
+              <label class="field wide"><span>应用区标题</span><input name="section_title" value="${h(prefs.section_title || "应用")}" placeholder="应用" /></label>
               <label class="field wide"><span>副标题</span><input name="subtitle" value="${h(prefs.subtitle)}" /></label>
               <label class="field"><span>背景颜色</span><input name="background" type="color" value="${h(prefs.background)}" /></label>
               <label class="field"><span>页面宽度</span><select name="layout_width">
@@ -2463,6 +2465,7 @@ document.addEventListener("submit", async (event) => {
       await saveNavPrefs({
         ...navPrefs(),
         title: data.title || "私人导航",
+        section_title: data.section_title || "应用",
         subtitle: data.subtitle || "",
         background: data.background || "#eef5fb",
         web_search_engine: data.web_search_engine || "google",

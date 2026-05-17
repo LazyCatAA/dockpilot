@@ -46,6 +46,7 @@ DEFAULT_DASHBOARD_WIDGETS = [
 DEFAULT_NAV_PREFS = {
     "title": "私人导航",
     "subtitle": "清晰分组的服务入口，支持内外网地址和自定义图标",
+    "section_title": "应用",
     "layout_width": "wide",
     "density": "comfortable",
     "card_style": "professional",
@@ -161,6 +162,7 @@ def normalize_nav_prefs(value: Any) -> dict[str, Any]:
     prefs["density"] = str(prefs.get("density", "comfortable")) if str(prefs.get("density", "comfortable")) in {"compact", "comfortable", "spacious"} else "comfortable"
     prefs["card_style"] = str(prefs.get("card_style", "professional")) if str(prefs.get("card_style", "professional")) in {"professional", "soft", "outline", "glass"} else "professional"
     prefs["background"] = normalize_color(str(prefs.get("background", "#eef5fb")), "#eef5fb")
+    prefs["section_title"] = str(prefs.get("section_title", "应用")).strip()[:40] or "应用"
     prefs["web_search_engine"] = str(prefs.get("web_search_engine", "google")) if str(prefs.get("web_search_engine", "google")) in {"google", "bing", "baidu", "duckduckgo", "custom"} else "google"
     prefs["custom_search_url"] = str(prefs.get("custom_search_url", "")).strip()[:500]
     prefs["icon_size"] = str(prefs.get("icon_size", "medium")) if str(prefs.get("icon_size", "medium")) in {"small", "medium", "large"} else "medium"

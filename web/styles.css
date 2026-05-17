@@ -7718,6 +7718,19 @@ td.actions button {
 
 .compose-reference-layout .code-highlight {
   counter-reset: yaml-line;
+  opacity: 0;
+}
+
+.compose-reference-layout .code-input {
+  z-index: 2;
+  color: #d8e6f7 !important;
+  caret-color: #d8e6f7;
+  -webkit-text-fill-color: #d8e6f7 !important;
+}
+
+.compose-reference-layout .code-input::placeholder {
+  color: rgba(216, 230, 247, 0.58);
+  -webkit-text-fill-color: rgba(216, 230, 247, 0.58);
 }
 
 .compose-editor-statusbar {

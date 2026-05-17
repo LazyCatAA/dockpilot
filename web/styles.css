@@ -7718,14 +7718,15 @@ td.actions button {
 
 .compose-reference-layout .code-highlight {
   counter-reset: yaml-line;
-  opacity: 0;
+  z-index: 1;
+  opacity: 1;
 }
 
 .compose-reference-layout .code-input {
   z-index: 2;
-  color: #d8e6f7 !important;
+  color: transparent !important;
   caret-color: #d8e6f7;
-  -webkit-text-fill-color: #d8e6f7 !important;
+  -webkit-text-fill-color: transparent !important;
 }
 
 .compose-reference-layout .code-input::placeholder {

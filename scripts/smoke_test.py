@@ -102,8 +102,8 @@ def main() -> int:
 
         _, page = client.request("GET", "/")
         assert_true("DockPilot" in page, "首页静态文件应可访问")
-        assert_true("app.js?v=20260517-2" in page, "首页应引用新的前端资源版本，避免浏览器缓存旧 app.js")
-        assert_true("styles.css?v=20260517-2" in page, "首页应引用新的样式资源版本，避免浏览器缓存旧 styles.css")
+        assert_true("app.js?v=20260517-3" in page, "首页应引用新的前端资源版本，避免浏览器缓存旧 app.js")
+        assert_true("styles.css?v=20260517-3" in page, "首页应引用新的样式资源版本，避免浏览器缓存旧 styles.css")
         _, app_js = client.request("GET", "/app.js")
         assert_true("首页导航" in app_js, "前端脚本应为中文界面")
         assert_true("update-job" in app_js, "容器更新应使用后台任务接口")

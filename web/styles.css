@@ -7912,17 +7912,13 @@ td.actions button {
   -webkit-text-fill-color: initial;
 }
 
-.compose-reference-layout .code-highlight .code-line-content {
-  visibility: hidden;
-}
-
 .compose-reference-layout .code-input {
   z-index: 3;
   background: transparent !important;
-  color: #d8e6f7 !important;
+  color: transparent !important;
   caret-color: #d8e6f7;
   padding-left: 38px;
-  -webkit-text-fill-color: #d8e6f7 !important;
+  -webkit-text-fill-color: transparent !important;
 }
 
 .compose-reference-layout .code-input::placeholder {

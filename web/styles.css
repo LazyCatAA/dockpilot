@@ -7336,3 +7336,493 @@ td.actions button {
     max-height: 380px;
   }
 }
+
+/* Compose reference layout: project list + editor + AI preview/settings, matching the provided mockup. */
+.compose-reference-layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 0;
+  min-height: calc(100vh - 48px);
+  overflow: hidden;
+  border: 1px solid rgba(214, 226, 242, 0.86);
+  border-radius: 26px;
+  background:
+    radial-gradient(circle at 18% 0, rgba(96, 165, 250, 0.2), transparent 25%),
+    radial-gradient(circle at 88% 12%, rgba(147, 197, 253, 0.18), transparent 26%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(239, 247, 255, 0.66));
+  box-shadow: 0 24px 70px rgba(31, 82, 140, 0.13), var(--glass-inner);
+  backdrop-filter: blur(26px);
+}
+
+.compose-reference-sidebar {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  align-content: start;
+  padding: 18px 14px;
+  border-right: 1px solid rgba(214, 226, 242, 0.78);
+  background:
+    linear-gradient(180deg, rgba(246, 251, 255, 0.74), rgba(232, 242, 253, 0.62));
+  backdrop-filter: blur(22px);
+}
+
+.compose-reference-projects {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 12px;
+}
+
+.compose-reference-projects-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 36px;
+}
+
+.compose-reference-projects-head strong {
+  color: #152033;
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.compose-reference-projects-head span {
+  min-width: 28px;
+  height: 24px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #527097;
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: var(--glass-inner);
+}
+
+.compose-reference-create {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(214, 226, 242, 0.82);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.64);
+  box-shadow: var(--glass-shadow-sm), var(--glass-inner);
+}
+
+.compose-reference-create input,
+.compose-reference-create button {
+  min-height: 34px;
+  border-radius: 11px;
+  font-size: 12px;
+}
+
+.compose-reference-layout .compose-project-list {
+  min-height: 0;
+  overflow: auto;
+  align-content: start;
+  gap: 8px;
+  padding-right: 2px;
+}
+
+.compose-reference-layout .compose-project-card {
+  position: relative;
+  min-height: 54px;
+  border: 1px solid rgba(214, 226, 242, 0.82);
+  border-left: 0;
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.56);
+  color: #182235;
+  padding: 10px 30px 10px 12px;
+  box-shadow: 0 10px 24px rgba(31, 82, 140, 0.07), var(--glass-inner);
+}
+
+.compose-reference-layout .compose-project-card::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 999px;
+  background: #9ca3af;
+}
+
+.compose-reference-layout .compose-project-card.running::before {
+  background: #22c55e;
+}
+
+.compose-reference-layout .compose-project-card.missing::before {
+  background: #f59e0b;
+}
+
+.compose-reference-layout .compose-project-card.active {
+  border-color: rgba(37, 99, 235, 0.22);
+  background: rgba(232, 242, 255, 0.92);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.08), 0 14px 30px rgba(37, 99, 235, 0.1);
+}
+
+.compose-reference-layout .compose-project-card.active::before {
+  background: #2563eb;
+}
+
+.compose-reference-layout .compose-project-card strong {
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.compose-reference-layout .compose-project-card::after {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 7px;
+  height: 7px;
+  box-shadow: 0 0 0 5px rgba(148, 163, 184, 0.1);
+}
+
+.compose-reference-main {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 12px;
+  padding: 18px;
+}
+
+.compose-reference-top {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+}
+
+.compose-reference-title {
+  min-width: 0;
+}
+
+.compose-reference-title h3 {
+  margin: 0;
+  color: #162033;
+  font-size: 22px;
+  font-weight: 950;
+  letter-spacing: 0;
+}
+
+.compose-reference-title p {
+  max-width: 680px;
+  margin: 5px 0 0;
+  overflow: hidden;
+  color: #63758f;
+  font-size: 12px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compose-reference-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+}
+
+.compose-reference-actions button,
+.compose-reference-extra button {
+  min-height: 32px;
+  border-radius: 11px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 850;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.compose-reference-actions .primary,
+.compose-reference-extra .primary {
+  background: #2563eb;
+}
+
+.compose-reference-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.compose-reference-metrics div {
+  min-width: 0;
+  min-height: 58px;
+  padding: 10px 12px;
+  border: 1px solid rgba(214, 226, 242, 0.78);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.62);
+  box-shadow: 0 12px 28px rgba(31, 82, 140, 0.07), var(--glass-inner);
+}
+
+.compose-reference-metrics div:nth-child(1) {
+  background: rgba(232, 240, 255, 0.78);
+}
+
+.compose-reference-metrics div:nth-child(2) {
+  background: rgba(231, 244, 238, 0.78);
+}
+
+.compose-reference-metrics div:nth-child(3) {
+  background: rgba(240, 247, 255, 0.76);
+}
+
+.compose-reference-metrics div:nth-child(4) {
+  background: rgba(245, 239, 255, 0.76);
+}
+
+.compose-reference-metrics div:nth-child(5) {
+  background: rgba(255, 247, 235, 0.78);
+}
+
+.compose-reference-metrics b {
+  display: block;
+  overflow: hidden;
+  color: #142033;
+  font-size: 18px;
+  font-weight: 950;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compose-reference-metrics span {
+  display: block;
+  margin-top: 5px;
+  color: #64758f;
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.compose-reference-workbench {
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(430px, 1.15fr) minmax(360px, 0.85fr);
+  gap: 12px;
+}
+
+.compose-reference-editor,
+.compose-reference-preview,
+.compose-reference-settings {
+  min-width: 0;
+  border: 1px solid rgba(214, 226, 242, 0.82);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.66);
+  box-shadow: 0 14px 34px rgba(31, 82, 140, 0.08), var(--glass-inner);
+  backdrop-filter: blur(20px);
+}
+
+.compose-reference-editor {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(360px, 1fr) auto;
+  gap: 10px;
+  padding: 12px;
+}
+
+.compose-reference-aside {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: minmax(300px, 1fr) auto;
+  gap: 12px;
+}
+
+.compose-reference-preview,
+.compose-reference-settings {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+}
+
+.compose-reference-preview {
+  grid-template-rows: auto minmax(260px, 1fr) auto;
+}
+
+.compose-reference-panelhead {
+  min-width: 0;
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.compose-reference-panelhead strong {
+  color: #172033;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.compose-reference-panelhead span {
+  overflow: hidden;
+  color: #77879d;
+  font-size: 11px;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compose-reference-layout .compose-dark-editor,
+.compose-reference-layout .compose-ai-preview-shell {
+  height: auto;
+  min-height: 0;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 17px;
+  background:
+    linear-gradient(180deg, #08101e, #050b16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 16px 34px rgba(15, 23, 42, 0.16);
+}
+
+.compose-reference-layout .compose-dark-editor {
+  min-height: 460px;
+}
+
+.compose-reference-layout .compose-ai-preview-shell {
+  min-height: 320px;
+}
+
+.compose-reference-bottom {
+  display: grid;
+  gap: 8px;
+}
+
+.compose-reference-layout .compose-terminal-tabs {
+  gap: 6px;
+}
+
+.compose-reference-layout .compose-terminal-tabs span {
+  padding: 6px 10px;
+  background: rgba(241, 246, 252, 0.82);
+  color: #61728b;
+  font-size: 11px;
+}
+
+.compose-reference-layout .compose-terminal-tabs .active {
+  background: #172033;
+  color: #fff;
+}
+
+.compose-reference-layout .compose-dark-console {
+  min-height: 92px;
+  max-height: 160px;
+  border-radius: 15px;
+  background: #08101e;
+  color: #d6e1ed;
+}
+
+.compose-reference-layout .compose-dark-note {
+  margin: 0;
+  border-color: rgba(34, 197, 94, 0.18);
+  border-radius: 14px;
+  background: rgba(236, 253, 245, 0.72);
+}
+
+.compose-reference-layout .compose-dark-note strong {
+  color: #166534;
+}
+
+.compose-reference-layout .compose-dark-note span {
+  color: #64758f;
+}
+
+.compose-reference-kv {
+  display: grid;
+  gap: 8px;
+}
+
+.compose-reference-kv div {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  padding: 9px 10px;
+  border: 1px solid rgba(214, 226, 242, 0.78);
+  border-radius: 13px;
+  background: rgba(248, 251, 255, 0.7);
+}
+
+.compose-reference-kv span {
+  color: #78889d;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.compose-reference-kv b {
+  min-width: 0;
+  overflow: hidden;
+  color: #1d293b;
+  font-size: 12px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compose-reference-extra {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 1280px) {
+  .compose-reference-layout {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+
+  .compose-reference-workbench {
+    grid-template-columns: 1fr;
+  }
+
+  .compose-reference-aside {
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.75fr);
+    grid-template-rows: auto;
+  }
+}
+
+@media (max-width: 860px) {
+  .compose-reference-layout {
+    grid-template-columns: 1fr;
+    border-radius: 20px;
+  }
+
+  .compose-reference-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid rgba(214, 226, 242, 0.78);
+  }
+
+  .compose-reference-top {
+    grid-template-columns: 1fr;
+  }
+
+  .compose-reference-actions {
+    justify-content: flex-start;
+  }
+
+  .compose-reference-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .compose-reference-aside {
+    grid-template-columns: 1fr;
+  }
+
+  .compose-reference-layout .compose-dark-editor {
+    min-height: 360px;
+  }
+}
+
+@media (max-width: 560px) {
+  .compose-reference-main,
+  .compose-reference-sidebar {
+    padding: 10px;
+  }
+
+  .compose-reference-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .compose-reference-extra {
+    grid-template-columns: 1fr;
+  }
+}

@@ -2168,112 +2168,115 @@ function renderCompose() {
   const services = composeServiceItems(selected);
   const runningServices = services.filter((item) => String(item.state || "").toLowerCase() === "running").length;
   const selectedTone = selected ? projectStateTone(selected) : "missing";
+  const selectedName = selected?.name || "新建项目";
+  const selectedPath = state.compose.selected || "请选择左侧项目或新建一个空白项目。";
   return `
-    <section class="compose-monitor-layout">
-      <aside class="compose-monitor-sidebar">
-        <div class="compose-monitor-title">
-          <h3>Compose</h3>
-          <p>以服务运行状态为中心管理 Compose 项目。</p>
-        </div>
-        <div class="compose-run-overview">
-          <div><b>${stats.total}</b><span>项目</span></div>
-          <div><b>${stats.services}</b><span>服务</span></div>
-          <div><b>${stats.running}</b><span>运行中</span></div>
-          <div><b>${stats.stopped}</b><span>已停止</span></div>
-        </div>
-        <div class="compose-project-list">
-          ${
-            state.compose.projects.length
-              ? state.compose.projects.map(renderComposeProjectCard).join("")
-              : `<div class="compose-dark-empty">配置的目录中没有找到 Compose 文件。</div>`
-          }
+    <section class="compose-monitor-layout compose-reference-layout">
+      <aside class="compose-reference-sidebar">
+        <div class="compose-reference-projects">
+          <div class="compose-reference-projects-head">
+            <strong>项目列表</strong>
+            <span>${stats.total}</span>
+          </div>
+          <form class="compose-reference-create" id="composeNewForm">
+            <input name="name" placeholder="输入项目名" required />
+            <button type="submit" class="primary">创建空白编辑窗口</button>
+          </form>
+          <div class="compose-project-list">
+            ${
+              state.compose.projects.length
+                ? state.compose.projects.map(renderComposeProjectCard).join("")
+                : `<div class="compose-dark-empty">配置的目录中没有找到 Compose 文件。</div>`
+            }
+          </div>
         </div>
       </aside>
-      <main class="compose-monitor-main">
-        <form class="compose-inline-create" id="composeNewForm">
-          <strong>新建项目</strong>
-          <input name="name" placeholder="输入项目名，例如 nginx-demo" required />
-          <button type="submit" class="primary">创建空白编辑窗口</button>
-        </form>
-        <div class="compose-monitor-head">
-          <div>
-            <h3>${h(selected?.name || "新建 compose.yml")}</h3>
-            <span>${h(state.compose.selected || "当前为空白编辑窗口，请先在上方创建项目，或从左侧选择已有项目。")}</span>
+      <main class="compose-reference-main">
+        <header class="compose-reference-top">
+          <div class="compose-reference-title">
+            <h3>${h(selectedName)}</h3>
+            <p>${h(selectedPath)}</p>
           </div>
-          <div class="top-actions compose-action-bar">
+          <div class="compose-reference-actions">
             <button data-action="compose-action" data-command="config" ${state.compose.selected ? "" : "disabled"}>检查</button>
-            <button data-action="compose-repair">AI 修正</button>
-            <button data-action="compose-convert-command-ai">AI 转 Compose</button>
-            <button data-action="compose-apply-ai" ${state.compose.aiContent ? "" : "disabled"}>应用 AI 修正</button>
-            <button data-action="compose-backup" ${state.compose.selected ? "" : "disabled"}>备份</button>
-            <button data-action="compose-restore">恢复</button>
+            <button data-action="compose-repair">修正</button>
+            <button data-action="compose-convert-command-ai">命令转 Compose</button>
+            <button data-action="compose-apply-ai" ${state.compose.aiContent ? "" : "disabled"}>应用修正</button>
             <button data-action="compose-save" class="primary" ${state.compose.selected ? "" : "disabled"}>保存</button>
-            <button data-action="compose-action" data-command="pull" ${state.compose.selected ? "" : "disabled"}>拉取</button>
             <button data-action="compose-action" data-command="up" class="primary" ${state.compose.selected ? "" : "disabled"}>部署</button>
             <button data-action="compose-action" data-command="restart" ${state.compose.selected ? "" : "disabled"}>重启</button>
             <button data-action="compose-action" data-command="down" class="danger" ${state.compose.selected ? "" : "disabled"}>停止</button>
           </div>
+        </header>
+        <div class="compose-reference-metrics">
+          <div><b>${stats.total}</b><span>项目</span></div>
+          <div><b>${stats.services}</b><span>服务</span></div>
+          <div><b>${runningServices}/${services.length || 0}</b><span>运行中</span></div>
+          <div><b>${h(composeStatusLabel(selectedTone))}</b><span>状态</span></div>
+          <div><b>${h(state.compose.repair?.changed ? "已修正" : "正常")}</b><span>修正</span></div>
         </div>
-        <div class="compose-status-strip">
-          <div>
-            <b>${runningServices}/${services.length || 0}</b>
-            <span>服务在线</span>
-          </div>
-          <div>
-            <b>${h(composeStatusLabel(selectedTone))}</b>
-            <span>项目状态</span>
-          </div>
-          <div>
-            <b>${h(services[0]?.service || "-")}</b>
-            <span>主服务</span>
-          </div>
-          <div>
-            <b>${h(state.compose.repair?.changed ? "有修正" : "正常")}</b>
-            <span>修正状态</span>
-          </div>
-        </div>
-        <div class="compose-monitor-grid">
-          <section class="compose-code-panel">
-            <div class="compose-panel-caption">
+        <div class="compose-reference-workbench">
+          <section class="compose-reference-editor">
+            <div class="compose-reference-panelhead">
               <strong>compose.yml</strong>
+              <span>直接编辑或粘贴 docker run 命令</span>
             </div>
             <div class="editor-shell compose-dark-editor">
               <pre id="composeHighlight" class="code-highlight" aria-hidden="true">${highlightYaml(state.compose.content)}\n</pre>
               <textarea id="composeEditor" class="code-input" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="粘贴 compose.yml，或粘贴 docker run 命令后点击 AI 转 Compose">${h(state.compose.content)}</textarea>
             </div>
-            <div class="compose-repair-note compose-dark-note compose-note-spacer" aria-hidden="true"></div>
+            <div class="compose-reference-bottom">
+              <div class="compose-terminal-tabs">
+                <span class="active">日志 / 输出</span>
+                <span>检查</span>
+                <span>修正</span>
+                <span>事件</span>
+              </div>
+              <pre class="console compose-dark-console">${h(state.compose.output || "$ docker compose ps\n等待执行检查、部署或日志命令。")}</pre>
+            </div>
           </section>
-          <aside class="compose-runtime-panel">
-            <div class="compose-panel-caption">
-              <strong>AI 修正预览</strong>
-            </div>
-            <div class="editor-shell compose-ai-preview-shell">
-              <pre id="composeAiPreview" class="code-highlight compose-ai-preview">${state.compose.aiContent ? highlightYaml(state.compose.aiContent) : "点击 AI 修正后，这里会显示修正后的 compose.yml。"}\n</pre>
-            </div>
-            ${
-              state.compose.repair
-                ? `<div class="compose-repair-note compose-dark-note">
-                    <strong>${state.compose.repair.changed ? "AI 已生成修正内容" : "AI 返回内容未变化"}</strong>
-                    <span>${h((state.compose.repair.changes || []).join("；") || "可继续使用检查功能确认配置。")}</span>
-                  </div>`
-                : `<div class="compose-repair-note compose-dark-note">
-                    <strong>AI 修正要求</strong>
-                    <span>AI 只允许修正格式，不应改变服务、镜像、端口含义、挂载路径和环境变量含义。</span>
-                  </div>`
-            }
+          <aside class="compose-reference-aside">
+            <section class="compose-reference-preview">
+              <div class="compose-reference-panelhead">
+                <strong>AI 修正预览</strong>
+                <span>只修正格式，不改基础语义</span>
+              </div>
+              <div class="editor-shell compose-ai-preview-shell">
+                <pre id="composeAiPreview" class="code-highlight compose-ai-preview">${state.compose.aiContent ? highlightYaml(state.compose.aiContent) : "点击 AI 修正后，这里会显示修正后的 compose.yml。"}\n</pre>
+              </div>
+              ${
+                state.compose.repair
+                  ? `<div class="compose-repair-note compose-dark-note">
+                      <strong>${state.compose.repair.changed ? "AI 已生成修正内容" : "AI 返回内容未变化"}</strong>
+                      <span>${h((state.compose.repair.changes || []).join("；") || "可继续使用检查功能确认配置。")}</span>
+                    </div>`
+                  : `<div class="compose-repair-note compose-dark-note">
+                      <strong>AI 修正要求</strong>
+                      <span>AI 只允许修正格式，不应改变服务、镜像、端口含义、挂载路径和环境变量含义。</span>
+                    </div>`
+              }
+            </section>
+            <section class="compose-reference-settings">
+              <div class="compose-reference-panelhead">
+                <strong>项目设置</strong>
+                <span>当前项目的摘要信息</span>
+              </div>
+              <div class="compose-reference-kv">
+                <div><span>项目路径</span><b>${h(selected?.path || "-")}</b></div>
+                <div><span>主服务</span><b>${h(services[0]?.service || "-")}</b></div>
+                <div><span>服务在线</span><b>${runningServices}/${services.length || 0}</b></div>
+                <div><span>修正状态</span><b>${h(state.compose.repair?.changed ? "有修正" : "正常")}</b></div>
+              </div>
+              <div class="compose-reference-extra">
+                <button data-action="compose-backup" ${state.compose.selected ? "" : "disabled"}>备份</button>
+                <button data-action="compose-restore">恢复</button>
+                <button data-action="compose-action" data-command="pull" ${state.compose.selected ? "" : "disabled"}>拉取</button>
+              </div>
+            </section>
           </aside>
         </div>
-        <section class="compose-terminal-panel">
-          <div class="compose-terminal-tabs">
-            <span class="active">日志 / 输出</span>
-            <span>检查</span>
-            <span>修正</span>
-            <span>事件</span>
-          </div>
-          <pre class="console compose-dark-console">${h(state.compose.output || "$ docker compose ps\n等待执行检查、部署或日志命令。")}</pre>
-        </section>
       </main>
-    </div>
+    </section>
   `;
 }
 

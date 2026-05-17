@@ -7340,7 +7340,7 @@ td.actions button {
 /* Compose reference layout: project list + editor + AI preview/settings, matching the provided mockup. */
 .compose-reference-layout {
   display: grid;
-  grid-template-columns: 250px minmax(0, 1fr);
+  grid-template-columns: 252px minmax(0, 1fr);
   gap: 0;
   min-height: calc(100vh - 48px);
   overflow: hidden;
@@ -7359,7 +7359,7 @@ td.actions button {
   display: grid;
   grid-template-rows: minmax(0, 1fr);
   align-content: start;
-  padding: 18px 14px;
+  padding: 18px 16px;
   border-right: 1px solid rgba(214, 226, 242, 0.78);
   background:
     linear-gradient(180deg, rgba(246, 251, 255, 0.74), rgba(232, 242, 253, 0.62));
@@ -7486,8 +7486,8 @@ td.actions button {
   min-width: 0;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 12px;
-  padding: 18px;
+  gap: 14px;
+  padding: 18px 18px 18px 14px;
 }
 
 .compose-reference-top {
@@ -7525,17 +7525,18 @@ td.actions button {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 7px;
+  gap: 8px;
 }
 
 .compose-reference-actions button,
 .compose-reference-extra button {
-  min-height: 32px;
-  border-radius: 11px;
-  padding: 0 10px;
+  min-height: 34px;
+  border-radius: 12px;
+  padding: 0 12px;
   font-size: 12px;
   font-weight: 850;
   background: rgba(255, 255, 255, 0.68);
+  white-space: nowrap;
 }
 
 .compose-reference-actions .primary,
@@ -7547,6 +7548,7 @@ td.actions button {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
+  overflow: hidden;
 }
 
 .compose-reference-metrics div {
@@ -7601,7 +7603,7 @@ td.actions button {
 .compose-reference-workbench {
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(430px, 1.15fr) minmax(360px, 0.85fr);
+  grid-template-columns: minmax(0, 1.22fr) minmax(390px, 0.78fr);
   gap: 12px;
 }
 
@@ -7614,12 +7616,13 @@ td.actions button {
   background: rgba(255, 255, 255, 0.66);
   box-shadow: 0 14px 34px rgba(31, 82, 140, 0.08), var(--glass-inner);
   backdrop-filter: blur(20px);
+  overflow: hidden;
 }
 
 .compose-reference-editor {
   min-height: 0;
   display: grid;
-  grid-template-rows: auto minmax(360px, 1fr) auto;
+  grid-template-rows: auto minmax(520px, 1fr);
   gap: 10px;
   padding: 12px;
 }
@@ -7627,7 +7630,7 @@ td.actions button {
 .compose-reference-aside {
   min-height: 0;
   display: grid;
-  grid-template-rows: minmax(300px, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) 240px;
   gap: 12px;
 }
 
@@ -7639,7 +7642,7 @@ td.actions button {
 }
 
 .compose-reference-preview {
-  grid-template-rows: auto minmax(260px, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr) auto;
 }
 
 .compose-reference-panelhead {
@@ -7677,40 +7680,11 @@ td.actions button {
 }
 
 .compose-reference-layout .compose-dark-editor {
-  min-height: 460px;
+  min-height: 520px;
 }
 
 .compose-reference-layout .compose-ai-preview-shell {
-  min-height: 320px;
-}
-
-.compose-reference-bottom {
-  display: grid;
-  gap: 8px;
-}
-
-.compose-reference-layout .compose-terminal-tabs {
-  gap: 6px;
-}
-
-.compose-reference-layout .compose-terminal-tabs span {
-  padding: 6px 10px;
-  background: rgba(241, 246, 252, 0.82);
-  color: #61728b;
-  font-size: 11px;
-}
-
-.compose-reference-layout .compose-terminal-tabs .active {
-  background: #172033;
-  color: #fff;
-}
-
-.compose-reference-layout .compose-dark-console {
-  min-height: 92px;
-  max-height: 160px;
-  border-radius: 15px;
-  background: #08101e;
-  color: #d6e1ed;
+  min-height: 430px;
 }
 
 .compose-reference-layout .compose-dark-note {
@@ -7743,6 +7717,12 @@ td.actions button {
   background: rgba(248, 251, 255, 0.7);
 }
 
+.compose-reference-layout .code-highlight,
+.compose-reference-layout .code-input {
+  font-size: 12px;
+  line-height: 1.62;
+}
+
 .compose-reference-kv span {
   color: #78889d;
   font-size: 11px;
@@ -7765,6 +7745,10 @@ td.actions button {
   gap: 8px;
 }
 
+.compose-reference-extra button {
+  min-height: 34px;
+}
+
 @media (max-width: 1280px) {
   .compose-reference-layout {
     grid-template-columns: 220px minmax(0, 1fr);
@@ -7775,7 +7759,7 @@ td.actions button {
   }
 
   .compose-reference-aside {
-    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.75fr);
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.78fr);
     grid-template-rows: auto;
   }
 }
@@ -7808,7 +7792,11 @@ td.actions button {
   }
 
   .compose-reference-layout .compose-dark-editor {
-    min-height: 360px;
+    min-height: 380px;
+  }
+
+  .compose-reference-layout .compose-ai-preview-shell {
+    min-height: 280px;
   }
 }
 

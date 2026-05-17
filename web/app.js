@@ -2225,15 +2225,6 @@ function renderCompose() {
               <pre id="composeHighlight" class="code-highlight" aria-hidden="true">${highlightYaml(state.compose.content)}\n</pre>
               <textarea id="composeEditor" class="code-input" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="粘贴 compose.yml，或粘贴 docker run 命令后点击 AI 转 Compose">${h(state.compose.content)}</textarea>
             </div>
-            <div class="compose-reference-bottom">
-              <div class="compose-terminal-tabs">
-                <span class="active">日志 / 输出</span>
-                <span>检查</span>
-                <span>修正</span>
-                <span>事件</span>
-              </div>
-              <pre class="console compose-dark-console">${h(state.compose.output || "$ docker compose ps\n等待执行检查、部署或日志命令。")}</pre>
-            </div>
           </section>
           <aside class="compose-reference-aside">
             <section class="compose-reference-preview">

@@ -199,17 +199,14 @@ a {
   position: sticky;
   top: 0;
   z-index: 60;
-  width: 218px;
+  width: 56px;
   height: 100vh;
   display: grid;
   align-items: center;
   padding: 20px 0 20px 12px;
   border-right: 0;
-  background:
-    linear-gradient(90deg, rgba(239, 246, 255, 0.9), rgba(239, 246, 255, 0.58) 56px, rgba(239, 246, 255, 0)),
-    transparent;
+  background: transparent;
   color: #5b708c;
-  backdrop-filter: blur(18px);
 }
 
 .sidebar .brand {
@@ -273,6 +270,11 @@ a {
     border-radius 0.22s ease,
     box-shadow 0.22s ease,
     background 0.22s ease;
+}
+
+.sidebar:hover,
+.sidebar:focus-within {
+  width: 218px;
 }
 
 .sidebar:hover .nav,

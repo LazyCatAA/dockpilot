@@ -48,9 +48,9 @@ const tabs = [
 ];
 
 const navGroups = [
-  { title: "发现", items: [["dashboard", "首页导航", "⌂"]] },
-  { title: "Docker", items: [["containers", "容器管理", "▦"], ["images", "镜像库", "◉"], ["volumes", "Docker 卷", "▣"], ["compose", "Compose", "◇"]] },
-  { title: "系统", items: [["files", "文件管理", "≡"], ["settings", "系统设置", "⚙"]] },
+  { title: "发现", items: [["dashboard", "首页导航", "home"]] },
+  { title: "Docker", items: [["containers", "容器管理", "containers"], ["images", "镜像库", "images"], ["volumes", "Docker 卷", "volumes"], ["compose", "Compose", "compose"]] },
+  { title: "系统", items: [["files", "文件管理", "files"], ["settings", "系统设置", "settings"]] },
 ];
 
 const app = document.getElementById("app");
@@ -624,7 +624,7 @@ function renderNav() {
           .map(
             ([key, label, icon]) =>
               `<button class="${state.tab === key ? "active" : ""}" data-action="nav" data-tab="${key}" data-label="${h(label)}" title="${h(label)}">
-                <span class="nav-icon">${h(icon)}</span><span>${h(label)}</span>
+                <span class="nav-icon">${navIcon(icon)}</span><span>${h(label)}</span>
               </button>`
           )
           .join("")}
@@ -632,6 +632,19 @@ function renderNav() {
     `
     )
     .join("");
+}
+
+function navIcon(name) {
+  const icons = {
+    home: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.2 12 4l8 7.2v8.3a1.5 1.5 0 0 1-1.5 1.5H15v-6h-6v6H5.5A1.5 1.5 0 0 1 4 19.5v-8.3Z"/></svg>`,
+    containers: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5h7v7H4v-7Zm9 0h7v7h-7v-7ZM4 14h7v4.5H4V14Zm9 0h7v4.5h-7V14Z"/></svg>`,
+    images: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 5.2a3.8 3.8 0 1 1 0 7.6 3.8 3.8 0 0 1 0-7.6Z"/></svg>`,
+    volumes: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5.5A2.5 2.5 0 0 1 7.5 3h9A2.5 2.5 0 0 1 19 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-9A2.5 2.5 0 0 1 5 18.5v-13Zm3 2v7h8v-7H8Zm2 10.5h4v-2h-4v2Z"/></svg>`,
+    compose: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 8.5 4.7L12 12.4 3.5 7.7 12 3Zm-6.8 8.1L12 14.9l6.8-3.8 1.7 1L12 16.8l-8.5-4.7 1.7-1Zm0 4.4L12 19.3l6.8-3.8 1.7 1L12 21.2l-8.5-4.7 1.7-1Z"/></svg>`,
+    files: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7A2.5 2.5 0 0 1 6 4.5h4.4l2 2H18A2.5 2.5 0 0 1 20.5 9v8A2.5 2.5 0 0 1 18 19.5H6A2.5 2.5 0 0 1 3.5 17V7Z"/></svg>`,
+    settings: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.2 3h3.6l.6 2.4c.6.2 1.1.4 1.6.7l2.2-1.3 2.5 2.5-1.3 2.2c.3.5.5 1 .7 1.6l2.3.6v3.6l-2.3.6c-.2.6-.4 1.1-.7 1.6l1.3 2.2-2.5 2.5-2.2-1.3c-.5.3-1 .5-1.6.7l-.6 2.4h-3.6l-.6-2.4c-.6-.2-1.1-.4-1.6-.7l-2.2 1.3-2.5-2.5 1.3-2.2c-.3-.5-.5-1-.7-1.6L1 15.3v-3.6l2.3-.6c.2-.6.4-1.1.7-1.6L2.7 7.3l2.5-2.5 2.2 1.3c.5-.3 1-.5 1.6-.7L10.2 3Zm1.8 6.1a2.9 2.9 0 1 0 0 5.8 2.9 2.9 0 0 0 0-5.8Z"/></svg>`,
+  };
+  return icons[name] || icons.home;
 }
 
 function renderMetric(label, value, hint, tone = "") {

@@ -1118,12 +1118,10 @@ function renderDashboard() {
   const prefs = navPrefs();
   return `
     <section class="nav-home nav-refactor nav-width-${h(prefs.layout_width)} nav-density-${h(prefs.density)} nav-style-${h(prefs.card_style)} nav-icon-${h(prefs.icon_size)} nav-title-${h(prefs.title_font_size)}" style="--nav-bg:${h(prefs.background)}">
-      <button class="nav-settings-button" data-action="nav-settings-open" title="导航页设置">⚙</button>
+      <button class="nav-settings-button" data-action="nav-settings-open" title="导航页设置">设置</button>
       <div class="nav-command-center">
         <div class="nav-command-title">
-          <span>DockPilot Navigation</span>
           <strong>${h(prefs.title)}</strong>
-          ${prefs.subtitle ? `<small>${h(prefs.subtitle)}</small>` : ""}
         </div>
         ${renderWebSearch(prefs)}
       </div>
@@ -1161,13 +1159,11 @@ function renderCards() {
     <section class="bookmark-board nav-section professional-bookmark-board">
       <div class="nav-library-head">
         <div>
-          <span>Service Library</span>
           <h3>分类书签</h3>
-          <small>${state.cards.length} 个入口 · ${groups.length} 个分类</small>
         </div>
         <div class="nav-library-actions">
           ${prefs.show_search ? `<input id="navSearch" value="${h(state.navSearch)}" placeholder="过滤书签、链接或描述" />` : ""}
-          <button class="primary" data-action="card-add" data-group="Docker">添加书签</button>
+          <button data-action="card-add" data-group="Docker" title="添加书签">＋</button>
         </div>
       </div>
       ${groups
@@ -1177,7 +1173,6 @@ function renderCards() {
               <div class="bookmark-group-head professional-group-head">
                 <div>
                   <h3><i></i>${h(group)}</h3>
-                  ${prefs.show_group_count ? `<span>${cards.length} 个入口</span>` : ""}
                 </div>
                 <div class="bookmark-group-tools">
                   <button class="bookmark-round" title="折叠/展开" data-action="nav-group-collapse" data-group="${h(group)}">${navGroupPrefs(group).collapsed ? "展开" : "收起"}</button>

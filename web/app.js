@@ -26,7 +26,7 @@ const state = {
   containerUpdateCheck: { active: false, done: 0, total: 0, failed: 0 },
   sidebarCollapsed: false,
   logs: { id: "", text: "" },
-  compose: { projects: [], selected: "", content: "", output: "", repair: null, repairLines: [], aiContent: "", backups: [], backupModal: false, logsAutoScroll: true },
+  compose: { projects: [], selected: "", content: "", output: "", repair: null, repairLines: [], aiContent: "", backups: [], backupModal: false, logsAutoScroll: true, busyAction: "" },
   files: { roots: [], root: "", path: "", items: [], editPath: "", content: "" },
   settings: null,
 };
@@ -2160,6 +2160,20 @@ function composeLogRows(text) {
   });
 }
 
+function composeActionButton(command, label, icon, extraClass = "") {
+  const busy = state.compose.busyAction === command;
+  const disabled = !state.compose.selected || state.compose.busyAction;
+  return `<button data-action="compose-action" data-command="${h(command)}" class="${h(extraClass)} ${busy ? "loading" : ""}" ${disabled ? "disabled" : ""}><span>${busy ? "…" : h(icon)}</span>${h(label)}</button>`;
+}
+
+function composeAiStatus() {
+  if (state.compose.busyAction === "repair") return "检测中";
+  if (state.compose.busyAction === "convert") return "转换中";
+  if (state.compose.aiContent) return "可应用";
+  if (state.compose.repair) return state.compose.repair.changed ? "已生成" : "无修复";
+  return "待检测";
+}
+
 function renderContainerDetail() {
   const detail = state.containerDetail || {};
   const config = detail.Config || {};
@@ -2219,6 +2233,9 @@ function renderCompose() {
   const repairSummary = (state.compose.repair?.changes || []).join("；") || "可继续使用检查功能确认配置。";
   const logRows = composeLogRows(state.compose.output);
   const logStatusText = selected ? `${services.length || 0} 个服务` : "未选择项目";
+  const aiStatus = composeAiStatus();
+  const hasBusy = Boolean(state.compose.busyAction);
+  const canApplyAi = Boolean(state.compose.aiContent) && !hasBusy;
   const aiPreviewText = state.compose.aiContent
     ? highlightYaml(state.compose.aiContent)
     : `healthcheck:\n  test: ["CMD", "curl", "-f", "http://localhost:3000"]\n  interval: 30s\n  timeout: 10s\n  retries: 3`;
@@ -2256,20 +2273,32 @@ function renderCompose() {
             <span class="compose-reference-state ${h(selectedTone)}"><i></i>${h(composeStatusLabel(selectedTone))}</span>
           </div>
           <div class="compose-reference-actions">
-            <button data-action="compose-action" data-command="up" ${state.compose.selected ? "" : "disabled"}><span>▷</span>启动</button>
-            <button data-action="compose-action" data-command="down" class="danger" ${state.compose.selected ? "" : "disabled"}><span>●</span>停止</button>
-            <button data-action="compose-action" data-command="restart" ${state.compose.selected ? "" : "disabled"}><span>↻</span>重启</button>
-            <button data-action="compose-action" data-command="config" ${state.compose.selected ? "" : "disabled"}><span>◷</span>刷新状态</button>
-            <button data-action="compose-repair"><span>A</span>修复</button>
-            <button data-action="compose-save" ${state.compose.selected ? "" : "disabled"}>保存</button>
-            <button data-action="compose-convert-command-ai" title="命令转 Compose"><span>···</span></button>
+            ${composeActionButton("up", "启动", "▷")}
+            ${composeActionButton("down", "停止", "●", "danger")}
+            ${composeActionButton("restart", "重启", "↻")}
+            ${composeActionButton("config", "刷新状态", "◷")}
+            <button data-action="compose-repair" class="${state.compose.busyAction === "repair" ? "loading" : ""}" ${hasBusy ? "disabled" : ""}><span>${state.compose.busyAction === "repair" ? "…" : "A"}</span>修复</button>
+            <button data-action="compose-save" class="${state.compose.busyAction === "save" ? "loading" : ""}" ${!state.compose.selected || hasBusy ? "disabled" : ""}>保存</button>
+            <button data-action="compose-convert-command-ai" class="${state.compose.busyAction === "convert" ? "loading" : ""}" title="命令转 Compose" ${hasBusy ? "disabled" : ""}><span>${state.compose.busyAction === "convert" ? "…" : "···"}</span></button>
           </div>
         </header>
-        <div class="compose-reference-workbench">
-          <section class="compose-reference-editor">
+        <section class="compose-workspace-shell">
+          <div class="compose-workspace-head">
+            <div>
+              <strong>${h(selected?.file || "docker-compose.yml")}</strong>
+              <span>${h(composeStatusLabel(selectedTone))} · YAML · ${lineCount} 行 · ${fmtBytes(new Blob([state.compose.content || ""]).size)}</span>
+            </div>
+            <div>
+              <button data-action="compose-repair" class="${state.compose.busyAction === "repair" ? "loading" : ""}" ${hasBusy ? "disabled" : ""}>AI 修复</button>
+              <button data-action="compose-action" data-command="logs" class="${state.compose.busyAction === "logs" ? "loading" : ""}" ${!state.compose.selected || hasBusy ? "disabled" : ""}>刷新日志</button>
+              <button data-action="compose-save" class="${state.compose.busyAction === "save" ? "loading" : ""}" ${!state.compose.selected || hasBusy ? "disabled" : ""}>保存</button>
+            </div>
+          </div>
+          <div class="compose-reference-workbench">
+          <section class="compose-reference-editor compose-workspace-pane">
             <div class="compose-editor-titlebar">
               <strong>${h(selected?.file || "docker-compose.yml")}</strong>
-              <button data-action="compose-apply-ai" ${state.compose.aiContent ? "" : "disabled"} title="应用 AI 修正">⇱</button>
+              <button data-action="compose-apply-ai" ${canApplyAi ? "" : "disabled"} title="应用 AI 修正">⇱</button>
             </div>
             <div class="editor-shell compose-dark-editor">
               <pre id="composeHighlight" class="code-highlight" aria-hidden="true">${highlightYaml(state.compose.content)}\n</pre>
@@ -2277,13 +2306,14 @@ function renderCompose() {
               <div class="compose-editor-statusbar"><span>YAML</span><span>Ln ${lineCount}, Col 1</span><span>${fmtBytes(new Blob([state.compose.content || ""]).size)}</span><span>UTF-8</span></div>
             </div>
           </section>
-          <section class="compose-reference-preview">
+          <section class="compose-reference-preview compose-workspace-pane">
             <div class="compose-reference-panelhead">
               <strong>AI 修复预览</strong>
+              <span class="compose-ai-status ${h(aiStatus)}">${h(aiStatus)}</span>
             </div>
             <div class="compose-ai-issue-summary">
               <span><i></i>检测到 ${issueCount} 个问题</span>
-              <button data-action="compose-apply-ai" ${state.compose.aiContent ? "" : "disabled"}>应用修复</button>
+              <button data-action="compose-apply-ai" ${canApplyAi ? "" : "disabled"}>应用修复</button>
             </div>
             <div class="compose-ai-issue-list">
               <article class="compose-ai-issue-card">
@@ -2310,13 +2340,13 @@ function renderCompose() {
               <span>${state.compose.repair ? h(repairSummary) : "AI 只允许修正格式，不应改变服务、镜像、端口含义、挂载路径和环境变量含义。"}</span>
             </div>
           </section>
-          <aside class="compose-reference-settings compose-log-panel">
+          <aside class="compose-reference-settings compose-log-panel compose-workspace-pane">
             <div class="compose-reference-panelhead compose-log-head">
               <div>
                 <strong>容器日志</strong>
                 <span>${h(logStatusText)}</span>
               </div>
-              <button data-action="compose-action" data-command="logs" ${state.compose.selected ? "" : "disabled"} title="刷新日志">↻</button>
+              <button data-action="compose-action" data-command="logs" class="${state.compose.busyAction === "logs" ? "loading" : ""}" ${!state.compose.selected || hasBusy ? "disabled" : ""} title="刷新日志">↻</button>
             </div>
             <div class="compose-log-service-strip">
               ${
@@ -2329,9 +2359,9 @@ function renderCompose() {
               }
             </div>
             <div class="compose-log-toolbar">
-              <button data-action="compose-action" data-command="logs" ${state.compose.selected ? "" : "disabled"}>刷新</button>
-              <button data-action="compose-copy-logs" ${state.compose.output ? "" : "disabled"}>复制</button>
-              <button data-action="compose-toggle-log-scroll" class="${state.compose.logsAutoScroll ? "active" : ""}">自动滚动</button>
+              <button data-action="compose-action" data-command="logs" class="${state.compose.busyAction === "logs" ? "loading" : ""}" ${!state.compose.selected || hasBusy ? "disabled" : ""}>刷新</button>
+              <button data-action="compose-copy-logs" ${state.compose.output && !hasBusy ? "" : "disabled"}>复制</button>
+              <button data-action="compose-toggle-log-scroll" class="${state.compose.logsAutoScroll ? "active" : ""}" ${hasBusy ? "disabled" : ""}>自动滚动</button>
             </div>
             <div class="compose-log-console" id="composeLogConsole">
               ${
@@ -2341,12 +2371,13 @@ function renderCompose() {
               }
             </div>
             <div class="compose-reference-extra compose-log-extra">
-              <button data-action="compose-backup" ${state.compose.selected ? "" : "disabled"}>备份</button>
-              <button data-action="compose-restore">恢复</button>
-              <button data-action="compose-action" data-command="pull" ${state.compose.selected ? "" : "disabled"}>拉取</button>
+              <button data-action="compose-backup" ${state.compose.selected && !hasBusy ? "" : "disabled"}>备份</button>
+              <button data-action="compose-restore" ${hasBusy ? "disabled" : ""}>恢复</button>
+              <button data-action="compose-action" data-command="pull" class="${state.compose.busyAction === "pull" ? "loading" : ""}" ${!state.compose.selected || hasBusy ? "disabled" : ""}>拉取</button>
             </div>
           </aside>
-        </div>
+          </div>
+        </section>
         <div class="compose-reference-metrics" aria-hidden="true">
           <div><b>${stats.total}</b><span>项目</span></div>
           <div><b>${stats.services}</b><span>服务</span></div>
@@ -3036,11 +3067,20 @@ document.addEventListener("click", async (event) => {
       render();
     }
     if (action === "compose-save") {
-      await api("/api/compose/file", {
-        method: "PUT",
-        body: { path: state.compose.selected, content: document.getElementById("composeEditor").value },
-      });
-      await refreshCurrent();
+      const editorValue = document.getElementById("composeEditor")?.value ?? state.compose.content;
+      state.compose.content = editorValue;
+      state.compose.busyAction = "save";
+      render();
+      try {
+        await api("/api/compose/file", {
+          method: "PUT",
+          body: { path: state.compose.selected, content: editorValue },
+        });
+        await refreshCurrent();
+      } finally {
+        state.compose.busyAction = "";
+      }
+      render();
     }
     if (action === "compose-backup") {
       await api("/api/compose/backups", {
@@ -3097,44 +3137,58 @@ document.addEventListener("click", async (event) => {
       }
     }
     if (action === "compose-repair") {
-      const editor = document.getElementById("composeEditor");
+      const editorValue = document.getElementById("composeEditor")?.value ?? state.compose.content;
+      state.compose.content = editorValue;
+      state.compose.busyAction = "repair";
+      render();
       let errorText = "";
-      if (state.compose.selected) {
-        await api("/api/compose/file", {
-          method: "PUT",
-          body: { path: state.compose.selected, content: editor.value },
-        });
-        const checked = await api("/api/compose/action", {
-          method: "POST",
-          body: { path: state.compose.selected, action: "config" },
-        });
-        if (!checked.ok) errorText = checked.output || "";
-        state.compose.output = `$ ${checked.command}\n\n${checked.output || ""}`;
-      }
-      const result = await api("/api/compose/repair", { method: "POST", body: { content: editor.value, error: errorText } });
-      state.compose.repair = result;
-      if (result.changed) {
-        state.compose.aiContent = result.content || "";
-        state.compose.repairLines = result.repaired_lines || [];
-        state.error = "AI 已生成修正内容，请在右侧确认后应用。";
-      } else {
-        state.compose.aiContent = result.content || "";
-        state.compose.repairLines = [];
-        state.error = (result.changes || []).join("；") || "未发现可自动修正的问题。";
+      try {
+        if (state.compose.selected) {
+          await api("/api/compose/file", {
+            method: "PUT",
+            body: { path: state.compose.selected, content: editorValue },
+          });
+          const checked = await api("/api/compose/action", {
+            method: "POST",
+            body: { path: state.compose.selected, action: "config" },
+          });
+          if (!checked.ok) errorText = checked.output || "";
+          state.compose.output = `$ ${checked.command}\n\n${checked.output || ""}`;
+        }
+        const result = await api("/api/compose/repair", { method: "POST", body: { content: editorValue, error: errorText } });
+        state.compose.repair = result;
+        if (result.changed) {
+          state.compose.aiContent = result.content || "";
+          state.compose.repairLines = result.repaired_lines || [];
+          state.error = "AI 已生成修正内容，请在右侧确认后应用。";
+        } else {
+          state.compose.aiContent = result.content || "";
+          state.compose.repairLines = [];
+          state.error = (result.changes || []).join("；") || "未发现可自动修正的问题。";
+        }
+      } finally {
+        state.compose.busyAction = "";
       }
       render();
     }
     if (action === "compose-convert-command-ai") {
-      const editor = document.getElementById("composeEditor");
+      const editorValue = document.getElementById("composeEditor")?.value ?? state.compose.content;
+      state.compose.content = editorValue;
+      state.compose.busyAction = "convert";
+      render();
       const projectName = selectedComposeProject()?.name || "app";
-      const result = await api("/api/compose/convert-command-ai", {
-        method: "POST",
-        body: { command: editor.value, project_name: projectName },
-      });
-      state.compose.repair = result;
-      state.compose.aiContent = result.content || "";
-      state.compose.repairLines = result.repaired_lines || [];
-      state.error = "AI 已将命令转换为 Compose，请在右侧确认后应用。";
+      try {
+        const result = await api("/api/compose/convert-command-ai", {
+          method: "POST",
+          body: { command: editorValue, project_name: projectName },
+        });
+        state.compose.repair = result;
+        state.compose.aiContent = result.content || "";
+        state.compose.repairLines = result.repaired_lines || [];
+        state.error = "AI 已将命令转换为 Compose，请在右侧确认后应用。";
+      } finally {
+        state.compose.busyAction = "";
+      }
       render();
     }
     if (action === "compose-apply-ai") {
@@ -3158,16 +3212,25 @@ document.addEventListener("click", async (event) => {
     }
     if (action === "compose-action") {
       if (!state.compose.selected) throw new Error("请先选择一个 Compose 项目。");
-      await api("/api/compose/file", {
-        method: "PUT",
-        body: { path: state.compose.selected, content: document.getElementById("composeEditor").value },
-      });
-      const data = await api("/api/compose/action", {
-        method: "POST",
-        body: { path: state.compose.selected, action: button.dataset.command },
-      });
-      state.compose.output = `$ ${data.command}\n\n${data.output || ""}`;
-      await loadCompose();
+      const command = button.dataset.command;
+      const editorValue = document.getElementById("composeEditor")?.value ?? state.compose.content;
+      state.compose.content = editorValue;
+      state.compose.busyAction = command;
+      render();
+      try {
+        await api("/api/compose/file", {
+          method: "PUT",
+          body: { path: state.compose.selected, content: editorValue },
+        });
+        const data = await api("/api/compose/action", {
+          method: "POST",
+          body: { path: state.compose.selected, action: command },
+        });
+        state.compose.output = `$ ${data.command}\n\n${data.output || ""}`;
+        await loadCompose();
+      } finally {
+        state.compose.busyAction = "";
+      }
       render();
     }
     if (action === "file-open") {
@@ -3375,7 +3438,10 @@ document.addEventListener("input", (event) => {
 });
 
 document.addEventListener("input", (event) => {
-  if (event.target.id === "composeEditor") syncComposeHighlight();
+  if (event.target.id === "composeEditor") {
+    state.compose.content = event.target.value;
+    syncComposeHighlight();
+  }
 });
 
 document.addEventListener(

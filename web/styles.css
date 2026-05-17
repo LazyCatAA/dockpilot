@@ -7459,18 +7459,18 @@ td.actions button {
   overflow: auto;
   display: grid;
   align-content: start;
-  gap: 18px;
+  gap: 12px;
   padding: 14px 4px 18px 0;
 }
 
 .compose-reference-layout .compose-project-card {
   min-width: 0;
-  min-height: 86px;
+  min-height: 72px;
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) 40px;
   align-items: center;
   gap: 12px;
-  padding: 15px 14px;
+  padding: 12px 14px;
   border: 1px solid rgba(218, 230, 246, 0.72);
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.54);
@@ -7912,13 +7912,17 @@ td.actions button {
   -webkit-text-fill-color: initial;
 }
 
+.compose-reference-layout .code-highlight .code-line-content {
+  visibility: hidden;
+}
+
 .compose-reference-layout .code-input {
   z-index: 3;
   background: transparent !important;
-  color: transparent !important;
+  color: #d8e6f7 !important;
   caret-color: #d8e6f7;
   padding-left: 38px;
-  -webkit-text-fill-color: transparent !important;
+  -webkit-text-fill-color: #d8e6f7 !important;
 }
 
 .compose-reference-layout .code-input::placeholder {
@@ -8079,6 +8083,10 @@ td.actions button {
   font-size: 11px;
   line-height: 1.58;
   white-space: pre-wrap;
+}
+
+.compose-ai-preview-code .code-line {
+  display: block;
 }
 
 .compose-ai-diff code {

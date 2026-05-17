@@ -26,7 +26,7 @@ const state = {
   containerUpdateCheck: { active: false, done: 0, total: 0, failed: 0 },
   sidebarCollapsed: false,
   logs: { id: "", text: "" },
-  compose: { projects: [], selected: "", content: "", output: "", repair: null, repairLines: [], aiContent: "", backups: [], backupModal: false, logsAutoScroll: true, busyAction: "" },
+  compose: { projects: [], selected: "", content: "", output: "", logs: "", repair: null, repairLines: [], aiContent: "", backups: [], backupModal: false, logsAutoScroll: true, busyAction: "" },
   files: { roots: [], root: "", path: "", items: [], editPath: "", content: "" },
   settings: null,
 };
@@ -101,7 +101,7 @@ function syncComposeHighlight() {
 function syncComposeAiHighlight() {
   const preview = document.getElementById("composeAiPreview");
   if (!preview) return;
-  preview.innerHTML = `${highlightYaml(state.compose.aiContent || "")}\n`;
+  preview.textContent = `${state.compose.aiContent || ""}\n`;
 }
 
 function syncComposeLogScroll() {
@@ -1023,6 +1023,7 @@ function resetComposeEditor() {
   state.compose.repair = null;
   state.compose.repairLines = [];
   state.compose.output = "";
+  state.compose.logs = "";
 }
 
 async function selectCompose(path) {
@@ -1030,6 +1031,7 @@ async function selectCompose(path) {
   const data = await api(`/api/compose/file?path=${encodeURIComponent(path)}`);
   state.compose.content = data.content || "";
   state.compose.output = "";
+  state.compose.logs = "";
   state.compose.aiContent = "";
   state.compose.repair = null;
   state.compose.repairLines = [];
@@ -2231,14 +2233,17 @@ function renderCompose() {
   const lineCount = Math.max(String(state.compose.content || "").split("\n").length, 1);
   const issueCount = state.compose.repair ? Math.max((state.compose.repair.changes || []).length, state.compose.repair.changed ? 1 : 0) : 2;
   const repairSummary = (state.compose.repair?.changes || []).join("；") || "可继续使用检查功能确认配置。";
-  const logRows = composeLogRows(state.compose.output);
+  const logRows = composeLogRows(state.compose.logs);
   const logStatusText = selected ? `${services.length || 0} 个服务` : "未选择项目";
+  const logEmptyText = state.compose.output
+    ? "当前显示的是命令输出；点击刷新日志读取容器日志。"
+    : selected ? "点击刷新读取最近 200 行容器日志。" : "请选择一个 Compose 项目。";
   const aiStatus = composeAiStatus();
   const hasBusy = Boolean(state.compose.busyAction);
   const canApplyAi = Boolean(state.compose.aiContent) && !hasBusy;
   const aiPreviewText = state.compose.aiContent
-    ? highlightYaml(state.compose.aiContent)
-    : `healthcheck:\n  test: ["CMD", "curl", "-f", "http://localhost:3000"]\n  interval: 30s\n  timeout: 10s\n  retries: 3`;
+    ? h(state.compose.aiContent)
+    : h(`healthcheck:\n  test: ["CMD", "curl", "-f", "http://localhost:3000"]\n  interval: 30s\n  timeout: 10s\n  retries: 3`);
   return `
     <section class="compose-monitor-layout compose-reference-layout compose-reference-shell">
       <aside class="compose-reference-sidebar">
@@ -2360,14 +2365,14 @@ function renderCompose() {
             </div>
             <div class="compose-log-toolbar">
               <button data-action="compose-action" data-command="logs" class="${state.compose.busyAction === "logs" ? "loading" : ""}" ${!state.compose.selected || hasBusy ? "disabled" : ""}>刷新</button>
-              <button data-action="compose-copy-logs" ${state.compose.output && !hasBusy ? "" : "disabled"}>复制</button>
+              <button data-action="compose-copy-logs" ${state.compose.logs && !hasBusy ? "" : "disabled"}>复制</button>
               <button data-action="compose-toggle-log-scroll" class="${state.compose.logsAutoScroll ? "active" : ""}" ${hasBusy ? "disabled" : ""}>自动滚动</button>
             </div>
             <div class="compose-log-console" id="composeLogConsole">
               ${
                 logRows.length
                   ? logRows.join("")
-                  : `<div class="compose-log-empty"><strong>暂无日志</strong><span>${selected ? "点击刷新读取最近 200 行容器日志。" : "请选择一个 Compose 项目。"}</span></div>`
+                  : `<div class="compose-log-empty"><strong>暂无日志</strong><span>${h(logEmptyText)}</span></div>`
               }
             </div>
             <div class="compose-reference-extra compose-log-extra">
@@ -3201,8 +3206,8 @@ document.addEventListener("click", async (event) => {
       syncComposeHighlight();
     }
     if (action === "compose-copy-logs") {
-      if (!state.compose.output) throw new Error("当前没有可复制的日志。");
-      await navigator.clipboard.writeText(state.compose.output);
+      if (!state.compose.logs) throw new Error("当前没有可复制的日志。");
+      await navigator.clipboard.writeText(state.compose.logs);
       state.error = "日志已复制。";
       render();
     }
@@ -3226,7 +3231,12 @@ document.addEventListener("click", async (event) => {
           method: "POST",
           body: { path: state.compose.selected, action: command },
         });
-        state.compose.output = `$ ${data.command}\n\n${data.output || ""}`;
+        const commandOutput = `$ ${data.command}\n\n${data.output || ""}`;
+        if (command === "logs") {
+          state.compose.logs = commandOutput;
+        } else {
+          state.compose.output = commandOutput;
+        }
         await loadCompose();
       } finally {
         state.compose.busyAction = "";

@@ -1003,6 +1003,9 @@ async function loadCompose() {
     state.compose.repair = null;
     state.compose.repairLines = [];
   }
+  if (!state.compose.selected && state.compose.projects.length) {
+    await selectCompose(state.compose.projects[0].path);
+  }
 }
 
 function resetComposeEditor() {
@@ -2265,7 +2268,7 @@ function renderCompose() {
                   <small>修复前：</small>
                   <code>${h(state.compose.repair ? repairSummary : "- \"3000:3000\"")}</code>
                   <small>修复后：</small>
-                  <pre id="composeAiPreview" class="compose-ai-preview">${aiPreviewText}\n</pre>
+                  <pre id="composeAiPreview" class="compose-ai-preview-code">${aiPreviewText}\n</pre>
                 </div>
               </article>
               <article class="compose-ai-issue-card">
@@ -2274,7 +2277,7 @@ function renderCompose() {
                   <small>修复前：</small>
                   <code>未配置</code>
                   <small>修复后：</small>
-                  <pre class="compose-ai-preview">healthcheck:\n  interval: 30s\n  timeout: 10s\n  retries: 3\n</pre>
+                  <pre class="compose-ai-preview-code">healthcheck:\n  interval: 30s\n  timeout: 10s\n  retries: 3\n</pre>
                 </div>
               </article>
             </div>

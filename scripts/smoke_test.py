@@ -136,6 +136,8 @@ def main() -> int:
         assert_true("compose-settings-switch" in app_js, "Compose 项目设置应提供开关控件")
         assert_true("compose-editor-statusbar" in app_js, "Compose 编辑器应提供底部状态栏")
         assert_true("icons.compose" not in app_js, "Compose 项目卡片不应引用局部作用域外的 icons 变量")
+        assert_true("selectCompose(state.compose.projects[0].path)" in app_js, "Compose 页面进入后应自动选中第一个项目")
+        assert_true("compose-ai-preview-code" in app_js, "Compose AI 预览代码块应使用隔离样式")
         assert_true("API_TIMEOUT_MS" in app_js, "前端 API 请求应有超时保护，避免页面一直加载")
         assert_true("compose_ai_base_url" in app_js, "系统设置应支持 AI 兼容接口地址")
         assert_true("compose_ai_model" in app_js, "系统设置应支持配置 AI 模型")

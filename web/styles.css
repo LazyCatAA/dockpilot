@@ -7839,15 +7839,22 @@ td.actions button {
 }
 
 .compose-ai-diff code,
-.compose-ai-diff pre {
+.compose-ai-preview-code {
+  position: static;
+  inset: auto;
+  width: auto;
+  height: auto;
+  min-height: 0;
   margin: 0;
   overflow: auto;
   border-radius: 8px;
   padding: 8px 10px;
   background: rgba(236, 253, 245, 0.84);
   color: #0f7a4a;
+  font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
   font-size: 11px;
   line-height: 1.58;
+  white-space: pre-wrap;
 }
 
 .compose-ai-diff code {

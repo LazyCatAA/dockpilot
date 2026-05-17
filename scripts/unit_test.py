@@ -23,6 +23,7 @@ from dockpilot.server import (
     recreate_standalone_container,
     convert_command_to_compose_ai,
     discover_compose_projects,
+    extract_ai_compose_content,
     repair_compose_content,
 )
 
@@ -347,6 +348,12 @@ def test_ai_cloudflare_error_is_translated() -> None:
     assert_true("browser_signature_banned" not in message, "AI 1010 错误不应直接暴露原始英文代码")
 
 
+def test_ai_compose_extract_strips_explanatory_prefix() -> None:
+    content = extract_ai_compose_content("下面是修复后的 compose：\nservices:\n  app:\n    image: nginx\n")
+    assert_true(content.startswith("services:"), "AI 返回说明文字时应从 services 开始截取 Compose 内容")
+    assert_true("下面是" not in content, "AI 说明文字不应进入 compose.yml")
+
+
 def test_compose_discovery_stops_on_large_roots() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -382,6 +389,7 @@ def main() -> int:
     test_compose_repair_uses_ai_compatible_result_without_rule_fallback()
     test_compose_command_convert_uses_ai_preview_content()
     test_ai_cloudflare_error_is_translated()
+    test_ai_compose_extract_strips_explanatory_prefix()
     test_compose_discovery_stops_on_large_roots()
     print("PASS: DockPilot 单元测试全部通过")
     return 0

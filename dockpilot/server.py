@@ -2734,9 +2734,12 @@ def openai_chat_completions_url(base_url: str) -> str:
 
 def extract_ai_compose_content(text: str) -> str:
     content = str(text or "").strip()
-    fence = re.search(r"```(?:ya?ml|compose|yaml)?\s*(.*?)```", content, re.S | re.I)
+    fence = re.search(r"```[A-Za-z0-9_.-]*\s*(.*?)```", content, re.S | re.I)
     if fence:
         content = fence.group(1).strip()
+    service_match = re.search(r"(?m)^services\s*:", content)
+    if service_match:
+        content = content[service_match.start():].strip()
     return content
 
 

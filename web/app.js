@@ -2258,7 +2258,7 @@ function renderCompose() {
             </div>
             <div class="compose-ai-issue-summary">
               <span><i></i>检测到 ${issueCount} 个问题</span>
-              <button data-action="compose-repair">应用修复</button>
+              <button data-action="compose-apply-ai" ${state.compose.aiContent ? "" : "disabled"}>应用修复</button>
             </div>
             <div class="compose-ai-issue-list">
               <article class="compose-ai-issue-card">

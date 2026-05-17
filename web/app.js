@@ -2115,7 +2115,7 @@ function renderComposeProjectCard(project) {
       <i class="compose-project-lock">${navIcon("compose")}</i>
       <span>
         <strong>${h(project.name)}</strong>
-        <small>${h(project.directory || project.path || "")}</small>
+        <small><i class="state-dot ${h(tone)}"></i>${h(composeStatusLabel(tone))}</small>
       </span>
       <em>›</em>
     </button>
@@ -2203,7 +2203,6 @@ function renderCompose() {
         <div class="compose-reference-projects">
           <div class="compose-reference-projects-head">
             <strong>项目列表</strong>
-            <button type="submit" form="composeNewForm" class="compose-reference-add"><b>+</b> 新建项目</button>
           </div>
           <label class="compose-reference-search">
             <span>⌕</span>
@@ -2211,7 +2210,7 @@ function renderCompose() {
           </label>
           <form class="compose-reference-create" id="composeNewForm">
             <input name="name" placeholder="输入项目名" required />
-            <button type="submit" class="primary">创建空白编辑窗口</button>
+            <button type="submit" class="primary"><b>+</b> 新建项目</button>
           </form>
           <div class="compose-project-list">
             ${
@@ -2318,7 +2317,7 @@ function renderCompose() {
           <div><b>${runningServices}</b><span>运行中</span></div>
           <div><b>${stats.stopped}</b><span>停止</span></div>
         </div>
-        <div class="compose-inline-create" aria-hidden="true"><strong>创建空白编辑窗口</strong></div>
+        <div class="compose-inline-create" aria-hidden="true"><strong>新建项目</strong></div>
       </main>
     </section>
   `;

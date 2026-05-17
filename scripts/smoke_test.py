@@ -172,6 +172,8 @@ def main() -> int:
         assert_true("overflow-x: hidden" in styles_css, "手机端页面应禁止横向溢出")
         assert_true("grid-template-columns: 1fr !important" in styles_css, "手机端主要功能区应强制单列显示")
         assert_true("padding: 10px 10px 96px 68px" in styles_css, "手机端内容区应给左侧菜单留出空间")
+        assert_true(".sidebar:hover .nav" in styles_css, "桌面端侧边栏应支持鼠标移入自动展开")
+        assert_true("width: 184px" in styles_css, "桌面端侧边栏展开后应显示文字菜单")
         assert_true("professional-bookmark-group" in styles_css, "首页导航应使用专业分组卡片")
         assert_true("nav-pro-hero" in styles_css, "首页导航应使用专业导航头部")
         assert_true("nav-hero" in styles_css, "首页导航应使用重新设计的导航头部")

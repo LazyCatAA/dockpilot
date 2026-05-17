@@ -1117,10 +1117,10 @@ function renderPlaceholder(title, detail) {
 function renderDashboard() {
   const prefs = navPrefs();
   return `
-    <section class="nav-home nav-refactor nav-width-${h(prefs.layout_width)} nav-density-${h(prefs.density)} nav-style-${h(prefs.card_style)} nav-icon-${h(prefs.icon_size)} nav-title-${h(prefs.title_font_size)}" style="--nav-bg:${h(prefs.background)}">
-      <button class="nav-settings-button" data-action="nav-settings-open" title="导航页设置">设置</button>
-      <div class="nav-command-center">
-        <div class="nav-command-title">
+    <section class="nav-home nav-minimal nav-width-${h(prefs.layout_width)} nav-density-${h(prefs.density)} nav-style-${h(prefs.card_style)} nav-icon-${h(prefs.icon_size)} nav-title-${h(prefs.title_font_size)}" style="--nav-bg:${h(prefs.background)}">
+      <button class="nav-minimal-settings" data-action="nav-settings-open" title="导航页设置">•••</button>
+      <div class="nav-minimal-hero">
+        <div class="nav-minimal-title">
           <strong>${h(prefs.title)}</strong>
         </div>
         ${renderWebSearch(prefs)}
@@ -1137,8 +1137,8 @@ function renderDashboard() {
 
 function renderWebSearch(prefs) {
   return `
-    <form id="webSearchForm" class="nav-searchbar">
-      <span class="nav-search-icon">⌕</span>
+    <form id="webSearchForm" class="nav-minimal-search">
+      <span class="nav-minimal-search-icon">⌕</span>
       <input id="webSearchInput" name="q" value="${h(state.webSearch)}" placeholder="搜索网页或直接输入关键词" autocomplete="off" />
       <select name="web_search_engine" aria-label="搜索引擎">
         <option value="google" ${prefs.web_search_engine === "google" ? "selected" : ""}>Google</option>
@@ -1156,38 +1156,36 @@ function renderCards() {
   const prefs = navPrefs();
   const groups = filteredCardGroups();
   return `
-    <section class="bookmark-board nav-section professional-bookmark-board">
-      <div class="nav-library-head">
-        <div>
-          <h3>分类书签</h3>
-        </div>
-        <div class="nav-library-actions">
-          ${prefs.show_search ? `<input id="navSearch" value="${h(state.navSearch)}" placeholder="过滤书签、链接或描述" />` : ""}
+    <section class="nav-minimal-board">
+      <div class="nav-minimal-library">
+        <h3>分类书签</h3>
+        <div class="nav-minimal-library-tools">
+          ${prefs.show_search ? `<input id="navSearch" value="${h(state.navSearch)}" placeholder="过滤书签" />` : ""}
           <button data-action="card-add" data-group="Docker" title="添加书签">＋</button>
         </div>
       </div>
       ${groups
         .map(
           ([group, cards]) => `
-            <div class="bookmark-group professional-bookmark-group" style="--group-color:${h(navGroupPrefs(group).color || "#2563eb")}">
-              <div class="bookmark-group-head professional-group-head">
+            <div class="nav-minimal-group" style="--group-color:${h(navGroupPrefs(group).color || "#2563eb")}">
+              <div class="nav-minimal-group-head">
                 <div>
                   <h3><i></i>${h(group)}</h3>
                 </div>
-                <div class="bookmark-group-tools">
-                  <button class="bookmark-round" title="折叠/展开" data-action="nav-group-collapse" data-group="${h(group)}">${navGroupPrefs(group).collapsed ? "展开" : "收起"}</button>
+                <div class="nav-minimal-group-tools">
+                  <button title="折叠/展开" data-action="nav-group-collapse" data-group="${h(group)}">${navGroupPrefs(group).collapsed ? "展开" : "收起"}</button>
                   <input type="color" title="分组颜色" data-action="nav-group-color" data-group="${h(group)}" value="${h(navGroupPrefs(group).color || "#2563eb")}" />
-                  <button class="bookmark-round" title="添加书签" data-action="card-add" data-group="${h(group)}">添加</button>
-                  <button class="bookmark-round" title="分组设置" data-action="card-group-settings" data-group="${h(group)}">改名</button>
-                  <button class="bookmark-round subtle" title="隐藏分组" data-action="nav-group-hide" data-group="${h(group)}">隐藏</button>
+                  <button title="添加书签" data-action="card-add" data-group="${h(group)}">＋</button>
+                  <button title="分组设置" data-action="card-group-settings" data-group="${h(group)}">改名</button>
+                  <button title="隐藏分组" data-action="nav-group-hide" data-group="${h(group)}">隐藏</button>
                 </div>
               </div>
               ${
                 navGroupPrefs(group).collapsed
                   ? ""
                   : cards.length
-                    ? `<div class="bookmark-grid professional-bookmark-grid">${cards.map(renderBookmarkCard).join("")}</div>`
-                    : `<div class="bookmark-empty">这个分组还没有书签。</div>`
+                    ? `<div class="nav-minimal-grid">${cards.map(renderBookmarkCard).join("")}</div>`
+                    : `<div class="nav-minimal-empty">这个分组还没有书签。</div>`
               }
             </div>
           `
@@ -1291,16 +1289,16 @@ function renderBookmarkCard(card) {
   const host = cardHost(card);
   return `
     <button
-      class="bookmark-card ${h(cardSize(card))} ${h(cardStyle(card))}"
+      class="nav-minimal-card ${h(cardSize(card))} ${h(cardStyle(card))}"
       data-card-id="${h(card.id)}"
       data-action="card-open-default"
       style="--bookmark-card-bg:${h(card.card_color || "#ffffff")};--bookmark-title-color:${h(card.title_color || "#111827")};--bookmark-accent:${h(card.color || "#2f80ed")}"
       title="${h(card.title)}"
     >
-      <span class="bookmark-icon">${cardIconMarkup(card)}</span>
-      <span class="bookmark-card-copy">
+      <span class="nav-minimal-card-icon">${cardIconMarkup(card)}</span>
+      <span class="nav-minimal-card-copy">
         <strong>${prefs.show_status ? `<i class="nav-card-status"></i>` : ""}${h(card.title)}</strong>
-        <small>${h(description || host)}</small>
+        ${description ? `<small>${h(description)}</small>` : ""}
         <em>${h(host)}</em>
       </span>
     </button>

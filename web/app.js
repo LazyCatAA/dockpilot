@@ -38,6 +38,7 @@ const state = {
   containerDetail: null,
   containerUpdateJobs: {},
   containerUpdateCheck: { active: false, done: 0, total: 0, failed: 0 },
+  containerUpdateConfirm: { open: false, id: "" },
   mobileContainerActions: {},
   sidebarCollapsed: false,
   logs: { id: "", text: "" },
@@ -1701,10 +1702,29 @@ function renderContainers() {
           : `<div class="empty">Docker 没有返回容器。请到“设置”里检查 Docker socket。</div>`
       }
       <input class="hidden-input" id="containerIconUpload" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+      ${renderContainerUpdateConfirm()}
     </section>
     ${state.containerDetail ? renderContainerDetail() : ""}
     ${state.logs.text ? `<div class="panel" style="margin-top:16px"><div class="panel-head"><h3>日志 ${h(shortId(state.logs.id))}</h3></div><pre class="console">${h(state.logs.text)}</pre></div>` : ""}
     ${renderContainerBackups()}
+  `;
+}
+
+function renderContainerUpdateConfirm() {
+  if (!state.containerUpdateConfirm.open) return "";
+  const item = state.containers.find((container) => container.Id === state.containerUpdateConfirm.id);
+  return `
+    <div class="modal-backdrop container-update-confirm-backdrop" data-action="container-update-cancel">
+      <div class="container-update-confirm" role="dialog" aria-modal="true" aria-labelledby="containerUpdateConfirmTitle">
+        <strong id="containerUpdateConfirmTitle">更新容器？</strong>
+        <p>将先备份当前配置，再拉取镜像并重建容器。</p>
+        ${item ? `<span>${h(containerName(item))}</span>` : ""}
+        <div class="container-update-confirm-actions">
+          <button data-action="container-update-cancel">取消</button>
+          <button class="primary" data-action="container-update-confirm" data-id="${h(state.containerUpdateConfirm.id)}">更新</button>
+        </div>
+      </div>
+    </div>
   `;
 }
 
@@ -3247,9 +3267,18 @@ document.addEventListener("click", async (event) => {
       render();
     }
     if (action === "container-update") {
-      if (confirm("一键更新会先备份当前容器配置，然后拉取镜像并重建容器。继续吗？")) {
-        await startContainerUpdate(button.dataset.id);
-      }
+      state.containerUpdateConfirm = { open: true, id: button.dataset.id || "" };
+      render();
+    }
+    if (action === "container-update-cancel") {
+      if (button.classList.contains("container-update-confirm-backdrop") && event.target !== button) return;
+      state.containerUpdateConfirm = { open: false, id: "" };
+      render();
+    }
+    if (action === "container-update-confirm") {
+      const id = button.dataset.id || state.containerUpdateConfirm.id;
+      state.containerUpdateConfirm = { open: false, id: "" };
+      await startContainerUpdate(id);
     }
     if (action === "container-icon-pick") {
       const input = document.getElementById("containerIconUpload");

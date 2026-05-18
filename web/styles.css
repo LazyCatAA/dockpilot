@@ -2651,6 +2651,77 @@ a {
   white-space: nowrap;
 }
 
+.container-update-confirm-backdrop {
+  display: grid;
+  place-items: center;
+}
+
+.container-update-confirm {
+  width: min(420px, calc(100vw - 32px));
+  display: grid;
+  gap: 12px;
+  padding: 24px;
+  border: 1px solid rgba(205, 218, 238, 0.82);
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.96), rgba(244,249,255,0.92)),
+    rgba(255,255,255,0.94);
+  box-shadow: 0 28px 76px rgba(15, 23, 42, 0.22), inset 0 1px 0 rgba(255,255,255,0.92);
+  text-align: center;
+}
+
+.container-update-confirm strong {
+  color: #0f172a;
+  font-size: 24px;
+  font-weight: 950;
+}
+
+.container-update-confirm p {
+  margin: 0;
+  color: #475569;
+  font-size: 15px;
+  font-weight: 760;
+  line-height: 1.5;
+}
+
+.container-update-confirm > span {
+  justify-self: center;
+  max-width: 100%;
+  padding: 5px 12px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(219, 234, 254, 0.72);
+  color: #1d4ed8;
+  font-size: 13px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.container-update-confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+.container-update-confirm-actions button {
+  min-height: 42px;
+  border: 1px solid rgba(202, 219, 243, 0.88);
+  border-radius: 14px;
+  background: rgba(255,255,255,0.86);
+  color: #334155;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.container-update-confirm-actions .primary {
+  border-color: rgba(37, 99, 235, 0.58);
+  background: linear-gradient(180deg, #3b82f6, #2563eb);
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.18);
+}
+
 .container-card-divider {
   height: 1px;
   background: #eef2f7;
@@ -6742,6 +6813,21 @@ td.actions button {
 }
 
 @media (max-width: 720px) {
+  .container-update-confirm-backdrop {
+    align-items: end;
+    padding: 16px 12px calc(92px + env(safe-area-inset-bottom));
+  }
+
+  .container-update-confirm {
+    width: 100%;
+    border-radius: 22px;
+    padding: 20px 18px 18px;
+  }
+
+  .container-update-confirm strong {
+    font-size: 22px;
+  }
+
   .content {
     padding: 10px 10px 90px 72px;
   }

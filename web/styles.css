@@ -10172,11 +10172,7 @@ td.actions button {
 
   .compose-reference-layout .compose-project-list {
     display: none;
-    position: absolute;
-    z-index: 30;
-    top: calc(100% + 8px);
-    left: 0;
-    right: 0;
+    position: static;
     grid-template-columns: 1fr;
     gap: 6px;
     max-height: min(224px, 42vh);

@@ -671,19 +671,12 @@ function closeCardContextMenu() {
 
 function renderNav() {
   return navGroups
+    .flatMap((group) => group.items)
     .map(
-      (group) => `
-      <div class="nav-group">
-        ${group.items
-          .map(
-            ([key, label, icon]) =>
-              `<button class="${state.tab === key ? "active" : ""}" data-action="nav" data-tab="${key}" data-label="${h(label)}" title="${h(label)}">
-                <span class="nav-icon">${navIcon(icon)}</span><span>${h(label)}</span>
-              </button>`
-          )
-          .join("")}
-      </div>
-    `
+      ([key, label, icon]) =>
+        `<button class="${state.tab === key ? "active" : ""}" data-action="nav" data-tab="${key}" data-label="${h(label)}" title="${h(label)}">
+          <span class="nav-icon">${navIcon(icon)}</span><span>${h(label)}</span>
+        </button>`
     )
     .join("");
 }

@@ -2148,16 +2148,14 @@ function composeServiceItems(project) {
 
 function renderComposeProjectCard(project) {
   const tone = projectStateTone(project);
-  const serviceCount = Math.max((project.containers || []).length, (project.services || []).length);
+  const status = composeStatusLabel(tone);
   return `
-    <button class="compose-project-card ${state.compose.selected === project.path ? "active" : ""} ${h(tone)}" data-action="compose-select" data-path="${h(project.path)}">
+    <button class="compose-project-card ${state.compose.selected === project.path ? "active" : ""} ${h(tone)}" data-action="compose-select" data-path="${h(project.path)}" title="${h(project.name)} · ${h(status)}">
       <i class="compose-project-lock">${navIcon("compose")}</i>
       <span class="compose-project-info">
         <strong>${h(project.name)}</strong>
-        <small>${serviceCount} 服务 · compose.yml</small>
       </span>
-      <span class="compose-project-state"><i class="state-dot ${h(tone)}"></i>${h(composeStatusLabel(tone))}</span>
-      <em>›</em>
+      <span class="compose-project-state" title="${h(status)}" aria-label="${h(status)}"><i class="state-dot ${h(tone)}"></i></span>
     </button>
   `;
 }

@@ -158,6 +158,7 @@ def main() -> int:
         assert_true("icons.compose" not in app_js, "Compose 项目卡片不应引用局部作用域外的 icons 变量")
         assert_true("composeStatusLabel(tone)" in app_js, "Compose 项目列表应显示状态而不是路径")
         assert_true("compose-project-state" in app_js, "Compose 项目列表应使用紧凑状态行")
+        assert_true("compose.yml</small>" not in app_js, "Compose 项目列表不应显示重复副信息")
         assert_true("selectCompose(state.compose.projects[0].path)" in app_js, "Compose 页面进入后应自动选中第一个项目")
         assert_true("compose-ai-preview-code" in app_js, "Compose AI 预览代码块应使用隔离样式")
         assert_true("API_TIMEOUT_MS" in app_js, "前端 API 请求应有超时保护，避免页面一直加载")

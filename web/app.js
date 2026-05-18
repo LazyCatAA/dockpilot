@@ -769,6 +769,19 @@ function contextMenuPositionForCard(cardNode) {
   };
 }
 
+function openCardContextMenuFromNode(cardNode) {
+  if (!cardNode || state.tab !== "dashboard") return false;
+  const position = contextMenuPositionForCard(cardNode);
+  state.cardContextMenu = {
+    open: true,
+    x: position.x,
+    y: position.y,
+    id: Number(cardNode.dataset.cardId),
+  };
+  render();
+  return true;
+}
+
 function openNavGroupModal(group) {
   state.navGroupModal = { open: true, group: group || "Docker" };
   closeCardContextMenu();
@@ -3896,14 +3909,15 @@ document.addEventListener("contextmenu", (event) => {
   const cardNode = event.target.closest("[data-card-id]");
   if (!cardNode || state.tab !== "dashboard") return;
   event.preventDefault();
-  const position = contextMenuPositionForCard(cardNode);
-  state.cardContextMenu = {
-    open: true,
-    x: position.x,
-    y: position.y,
-    id: Number(cardNode.dataset.cardId),
-  };
-  render();
+  openCardContextMenuFromNode(cardNode);
+});
+
+document.addEventListener("pointerup", (event) => {
+  if (event.button !== 2) return;
+  const cardNode = event.target.closest("[data-card-id]");
+  if (!cardNode || state.tab !== "dashboard") return;
+  event.preventDefault();
+  openCardContextMenuFromNode(cardNode);
 });
 
 document.addEventListener("change", async (event) => {

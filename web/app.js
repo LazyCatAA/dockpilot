@@ -27,6 +27,7 @@ const state = {
   editingCard: null,
   cardModal: { open: false, iconMime: "", iconBase64: "", clearIcon: false },
   cardContextMenu: { open: false, x: 0, y: 0, id: null },
+  navGroupModal: { open: false, group: "" },
   containers: [],
   containerBackups: [],
   images: { items: [], query: "", remoteQuery: "", searchResults: [], pullOutput: "", proxy: "", registryMirrors: [], networkProxy: "", proxyTest: "", proxyOk: null, pullMode: "proxy", configOpen: false },
@@ -602,9 +603,22 @@ function navPrefs() {
   return { ...defaultNavPrefs(), ...(state.navPrefs || {}), groups: (state.navPrefs && state.navPrefs.groups) || {} };
 }
 
+function defaultGroupPrefs() {
+  return {
+    color: "#2563eb",
+    collapsed: false,
+    hidden: false,
+    layout: "auto",
+    card_size: "medium",
+    icon_size: "medium",
+    gap: "normal",
+    radius: "rounded",
+  };
+}
+
 function navGroupPrefs(group) {
   const prefs = navPrefs();
-  return prefs.groups?.[group] || { color: "#2563eb", collapsed: false, hidden: false };
+  return { ...defaultGroupPrefs(), ...(prefs.groups?.[group] || {}) };
 }
 
 function webSearchUrl(query) {
@@ -634,7 +648,7 @@ function autoIconForCard(card) {
     ["emby", "E", "#22c55e"],
     ["jellyfin", "JF", "#7c3aed"],
     ["movie", "MP", "#8b5cf6"],
-    ["docker", "🐳", "#2563eb"],
+    ["docker", "D", "#2563eb"],
     ["alist", "A", "#06b6d4"],
     ["homeassistant", "HA", "#0ea5e9"],
   ];
@@ -698,6 +712,14 @@ function cardStyle(card) {
   return ["default", "soft", "outline"].includes(card.style) ? card.style : "default";
 }
 
+function cardShape(card) {
+  return ["rounded", "squircle", "pill", "square"].includes(card.shape) ? card.shape : "rounded";
+}
+
+function cardIconShape(card) {
+  return ["squircle", "circle", "rounded", "square"].includes(card.icon_shape) ? card.icon_shape : "squircle";
+}
+
 function cardIconMarkup(card) {
   if (card.icon_data) return `<img src="${h(card.icon_data)}" alt="" />`;
   const label = (card.icon || card.title.slice(0, 2).toUpperCase()).slice(0, 4);
@@ -719,6 +741,8 @@ function openCardModal(card = null, groupName = "Docker") {
         card_color: "#ffffff",
         size: "medium",
         style: "default",
+        shape: "rounded",
+        icon_shape: "squircle",
         icon_data: "",
       };
   state.cardModal = { open: true, iconMime: "", iconBase64: "", clearIcon: false };
@@ -732,6 +756,15 @@ function closeCardModal() {
 
 function closeCardContextMenu() {
   state.cardContextMenu = { open: false, x: 0, y: 0, id: null };
+}
+
+function openNavGroupModal(group) {
+  state.navGroupModal = { open: true, group: group || "Docker" };
+  closeCardContextMenu();
+}
+
+function closeNavGroupModal() {
+  state.navGroupModal = { open: false, group: "" };
 }
 
 function renderNav() {
@@ -812,6 +845,10 @@ function navIcon(name) {
     ssh: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18.5v-13Zm3 3.2 3.1 3.3L7 15.3l1.5 1.4 4.4-4.7-4.4-4.7L7 8.7Zm6.2 7.6H18v-2h-4.8v2Z"/></svg>`,
     files: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7A2.5 2.5 0 0 1 6 4.5h4.4l2 2H18A2.5 2.5 0 0 1 20.5 9v8A2.5 2.5 0 0 1 18 19.5H6A2.5 2.5 0 0 1 3.5 17V7Z"/></svg>`,
     settings: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.2 3h3.6l.6 2.4c.6.2 1.1.4 1.6.7l2.2-1.3 2.5 2.5-1.3 2.2c.3.5.5 1 .7 1.6l2.3.6v3.6l-2.3.6c-.2.6-.4 1.1-.7 1.6l1.3 2.2-2.5 2.5-2.2-1.3c-.5.3-1 .5-1.6.7l-.6 2.4h-3.6l-.6-2.4c-.6-.2-1.1-.4-1.6-.7l-2.2 1.3-2.5-2.5 1.3-2.2c-.3-.5-.5-1-.7-1.6L1 15.3v-3.6l2.3-.6c.2-.6.4-1.1.7-1.6L2.7 7.3l2.5-2.5 2.2 1.3c.5-.3 1-.5 1.6-.7L10.2 3Zm1.8 6.1a2.9 2.9 0 1 0 0 5.8 2.9 2.9 0 0 0 0-5.8Z"/></svg>`,
+    network: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 0 1 0 18 9 9 0 0 1 0-18Zm-5.7 8h3.1c.1-1.8.5-3.4 1.1-4.7A6.1 6.1 0 0 0 6.3 11Zm0 2a6.1 6.1 0 0 0 4.2 4.7A12.7 12.7 0 0 1 9.4 13H6.3Zm5.1 0c.2 3.4 1 5.5 1.6 5.5s1.4-2.1 1.6-5.5h-3.2Zm0-2h3.2c-.2-3.4-1-5.5-1.6-5.5s-1.4 2.1-1.6 5.5Zm4.1 2c-.1 1.8-.5 3.4-1.1 4.7a6.1 6.1 0 0 0 4.2-4.7h-3.1Zm3.1-2a6.1 6.1 0 0 0-4.2-4.7c.6 1.3 1 2.9 1.1 4.7h3.1Z"/></svg>`,
+    link: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.2 16.3a4.7 4.7 0 0 1 0-6.6l2-2a4.7 4.7 0 0 1 6.6 6.6l-.9.9-1.8-1.8.9-.9a2.1 2.1 0 1 0-3-3l-2 2a2.1 2.1 0 0 0 0 3l.5.5-1.8 1.8-.5-.5Zm5.6-8.6a4.7 4.7 0 0 1 0 6.6l-2 2a4.7 4.7 0 1 1-6.6-6.6l.9-.9 1.8 1.8-.9.9a2.1 2.1 0 1 0 3 3l2-2a2.1 2.1 0 0 0 0-3l-.5-.5 1.8-1.8.5.5Z"/></svg>`,
+    edit: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16.8 9.7-9.7 3.2 3.2L7.2 20H4v-3.2ZM15.1 5.7l1.2-1.2a2 2 0 0 1 2.8 0l.4.4a2 2 0 0 1 0 2.8l-1.2 1.2-3.2-3.2Z"/></svg>`,
+    trash: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 4.5 9.5 3h5l1 1.5H20v2H4v-2h4.5ZM6 8h12l-.8 11A2.2 2.2 0 0 1 15 21H9a2.2 2.2 0 0 1-2.2-2L6 8Zm4 2.5v7h2v-7h-2Zm3 0v7h2v-7h-2Z"/></svg>`,
   };
   return icons[name] || icons.home;
 }
@@ -1364,6 +1401,7 @@ function renderDashboard() {
       <div class="nav-bookmark-area">
         ${renderCards()}
       </div>
+      ${renderNavGroupSettingsModal()}
       ${renderNavSettingsModal()}
       ${renderCardContextMenu()}
       ${renderCardModal()}
@@ -1403,8 +1441,10 @@ function renderCards() {
       ` : ""}
       ${groups
         .map(
-          ([group, cards]) => `
-            <section class="nav-minimal-group nav-reference-group" style="--group-color:${h(navGroupPrefs(group).color || "#2563eb")}">
+          ([group, cards]) => {
+            const groupPrefs = navGroupPrefs(group);
+            return `
+            <section class="nav-minimal-group nav-reference-group nav-group-layout-${h(groupPrefs.layout)} nav-group-card-${h(groupPrefs.card_size)} nav-group-icon-${h(groupPrefs.icon_size)} nav-group-gap-${h(groupPrefs.gap)} nav-group-radius-${h(groupPrefs.radius)}" style="--group-color:${h(groupPrefs.color || "#2563eb")}">
               <header class="nav-minimal-group-head nav-reference-group-head">
                 <div>
                   <h3><i></i><span>${h(group)}</span>${prefs.show_group_count ? `<small>${cards.length}</small>` : ""}</h3>
@@ -1412,20 +1452,21 @@ function renderCards() {
                 <div class="nav-minimal-group-tools">
                   <button class="nav-group-primary-action" title="添加书签" data-action="card-add" data-group="${h(group)}">＋</button>
                   <button class="nav-group-primary-action" title="分组设置" data-action="card-group-settings" data-group="${h(group)}">${navIcon("settings")}</button>
-                  <button title="折叠/展开" data-action="nav-group-collapse" data-group="${h(group)}">${navGroupPrefs(group).collapsed ? "展开" : "收起"}</button>
+                  <button title="折叠/展开" data-action="nav-group-collapse" data-group="${h(group)}">${groupPrefs.collapsed ? "展开" : "收起"}</button>
                   <button title="隐藏分组" data-action="nav-group-hide" data-group="${h(group)}">隐藏</button>
-                  <input type="color" title="分组颜色" data-action="nav-group-color" data-group="${h(group)}" value="${h(navGroupPrefs(group).color || "#2563eb")}" />
+                  <input type="color" title="分组颜色" data-action="nav-group-color" data-group="${h(group)}" value="${h(groupPrefs.color || "#2563eb")}" />
                 </div>
               </header>
               ${
-                navGroupPrefs(group).collapsed
+                groupPrefs.collapsed
                   ? ""
                   : cards.length
                     ? `<div class="nav-minimal-grid">${cards.map(renderBookmarkCard).join("")}</div>`
                     : `<div class="nav-minimal-empty">这个分组还没有书签。</div>`
               }
             </section>
-          `
+          `;
+          }
         )
         .join("")}
       ${renderHiddenNavGroups()}
@@ -1527,7 +1568,7 @@ function renderBookmarkCard(card) {
   const host = cardHost(card);
   return `
     <button
-      class="nav-minimal-card ${h(cardSize(card))} ${h(cardStyle(card))}"
+      class="nav-minimal-card shape-${h(cardShape(card))} icon-shape-${h(cardIconShape(card))} ${h(cardSize(card))} ${h(cardStyle(card))}"
       data-card-id="${h(card.id)}"
       data-action="card-open-default"
       style="--bookmark-card-bg:${h(card.card_color || "#ffffff")};--bookmark-title-color:${h(card.title_color || "#111827")};--bookmark-accent:${h(card.color || "#2f80ed")}"
@@ -1553,10 +1594,76 @@ function renderCardContextMenu() {
       style="left:${Math.max(8, state.cardContextMenu.x)}px;top:${Math.max(8, state.cardContextMenu.y)}px"
       role="menu"
     >
-      ${card.internal_url ? `<button class="green" data-action="card-open-internal" data-id="${h(card.id)}">◎ <span>内网访问</span></button>` : ""}
-      <button class="blue" data-action="card-open-external" data-id="${h(card.id)}">🔗 <span>外网访问</span></button>
-      <button data-action="card-edit" data-id="${h(card.id)}">✎ <span>编辑卡片</span></button>
-      <button class="red" data-action="card-delete" data-id="${h(card.id)}">⌫ <span>删除卡片</span></button>
+      ${card.internal_url ? `<button class="green" data-action="card-open-internal" data-id="${h(card.id)}">${navIcon("network")} <span>内网访问</span></button>` : ""}
+      <button class="blue" data-action="card-open-external" data-id="${h(card.id)}">${navIcon("link")} <span>外网访问</span></button>
+      <button data-action="card-edit" data-id="${h(card.id)}">${navIcon("edit")} <span>编辑卡片</span></button>
+      <button class="red" data-action="card-delete" data-id="${h(card.id)}">${navIcon("trash")} <span>删除卡片</span></button>
+    </div>
+  `;
+}
+
+function renderNavGroupSettingsModal() {
+  if (!state.navGroupModal.open) return "";
+  const group = state.navGroupModal.group || "Docker";
+  const prefs = navGroupPrefs(group);
+  return `
+    <div class="card-modal-backdrop" data-action="nav-group-close">
+      <form id="navGroupForm" class="card-modal nav-group-editor-modal">
+        <div class="card-modal-head">
+          <h3>分组设置</h3>
+          <button type="button" data-action="nav-group-close">×</button>
+        </div>
+        <div class="card-modal-body">
+          <input type="hidden" name="old_group" value="${h(group)}" />
+          <section class="nav-settings-section">
+            <header><strong>基础</strong><span>分组名称、颜色和可见性。</span></header>
+            <div class="card-modal-grid">
+              <label class="field wide"><span>分组标题</span><input name="group_name" value="${h(group)}" required /></label>
+              <label class="field"><span>分组颜色</span><input name="color" type="color" value="${h(prefs.color || "#2563eb")}" /></label>
+            </div>
+            <div class="card-modal-options">
+              <label class="check-option"><input name="collapsed" type="checkbox" ${prefs.collapsed ? "checked" : ""} />默认折叠</label>
+              <label class="check-option"><input name="hidden" type="checkbox" ${prefs.hidden ? "checked" : ""} />隐藏分组</label>
+            </div>
+          </section>
+          <section class="nav-settings-section">
+            <header><strong>布局与尺寸</strong><span>控制本分组内所有书签的排列节奏。</span></header>
+            <div class="card-modal-grid">
+              <label class="field"><span>卡片布局</span><select name="layout">
+                <option value="auto" ${prefs.layout === "auto" ? "selected" : ""}>自动</option>
+                <option value="compact" ${prefs.layout === "compact" ? "selected" : ""}>紧凑</option>
+                <option value="comfortable" ${prefs.layout === "comfortable" ? "selected" : ""}>舒适</option>
+                <option value="showcase" ${prefs.layout === "showcase" ? "selected" : ""}>展示</option>
+              </select></label>
+              <label class="field"><span>卡片尺寸</span><select name="card_size">
+                <option value="small" ${prefs.card_size === "small" ? "selected" : ""}>小</option>
+                <option value="medium" ${prefs.card_size === "medium" ? "selected" : ""}>中</option>
+                <option value="large" ${prefs.card_size === "large" ? "selected" : ""}>大</option>
+              </select></label>
+              <label class="field"><span>图标尺寸</span><select name="icon_size">
+                <option value="small" ${prefs.icon_size === "small" ? "selected" : ""}>小</option>
+                <option value="medium" ${prefs.icon_size === "medium" ? "selected" : ""}>中</option>
+                <option value="large" ${prefs.icon_size === "large" ? "selected" : ""}>大</option>
+              </select></label>
+              <label class="field"><span>卡片间距</span><select name="gap">
+                <option value="tight" ${prefs.gap === "tight" ? "selected" : ""}>紧密</option>
+                <option value="normal" ${prefs.gap === "normal" ? "selected" : ""}>标准</option>
+                <option value="loose" ${prefs.gap === "loose" ? "selected" : ""}>宽松</option>
+              </select></label>
+              <label class="field"><span>分组卡片形状</span><select name="radius">
+                <option value="rounded" ${prefs.radius === "rounded" ? "selected" : ""}>圆角</option>
+                <option value="squircle" ${prefs.radius === "squircle" ? "selected" : ""}>超椭圆</option>
+                <option value="pill" ${prefs.radius === "pill" ? "selected" : ""}>胶囊</option>
+                <option value="square" ${prefs.radius === "square" ? "selected" : ""}>直角</option>
+              </select></label>
+            </div>
+          </section>
+        </div>
+        <div class="card-modal-foot">
+          <button type="button" data-action="nav-group-close">取消</button>
+          <button class="primary" type="submit">保存分组</button>
+        </div>
+      </form>
     </div>
   `;
 }
@@ -1602,7 +1709,7 @@ function renderCardModal() {
           </div>
           <div class="card-modal-options">
             <label class="field">
-              <span>图标文字 / Emoji</span>
+              <span>图标文字</span>
               <input name="icon" value="${h(card.icon || "")}" maxlength="4" placeholder="QB" />
             </label>
             <label class="field">
@@ -1629,11 +1736,29 @@ function renderCardModal() {
                 <option value="outline" ${cardStyle(card) === "outline" ? "selected" : ""}>描边</option>
               </select>
             </label>
+            <label class="field">
+              <span>卡片形状</span>
+              <select name="shape">
+                <option value="rounded" ${cardShape(card) === "rounded" ? "selected" : ""}>圆角</option>
+                <option value="squircle" ${cardShape(card) === "squircle" ? "selected" : ""}>超椭圆</option>
+                <option value="pill" ${cardShape(card) === "pill" ? "selected" : ""}>胶囊</option>
+                <option value="square" ${cardShape(card) === "square" ? "selected" : ""}>直角</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>图标形状</span>
+              <select name="icon_shape">
+                <option value="squircle" ${cardIconShape(card) === "squircle" ? "selected" : ""}>超椭圆</option>
+                <option value="circle" ${cardIconShape(card) === "circle" ? "selected" : ""}>圆形</option>
+                <option value="rounded" ${cardIconShape(card) === "rounded" ? "selected" : ""}>圆角</option>
+                <option value="square" ${cardIconShape(card) === "square" ? "selected" : ""}>直角</option>
+              </select>
+            </label>
           </div>
           <div class="card-icon-editor">
             <div>
               <h4>图标样式</h4>
-              <p>支持自动匹配、图标库、上传图片，也可以只使用文字或 Emoji。</p>
+              <p>可自动匹配服务标识，也可上传自定义图片。</p>
               <div class="mini-actions">
                 <button type="button" data-action="card-icon-auto">自动匹配</button>
                 <button type="button" data-action="card-icon-pick">上传图片</button>
@@ -1647,7 +1772,7 @@ function renderCardModal() {
               ["QB", "#60a5fa"],
               ["MP", "#8b5cf6"],
               ["GH", "#111827"],
-              ["🐳", "#2563eb"],
+              ["D", "#2563eb"],
               ["A", "#06b6d4"],
               ["JF", "#7c3aed"],
               ["E", "#22c55e"],
@@ -2950,6 +3075,36 @@ document.addEventListener("submit", async (event) => {
       state.error = "导航外观已保存。";
       render();
     }
+    if (form.id === "navGroupForm") {
+      const data = Object.fromEntries(new FormData(form));
+      const oldGroup = String(data.old_group || state.navGroupModal.group || "Docker").trim() || "Docker";
+      const nextGroup = String(data.group_name || oldGroup).trim() || oldGroup;
+      if (nextGroup !== oldGroup) {
+        const targets = state.cards.filter((card) => (card.group_name || "应用") === oldGroup);
+        for (const card of targets) {
+          await api(`/api/cards/${card.id}`, { method: "PUT", body: { group_name: nextGroup } });
+        }
+      }
+      const prefs = navPrefs();
+      const groups = { ...prefs.groups };
+      const previous = { ...defaultGroupPrefs(), ...(groups[oldGroup] || {}) };
+      delete groups[oldGroup];
+      groups[nextGroup] = {
+        ...previous,
+        color: data.color || previous.color,
+        collapsed: data.collapsed === "on",
+        hidden: data.hidden === "on",
+        layout: data.layout || previous.layout,
+        card_size: data.card_size || previous.card_size,
+        icon_size: data.icon_size || previous.icon_size,
+        gap: data.gap || previous.gap,
+        radius: data.radius || previous.radius,
+      };
+      await saveNavPrefs({ ...prefs, groups });
+      closeNavGroupModal();
+      state.error = "分组设置已保存。";
+      await refreshCurrent();
+    }
     if (form.id === "webSearchForm") {
       const data = Object.fromEntries(new FormData(form));
       state.webSearch = String(data.q || "").trim();
@@ -3168,7 +3323,7 @@ document.addEventListener("click", async (event) => {
     if (action === "nav-group-collapse" || action === "nav-group-hide" || action === "nav-group-show") {
       const group = button.dataset.group || "";
       const prefs = navPrefs();
-      const groupPrefs = { color: "#2563eb", collapsed: false, hidden: false, ...(prefs.groups[group] || {}) };
+      const groupPrefs = { ...defaultGroupPrefs(), ...(prefs.groups[group] || {}) };
       if (action === "nav-group-collapse") groupPrefs.collapsed = !groupPrefs.collapsed;
       if (action === "nav-group-hide") groupPrefs.hidden = true;
       if (action === "nav-group-show") groupPrefs.hidden = false;
@@ -3204,15 +3359,8 @@ document.addEventListener("click", async (event) => {
       }
     }
     if (action === "card-group-settings") {
-      const oldGroup = button.dataset.group || "Docker";
-      const nextGroup = prompt("修改分组名称", oldGroup);
-      if (nextGroup && nextGroup.trim() && nextGroup.trim() !== oldGroup) {
-        const targets = state.cards.filter((card) => (card.group_name || "应用") === oldGroup);
-        for (const card of targets) {
-          await api(`/api/cards/${card.id}`, { method: "PUT", body: { group_name: nextGroup.trim() } });
-        }
-        await refreshCurrent();
-      }
+      openNavGroupModal(button.dataset.group || "Docker");
+      render();
     }
     if (action === "card-cancel") {
       closeCardModal();
@@ -3247,6 +3395,11 @@ document.addEventListener("click", async (event) => {
       state.cardModal.clearIcon = true;
       state.cardModal.iconMime = "";
       state.cardModal.iconBase64 = "";
+      render();
+    }
+    if (action === "nav-group-close") {
+      if (button.classList.contains("card-modal-backdrop") && event.target !== button) return;
+      closeNavGroupModal();
       render();
     }
     if (action === "container-command") {
@@ -3807,7 +3960,7 @@ document.addEventListener("change", async (event) => {
     if (event.target.dataset.action === "nav-group-color") {
       const group = event.target.dataset.group || "";
       const prefs = navPrefs();
-      const groupPrefs = { color: "#2563eb", collapsed: false, hidden: false, ...(prefs.groups[group] || {}) };
+      const groupPrefs = { ...defaultGroupPrefs(), ...(prefs.groups[group] || {}) };
       groupPrefs.color = event.target.value;
       await saveNavPrefs({ ...prefs, groups: { ...prefs.groups, [group]: groupPrefs } });
       render();

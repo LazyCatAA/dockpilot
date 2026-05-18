@@ -102,8 +102,8 @@ def main() -> int:
 
         _, page = client.request("GET", "/")
         assert_true("DockPilot" in page, "首页静态文件应可访问")
-        assert_true("app.js?v=20260519-54" in page, "首页应引用新的前端资源版本，避免浏览器缓存旧 app.js")
-        assert_true("styles.css?v=20260519-54" in page, "首页应引用新的样式资源版本，避免浏览器缓存旧 styles.css")
+        assert_true("app.js?v=20260519-55" in page, "首页应引用新的前端资源版本，避免浏览器缓存旧 app.js")
+        assert_true("styles.css?v=20260519-55" in page, "首页应引用新的样式资源版本，避免浏览器缓存旧 styles.css")
         assert_true("/vendor/codemirror/codemirror.min.js" in page, "首页应加载本地 CodeMirror 编辑器")
         assert_true("/vendor/codemirror/yaml.min.js" in page, "首页应加载本地 CodeMirror YAML 高亮模式")
         assert_true("/vendor/codemirror/codemirror.bundle.mjs" not in page, "首页不应加载会造成扩展实例不一致的 CM6 bundle")
@@ -198,6 +198,9 @@ def main() -> int:
         assert_true("cardIconUpload" in app_js, "书签卡片应支持图标上传")
         assert_true("cardModal" in app_js, "书签卡片应使用弹窗添加和编辑")
         assert_true("bookmark-editor-modal" in app_js, "书签编辑窗口应使用独立弹窗样式")
+        assert_true("navGroupForm" in app_js, "首页导航分组应使用独立设置弹窗")
+        assert_true("shape-" in app_js, "书签卡片应支持形状自定义")
+        assert_true("icon_shape" in app_js, "书签图标应支持形状自定义")
         _, styles_css = client.request("GET", "/styles.css")
         assert_true("container-card-update-progress" in styles_css, "容器更新应提供卡片内进度条样式")
         assert_true("repeat(4, minmax(0, 1fr))" in styles_css, "桌面端容器卡片应为四列紧凑布局")
@@ -230,6 +233,9 @@ def main() -> int:
         assert_true(".settings-section-card input" in styles_css, "系统设置页输入框规格应统一")
         assert_true("icon-library-grid" in styles_css, "书签图标库应提供网格样式")
         assert_true(".bookmark-editor-modal .card-modal-foot" in styles_css, "书签编辑窗口应提供参考图式底部操作栏")
+        assert_true("nav-group-editor-modal" in styles_css, "首页导航分组设置应提供独立弹窗样式")
+        assert_true("nav-group-layout-compact" in styles_css, "首页导航分组应支持布局自定义")
+        assert_true("nav-group-radius-pill" in styles_css, "首页导航分组应支持卡片形状自定义")
         assert_true("overflow-x: hidden" in styles_css, "手机端页面应禁止横向溢出")
         assert_true("grid-template-columns: 1fr !important" in styles_css, "手机端主要功能区应强制单列显示")
         assert_true("padding: 10px 10px 90px 66px" in styles_css, "手机端内容区应给左侧菜单留出空间")
@@ -272,11 +278,16 @@ def main() -> int:
         assert_true("docker" in overview, "总览应包含 Docker 状态")
         _, nav_prefs = client.request("GET", "/api/dashboard/nav")
         assert_true("prefs" in nav_prefs and "card_style" in nav_prefs["prefs"], "首页导航外观偏好应可读取")
-        _, nav_saved = client.request("PUT", "/api/dashboard/nav", {"title": "我的导航", "section_title": "常用应用", "density": "compact", "web_search_engine": "bing", "groups": {"Docker": {"collapsed": True, "color": "#16a34a"}}})
+        _, nav_saved = client.request("PUT", "/api/dashboard/nav", {"title": "我的导航", "section_title": "常用应用", "density": "compact", "web_search_engine": "bing", "groups": {"Docker": {"collapsed": True, "color": "#16a34a", "layout": "compact", "card_size": "large", "icon_size": "small", "gap": "loose", "radius": "pill"}}})
         assert_true(nav_saved["prefs"]["title"] == "我的导航", "首页导航标题应可保存")
         assert_true(nav_saved["prefs"]["section_title"] == "常用应用", "导航页应用区标题应可保存")
         assert_true(nav_saved["prefs"]["web_search_engine"] == "bing", "导航页搜索引擎应可保存")
         assert_true(nav_saved["prefs"]["groups"]["Docker"]["collapsed"] is True, "首页导航分组折叠状态应可保存")
+        assert_true(nav_saved["prefs"]["groups"]["Docker"]["layout"] == "compact", "首页导航分组布局偏好应可保存")
+        assert_true(nav_saved["prefs"]["groups"]["Docker"]["card_size"] == "large", "首页导航分组卡片尺寸偏好应可保存")
+        assert_true(nav_saved["prefs"]["groups"]["Docker"]["icon_size"] == "small", "首页导航分组图标尺寸偏好应可保存")
+        assert_true(nav_saved["prefs"]["groups"]["Docker"]["gap"] == "loose", "首页导航分组间距偏好应可保存")
+        assert_true(nav_saved["prefs"]["groups"]["Docker"]["radius"] == "pill", "首页导航分组卡片形状偏好应可保存")
 
         _, created_card = client.request(
             "POST",
@@ -293,6 +304,8 @@ def main() -> int:
                 "card_color": "#ffffff",
                 "size": "large",
                 "style": "soft",
+                "shape": "pill",
+                "icon_shape": "squircle",
                 "icon_mime": "image/gif",
                 "icon_content_base64": "R0lGODlhAQABAPAAAP///wAAACH5BAAAAAAALAAAAAABAAEAAAICRAEAOw==",
             },
@@ -305,11 +318,15 @@ def main() -> int:
         assert_true(created_card["card"]["card_color"] == "#ffffff", "导航卡片应保存卡片颜色")
         assert_true(created_card["card"]["size"] == "large", "导航卡片应保存尺寸")
         assert_true(created_card["card"]["style"] == "soft", "导航卡片应保存样式")
+        assert_true(created_card["card"]["shape"] == "pill", "导航卡片应保存卡片形状")
+        assert_true(created_card["card"]["icon_shape"] == "squircle", "导航卡片应保存图标形状")
         assert_true(created_card["card"]["icon_data"].startswith("data:image/gif;base64,"), "导航卡片应保存上传图标")
-        client.request("PUT", f"/api/cards/{card_id}", {"title": "测试服务2", "sort_order": 5, "size": "small", "clear_icon": True})
+        client.request("PUT", f"/api/cards/{card_id}", {"title": "测试服务2", "sort_order": 5, "size": "small", "shape": "rounded", "icon_shape": "circle", "clear_icon": True})
         _, cards = client.request("GET", "/api/cards")
         assert_true(cards["cards"][0]["title"] == "测试服务2", "导航卡片应可编辑")
         assert_true(cards["cards"][0]["size"] == "small", "导航卡片尺寸应可编辑")
+        assert_true(cards["cards"][0]["shape"] == "rounded", "导航卡片形状应可编辑")
+        assert_true(cards["cards"][0]["icon_shape"] == "circle", "导航图标形状应可编辑")
         assert_true(cards["cards"][0]["icon_data"] == "", "导航卡片图标应可清除")
 
         _, project = client.request("POST", "/api/compose/projects", {"name": "demo"}, expect=201)

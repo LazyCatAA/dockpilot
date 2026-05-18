@@ -121,6 +121,16 @@ def normalize_card_style(value: Any) -> str:
     return style if style in {"default", "soft", "outline"} else "default"
 
 
+def normalize_card_shape(value: Any) -> str:
+    shape = str(value or "rounded").strip().lower()
+    return shape if shape in {"rounded", "squircle", "pill", "square"} else "rounded"
+
+
+def normalize_icon_shape(value: Any) -> str:
+    shape = str(value or "squircle").strip().lower()
+    return shape if shape in {"squircle", "circle", "rounded", "square"} else "squircle"
+
+
 def normalize_card_description(value: Any) -> str:
     return str(value or "").strip()[:2000]
 
@@ -181,6 +191,11 @@ def normalize_nav_prefs(value: Any) -> dict[str, Any]:
             "color": normalize_color(str(item.get("color", "#2563eb")), "#2563eb"),
             "collapsed": bool(item.get("collapsed", False)),
             "hidden": bool(item.get("hidden", False)),
+            "layout": str(item.get("layout", "auto")) if str(item.get("layout", "auto")) in {"auto", "compact", "comfortable", "showcase"} else "auto",
+            "card_size": str(item.get("card_size", "medium")) if str(item.get("card_size", "medium")) in {"small", "medium", "large"} else "medium",
+            "icon_size": str(item.get("icon_size", "medium")) if str(item.get("icon_size", "medium")) in {"small", "medium", "large"} else "medium",
+            "gap": str(item.get("gap", "normal")) if str(item.get("gap", "normal")) in {"tight", "normal", "loose"} else "normal",
+            "radius": normalize_card_shape(item.get("radius", "rounded")),
         }
     prefs["groups"] = groups
     return prefs
@@ -270,6 +285,8 @@ class Store:
                     card_color TEXT NOT NULL DEFAULT '#ffffff',
                     size TEXT NOT NULL DEFAULT 'medium',
                     style TEXT NOT NULL DEFAULT 'default',
+                    shape TEXT NOT NULL DEFAULT 'rounded',
+                    icon_shape TEXT NOT NULL DEFAULT 'squircle',
                     icon_data TEXT NOT NULL DEFAULT '',
                     sort_order INTEGER NOT NULL DEFAULT 0,
                     created_at INTEGER NOT NULL,
@@ -302,6 +319,8 @@ class Store:
                 "card_color": "ALTER TABLE cards ADD COLUMN card_color TEXT NOT NULL DEFAULT '#ffffff'",
                 "size": "ALTER TABLE cards ADD COLUMN size TEXT NOT NULL DEFAULT 'medium'",
                 "style": "ALTER TABLE cards ADD COLUMN style TEXT NOT NULL DEFAULT 'default'",
+                "shape": "ALTER TABLE cards ADD COLUMN shape TEXT NOT NULL DEFAULT 'rounded'",
+                "icon_shape": "ALTER TABLE cards ADD COLUMN icon_shape TEXT NOT NULL DEFAULT 'squircle'",
                 "icon_data": "ALTER TABLE cards ADD COLUMN icon_data TEXT NOT NULL DEFAULT ''",
             }
             for column, statement in card_migrations.items():
@@ -433,6 +452,8 @@ class Store:
         card_color = normalize_color(str(data.get("card_color", "#ffffff")), "#ffffff")
         size = normalize_card_size(data.get("size"))
         style = normalize_card_style(data.get("style"))
+        shape = normalize_card_shape(data.get("shape"))
+        icon_shape = normalize_icon_shape(data.get("icon_shape"))
         icon_data = ""
         if data.get("icon_content_base64"):
             icon_data = normalize_container_icon(str(data.get("icon_content_base64", "")), str(data.get("icon_mime", "")))
@@ -441,9 +462,9 @@ class Store:
             cursor = conn.execute(
                 """
                 INSERT INTO cards(
-                  title,url,internal_url,description,group_name,icon,color,title_color,card_color,size,style,icon_data,sort_order,created_at,updated_at
+                  title,url,internal_url,description,group_name,icon,color,title_color,card_color,size,style,shape,icon_shape,icon_data,sort_order,created_at,updated_at
                 )
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
                 (
                     title,
@@ -457,6 +478,8 @@ class Store:
                     card_color,
                     size,
                     style,
+                    shape,
+                    icon_shape,
                     icon_data,
                     int(row["next_order"]),
                     now_ts(),
@@ -479,6 +502,8 @@ class Store:
             "card_color",
             "size",
             "style",
+            "shape",
+            "icon_shape",
             "sort_order",
         ]
         updates = []
@@ -503,6 +528,10 @@ class Store:
                     data[key] = normalize_card_size(data[key])
                 if key == "style":
                     data[key] = normalize_card_style(data[key])
+                if key == "shape":
+                    data[key] = normalize_card_shape(data[key])
+                if key == "icon_shape":
+                    data[key] = normalize_icon_shape(data[key])
                 if key == "sort_order":
                     data[key] = int(data[key])
                 updates.append(f"{key}=?")

@@ -1031,27 +1031,29 @@ a {
 .bookmark-context-menu {
   position: fixed;
   z-index: 1200;
-  min-width: 180px;
+  min-width: 248px;
   overflow: hidden;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  background: #fff;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.2);
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+  backdrop-filter: blur(18px);
 }
 
 .bookmark-context-menu button {
   width: 100%;
-  min-height: 44px;
+  min-height: 56px;
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  gap: 12px;
+  gap: 14px;
   border: 0;
   border-radius: 0;
   background: #fff;
   color: #334155;
-  padding: 0 18px;
-  font-size: 16px;
+  padding: 0 20px;
+  font-size: 17px;
+  font-weight: 750;
 }
 
 .bookmark-context-menu button:hover {
@@ -1069,6 +1071,228 @@ a {
 .bookmark-context-menu .red {
   color: #dc2626;
   border-top: 1px solid #eef2f7;
+}
+
+.bookmark-context-menu svg {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  fill: currentColor;
+}
+
+.nav-group-editor-modal {
+  width: min(740px, calc(100vw - 36px));
+  max-height: min(90vh, 980px);
+}
+
+.nav-group-editor-modal .card-modal-body {
+  gap: 20px;
+  padding-top: 18px;
+}
+
+.nav-group-editor-modal .nav-settings-section {
+  gap: 16px;
+  padding: 18px 0 0;
+  border-top: 1px solid #eef2f7;
+}
+
+.nav-group-editor-modal .nav-settings-section:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.nav-group-editor-modal .nav-settings-section header strong {
+  color: #0f172a;
+}
+
+.nav-group-editor-modal .nav-settings-section header span {
+  color: #8a94a8;
+}
+
+.nav-group-editor-modal .field span {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.nav-group-editor-modal .field input,
+.nav-group-editor-modal .field select {
+  min-height: 54px;
+  border-radius: 14px;
+}
+
+.nav-group-editor-modal .card-modal-options {
+  gap: 18px;
+}
+
+.nav-minimal-group {
+  --group-gap: 14px;
+  --group-card-min: 178px;
+}
+
+.nav-group-layout-compact {
+  --group-card-min: 150px;
+}
+
+.nav-group-layout-comfortable {
+  --group-card-min: 176px;
+}
+
+.nav-group-layout-showcase {
+  --group-card-min: 220px;
+}
+
+.nav-group-gap-tight {
+  --group-gap: 10px;
+}
+
+.nav-group-gap-normal {
+  --group-gap: 14px;
+}
+
+.nav-group-gap-loose {
+  --group-gap: 18px;
+}
+
+.nav-reference-group .nav-minimal-grid {
+  grid-template-columns: repeat(auto-fill, minmax(var(--group-card-min), 1fr));
+  gap: var(--group-gap);
+}
+
+.nav-minimal-card {
+  border-radius: 22px;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease;
+}
+
+.nav-minimal-card.shape-rounded {
+  border-radius: 22px;
+}
+
+.nav-minimal-card.shape-squircle {
+  border-radius: 28px;
+}
+
+.nav-minimal-card.shape-pill {
+  border-radius: 999px;
+}
+
+.nav-minimal-card.shape-square {
+  border-radius: 14px;
+}
+
+.nav-minimal-card.small {
+  min-height: 68px;
+}
+
+.nav-minimal-card.medium {
+  min-height: 82px;
+}
+
+.nav-minimal-card.large {
+  min-height: 98px;
+}
+
+.nav-minimal-card .nav-minimal-card-icon {
+  border-radius: 20px;
+}
+
+.nav-minimal-card.icon-shape-circle .nav-minimal-card-icon {
+  border-radius: 999px;
+}
+
+.nav-minimal-card.icon-shape-rounded .nav-minimal-card-icon {
+  border-radius: 18px;
+}
+
+.nav-minimal-card.icon-shape-square .nav-minimal-card-icon {
+  border-radius: 12px;
+}
+
+.nav-minimal-card.small .nav-minimal-card-icon {
+  width: 38px;
+  height: 38px;
+  flex-basis: 38px;
+}
+
+.nav-minimal-card.medium .nav-minimal-card-icon {
+  width: 46px;
+  height: 46px;
+  flex-basis: 46px;
+}
+
+.nav-minimal-card.large .nav-minimal-card-icon {
+  width: 56px;
+  height: 56px;
+  flex-basis: 56px;
+}
+
+.nav-minimal-card.shape-pill .nav-minimal-card-icon {
+  border-radius: 999px;
+}
+
+.nav-minimal-card.outline {
+  border: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+.nav-minimal-card.soft {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 255, 0.96));
+}
+
+.nav-group-card-small .nav-minimal-card {
+  min-height: 68px;
+}
+
+.nav-group-card-medium .nav-minimal-card {
+  min-height: 82px;
+}
+
+.nav-group-card-large .nav-minimal-card {
+  min-height: 98px;
+}
+
+.nav-group-icon-small .nav-minimal-card-icon {
+  width: 38px;
+  height: 38px;
+  flex-basis: 38px;
+}
+
+.nav-group-icon-medium .nav-minimal-card-icon {
+  width: 46px;
+  height: 46px;
+  flex-basis: 46px;
+}
+
+.nav-group-icon-large .nav-minimal-card-icon {
+  width: 56px;
+  height: 56px;
+  flex-basis: 56px;
+}
+
+.nav-group-radius-square .nav-minimal-card {
+  border-radius: 14px;
+}
+
+.nav-group-radius-rounded .nav-minimal-card {
+  border-radius: 22px;
+}
+
+.nav-group-radius-squircle .nav-minimal-card {
+  border-radius: 28px;
+}
+
+.nav-group-radius-pill .nav-minimal-card {
+  border-radius: 999px;
+}
+
+.nav-minimal-card-copy strong {
+  color: var(--bookmark-title-color, #0f172a);
+}
+
+.nav-minimal-card-icon {
+  background: var(--bookmark-card-bg, #ffffff);
 }
 
 .card-modal-backdrop {
@@ -7425,6 +7649,132 @@ td.actions button {
 .nav-reference-group .nav-minimal-card-copy em,
 .nav-reference-group .nav-minimal-card-copy small {
   color: #8a97ad;
+}
+
+/* Final homepage-navigation customization layer. Kept scoped to the dashboard nav module. */
+.nav-reference-group .nav-minimal-grid {
+  grid-template-columns: repeat(auto-fill, minmax(var(--group-card-min, 178px), 1fr));
+  gap: var(--group-gap, 14px);
+}
+
+.nav-reference-group.nav-group-layout-compact {
+  --group-card-min: 150px;
+}
+
+.nav-reference-group.nav-group-layout-comfortable {
+  --group-card-min: 176px;
+}
+
+.nav-reference-group.nav-group-layout-showcase {
+  --group-card-min: 220px;
+}
+
+.nav-reference-group.nav-group-gap-tight {
+  --group-gap: 10px;
+}
+
+.nav-reference-group.nav-group-gap-normal {
+  --group-gap: 14px;
+}
+
+.nav-reference-group.nav-group-gap-loose {
+  --group-gap: 18px;
+}
+
+.nav-reference-group.nav-group-card-small .nav-minimal-card {
+  min-height: 68px;
+}
+
+.nav-reference-group.nav-group-card-medium .nav-minimal-card {
+  min-height: 82px;
+}
+
+.nav-reference-group.nav-group-card-large .nav-minimal-card {
+  min-height: 98px;
+}
+
+.nav-reference-group.nav-group-icon-small .nav-minimal-card-icon {
+  width: 38px;
+  height: 38px;
+  flex-basis: 38px;
+}
+
+.nav-reference-group.nav-group-icon-medium .nav-minimal-card-icon {
+  width: 46px;
+  height: 46px;
+  flex-basis: 46px;
+}
+
+.nav-reference-group.nav-group-icon-large .nav-minimal-card-icon {
+  width: 56px;
+  height: 56px;
+  flex-basis: 56px;
+}
+
+.nav-reference-group.nav-group-radius-square .nav-minimal-card,
+.nav-reference-group .nav-minimal-card.shape-square {
+  border-radius: 14px;
+}
+
+.nav-reference-group.nav-group-radius-rounded .nav-minimal-card,
+.nav-reference-group .nav-minimal-card.shape-rounded {
+  border-radius: 22px;
+}
+
+.nav-reference-group.nav-group-radius-squircle .nav-minimal-card,
+.nav-reference-group .nav-minimal-card.shape-squircle {
+  border-radius: 28px;
+}
+
+.nav-reference-group.nav-group-radius-pill .nav-minimal-card,
+.nav-reference-group .nav-minimal-card.shape-pill {
+  border-radius: 999px;
+}
+
+.nav-reference-group .nav-minimal-card.soft {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 255, 0.96));
+}
+
+.nav-reference-group .nav-minimal-card.outline {
+  border: 1px solid rgba(148, 163, 184, 0.26);
+  box-shadow: 0 10px 22px rgba(5, 16, 53, 0.12);
+}
+
+.nav-reference-group .nav-minimal-card-copy strong {
+  color: var(--bookmark-title-color, #0f172a);
+}
+
+.nav-reference-group .nav-minimal-card-icon.icon-shape-circle,
+.nav-reference-group .nav-minimal-card.icon-shape-circle .nav-minimal-card-icon {
+  border-radius: 999px;
+}
+
+.nav-reference-group .nav-minimal-card.icon-shape-rounded .nav-minimal-card-icon {
+  border-radius: 18px;
+}
+
+.nav-reference-group .nav-minimal-card.icon-shape-squircle .nav-minimal-card-icon {
+  border-radius: 22px;
+}
+
+.nav-reference-group .nav-minimal-card.icon-shape-square .nav-minimal-card-icon {
+  border-radius: 10px;
+}
+
+.nav-reference-group.nav-group-radius-square .nav-minimal-card {
+  border-radius: 14px;
+}
+
+.nav-reference-group.nav-group-radius-rounded .nav-minimal-card {
+  border-radius: 22px;
+}
+
+.nav-reference-group.nav-group-radius-squircle .nav-minimal-card {
+  border-radius: 28px;
+}
+
+.nav-reference-group.nav-group-radius-pill .nav-minimal-card {
+  border-radius: 999px;
 }
 
 @media (min-width: 721px) {

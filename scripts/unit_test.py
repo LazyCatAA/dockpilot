@@ -264,10 +264,29 @@ def test_volume_label_lines_are_normalized() -> None:
 
 
 def test_nav_preferences_are_normalized() -> None:
-    prefs = server.normalize_nav_prefs({"density": "tiny", "background": "bad", "groups": {"Docker": {"color": "#16a34a", "collapsed": True}}})
+    prefs = server.normalize_nav_prefs({
+        "density": "tiny",
+        "background": "bad",
+        "groups": {
+            "Docker": {
+                "color": "#16a34a",
+                "collapsed": True,
+                "layout": "compact",
+                "card_size": "large",
+                "icon_size": "small",
+                "gap": "loose",
+                "radius": "pill",
+            }
+        },
+    })
     assert_true(prefs["density"] == "comfortable", "首页导航密度非法值应回退")
     assert_true(prefs["background"] == "#eef5fb", "首页导航背景色非法值应回退")
     assert_true(prefs["groups"]["Docker"]["collapsed"] is True, "首页导航分组偏好应保留")
+    assert_true(prefs["groups"]["Docker"]["layout"] == "compact", "首页导航分组布局应可保存")
+    assert_true(prefs["groups"]["Docker"]["card_size"] == "large", "首页导航分组卡片尺寸应可保存")
+    assert_true(prefs["groups"]["Docker"]["icon_size"] == "small", "首页导航分组图标尺寸应可保存")
+    assert_true(prefs["groups"]["Docker"]["gap"] == "loose", "首页导航分组间距应可保存")
+    assert_true(prefs["groups"]["Docker"]["radius"] == "pill", "首页导航分组卡片形状应可保存")
 
 
 def test_remote_image_search_strips_tag_from_full_reference() -> None:

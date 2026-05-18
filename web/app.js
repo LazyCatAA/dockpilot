@@ -2207,7 +2207,7 @@ function composeAiDiffLines(content) {
   if (!text) return `<div class="compose-ai-diff-empty">暂无修复预览</div>`;
   return text.split("\n").map((line, index) => {
     const trimmed = line.trim();
-    const tone = trimmed.startsWith("-") ? "remove" : trimmed.startsWith("+") ? "add" : line.includes("healthcheck") || line.includes("interval:") || line.includes("timeout:") || line.includes("retries:") ? "add" : "context";
+    const tone = trimmed.startsWith("-") ? "remove" : trimmed.startsWith("+") ? "add" : "context";
     return `<div class="compose-ai-diff-line ${tone}"><span>${index + 1}</span><code>${h(line || " ")}</code></div>`;
   }).join("");
 }
@@ -2224,22 +2224,19 @@ function composeAiReviewItems(aiPreviewText, repairSummary) {
       tone: state.compose.repair.changed ? "required" : "neutral"
     }];
   }
-  return [
-    {
-      kind: "必须修复",
-      title: "端口映射格式检查",
-      before: '- "3000:3000"',
-      after: aiPreviewText,
-      tone: "required"
-    },
-    {
-      kind: "建议优化",
-      title: "补充健康检查",
-      before: "未配置",
-      after: "healthcheck:\n  interval: 30s\n  timeout: 10s\n  retries: 3",
-      tone: "suggestion"
-    }
+  return [];
+}
+
+function composeAiChecklist() {
+  const checks = [
+    ["YAML 语法", "缩进、冒号、数组格式"],
+    ["Compose 结构", "services、networks、volumes 层级"],
+    ["端口映射", "宿主机端口与容器端口格式"],
+    ["挂载路径", "路径写法和只读标记"],
+    ["重启策略", "restart 字段是否规范"],
+    ["环境变量", "变量结构和空值风险"]
   ];
+  return checks.map(([title, desc]) => `<li><b>${h(title)}</b><span>${h(desc)}</span></li>`).join("");
 }
 
 function renderContainerDetail() {
@@ -2306,7 +2303,7 @@ function renderCompose() {
   const aiStatus = composeAiStatus();
   const hasBusy = Boolean(state.compose.busyAction);
   const canApplyAi = Boolean(state.compose.aiContent) && !hasBusy;
-  const rawAiPreviewText = state.compose.aiContent || `healthcheck:\n  test: ["CMD", "curl", "-f", "http://localhost:3000"]\n  interval: 30s\n  timeout: 10s\n  retries: 3`;
+  const rawAiPreviewText = state.compose.aiContent || "";
   const aiReviewItems = composeAiReviewItems(rawAiPreviewText, repairSummary);
   const requiredAiItems = aiReviewItems.filter((item) => item.tone === "required").length;
   const suggestedAiItems = aiReviewItems.filter((item) => item.tone === "suggestion").length;
@@ -2391,7 +2388,7 @@ function renderCompose() {
               <button data-action="compose-repair" class="${state.compose.busyAction === "repair" ? "loading" : ""}" ${hasBusy ? "disabled" : ""}>重新检测</button>
             </div>
             <div class="compose-ai-issue-list">
-              ${aiReviewItems.map((item, index) => `
+              ${aiReviewItems.length ? aiReviewItems.map((item, index) => `
                 <article class="compose-ai-issue-card ${h(item.tone)}">
                   <header>
                     <b>${index + 1}</b>
@@ -2409,7 +2406,13 @@ function renderCompose() {
                     </div>
                   </div>
                 </article>
-              `).join("")}
+              `).join("") : `
+                <div class="compose-ai-checklist">
+                  <strong>AI 检查清单</strong>
+                  <p>点击 AI 修复后，只会把确定需要修改的内容放进审核区。</p>
+                  <ul>${composeAiChecklist()}</ul>
+                </div>
+              `}
             </div>
             <div class="compose-ai-review-actions">
               <div>

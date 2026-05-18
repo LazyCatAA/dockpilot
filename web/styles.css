@@ -8174,6 +8174,61 @@ td.actions button {
   gap: 7px;
 }
 
+.compose-ai-checklist {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px dashed rgba(148, 163, 184, 0.32);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(248, 251, 255, 0.92), rgba(255, 255, 255, 0.72));
+}
+
+.compose-ai-checklist strong {
+  color: #1d2a44;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.compose-ai-checklist p {
+  margin: 0;
+  color: #72829b;
+  font-size: 12px;
+  font-weight: 720;
+  line-height: 1.5;
+}
+
+.compose-ai-checklist ul {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.compose-ai-checklist li {
+  display: grid;
+  gap: 3px;
+  min-height: 58px;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: inset 0 0 0 1px rgba(218, 228, 243, 0.78);
+}
+
+.compose-ai-checklist li b {
+  color: #23304a;
+  font-size: 12px;
+  font-weight: 880;
+}
+
+.compose-ai-checklist li span {
+  color: #7f8fa8;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
 .compose-ai-review-diff {
   display: grid;
   gap: 9px;

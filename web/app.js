@@ -760,37 +760,19 @@ function renderMobileTopbar() {
 }
 
 function renderMobileBottomNav() {
-  const primary = [
+  const items = [
     ["dashboard", "首页", "home"],
     ["containers", "容器", "containers"],
-    ["images", "镜像", "images"],
     ["compose", "编排", "compose"],
-  ];
-  const more = [
-    ["volumes", "Docker 卷", "volumes"],
-    ["files", "文件管理", "files"],
     ["vps", "VPS 管理", "vps"],
-    ["ssh", "SSH 终端", "ssh"],
-    ["settings", "系统设置", "settings"],
   ];
-  const moreActive = more.some(([key]) => key === state.tab);
   return `
     <nav class="mobile-bottom-nav" aria-label="手机导航">
-      ${primary.map(([key, label, icon]) => `
+      ${items.map(([key, label, icon]) => `
         <button class="${state.tab === key ? "active" : ""}" data-action="nav" data-tab="${key}" title="${h(label)}">
           <span class="mobile-nav-icon">${navIcon(icon)}</span><span>${h(label)}</span>
         </button>
       `).join("")}
-      <button class="${moreActive || state.mobileMoreOpen ? "active" : ""}" data-action="mobile-more-toggle" title="更多">
-        <span class="mobile-nav-icon">${navIcon("settings")}</span><span>更多</span>
-      </button>
-      <div class="mobile-more-sheet ${state.mobileMoreOpen ? "open" : ""}">
-        ${more.map(([key, label, icon]) => `
-          <button class="${state.tab === key ? "active" : ""}" data-action="nav" data-tab="${key}" title="${h(label)}">
-            <span class="mobile-nav-icon">${navIcon(icon)}</span><span>${h(label)}</span>
-          </button>
-        `).join("")}
-      </div>
     </nav>
   `;
 }
@@ -1305,11 +1287,43 @@ function renderCurrent() {
   if (state.tab === "images") return renderImages();
   if (state.tab === "volumes") return renderVolumes();
   if (state.tab === "compose") return renderCompose();
-  if (state.tab === "vps") return renderPlaceholder("VPS 管理", "用于后续管理 VPS 主机、运行状态、标签分组和连接入口。");
+  if (state.tab === "vps") return renderVps();
   if (state.tab === "ssh") return renderPlaceholder("SSH 终端", "用于后续保存 SSH 连接、打开 Web 终端和管理密钥。");
   if (state.tab === "files") return renderFiles();
   if (state.tab === "settings") return renderSettings();
   return "";
+}
+
+function renderVps() {
+  return `
+    <section class="vps-page">
+      <div class="vps-hero panel">
+        <div>
+          <p class="eyebrow">远程主机</p>
+          <h3>VPS 管理</h3>
+          <span class="muted">在手机上快速查看在线状态、负载和连接入口。</span>
+        </div>
+        <div class="vps-hero-stats">
+          <div><strong>0</strong><span>在线</span></div>
+          <div><strong>0</strong><span>离线</span></div>
+        </div>
+      </div>
+      <div class="vps-grid">
+        <article class="vps-card">
+          <strong>最近连接</strong>
+          <span>这里会显示你常用的服务器。</span>
+        </article>
+        <article class="vps-card">
+          <strong>状态检查</strong>
+          <span>预留主机心跳、SSH 端口和延迟信息。</span>
+        </article>
+        <article class="vps-card">
+          <strong>快捷操作</strong>
+          <span>后续可直接放入终端、重启和资源监控入口。</span>
+        </article>
+      </div>
+    </section>
+  `;
 }
 
 function renderPlaceholder(title, detail) {

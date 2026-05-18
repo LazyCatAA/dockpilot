@@ -20,6 +20,7 @@ const state = {
   dashboardWidgets: [],
   navPrefs: null,
   navSettingsOpen: false,
+  mobileMoreOpen: false,
   navSearch: "",
   webSearch: "",
   cards: [],
@@ -741,6 +742,59 @@ function renderNav() {
     .join("");
 }
 
+function isMobileViewport() {
+  return Boolean(window.matchMedia && window.matchMedia("(max-width: 720px)").matches);
+}
+
+function tabLabel(key) {
+  return (tabs.find(([tab]) => tab === key) || [key, key])[1];
+}
+
+function renderMobileTopbar() {
+  return `
+    <header class="mobile-topbar">
+      <div class="mobile-topbar-brand">${renderBrandMark()}<strong>${h(tabLabel(state.tab))}</strong></div>
+      <button class="mobile-refresh" data-action="refresh" title="刷新">↻</button>
+    </header>
+  `;
+}
+
+function renderMobileBottomNav() {
+  const primary = [
+    ["dashboard", "首页", "home"],
+    ["containers", "容器", "containers"],
+    ["images", "镜像", "images"],
+    ["compose", "编排", "compose"],
+  ];
+  const more = [
+    ["volumes", "Docker 卷", "volumes"],
+    ["files", "文件管理", "files"],
+    ["vps", "VPS 管理", "vps"],
+    ["ssh", "SSH 终端", "ssh"],
+    ["settings", "系统设置", "settings"],
+  ];
+  const moreActive = more.some(([key]) => key === state.tab);
+  return `
+    <nav class="mobile-bottom-nav" aria-label="手机导航">
+      ${primary.map(([key, label, icon]) => `
+        <button class="${state.tab === key ? "active" : ""}" data-action="nav" data-tab="${key}" title="${h(label)}">
+          <span class="mobile-nav-icon">${navIcon(icon)}</span><span>${h(label)}</span>
+        </button>
+      `).join("")}
+      <button class="${moreActive || state.mobileMoreOpen ? "active" : ""}" data-action="mobile-more-toggle" title="更多">
+        <span class="mobile-nav-icon">${navIcon("settings")}</span><span>更多</span>
+      </button>
+      <div class="mobile-more-sheet ${state.mobileMoreOpen ? "open" : ""}">
+        ${more.map(([key, label, icon]) => `
+          <button class="${state.tab === key ? "active" : ""}" data-action="nav" data-tab="${key}" title="${h(label)}">
+            <span class="mobile-nav-icon">${navIcon(icon)}</span><span>${h(label)}</span>
+          </button>
+        `).join("")}
+      </div>
+    </nav>
+  `;
+}
+
 function renderBrandMark() {
   return `
     <div class="mark" aria-hidden="true">
@@ -1202,11 +1256,13 @@ function render() {
         <nav class="nav">${renderNav()}</nav>
       </aside>
       <main class="content">
+        ${renderMobileTopbar()}
         ${state.notice ? `<div class="notice ${h(state.noticeTone)}">${h(state.notice)}</div>` : ""}
         ${state.error ? `<div class="notice error">${h(state.error)}</div>` : ""}
         ${state.loading ? `<div class="empty">正在加载当前页面...</div>` : renderCurrent()}
         ${state.compose.backupModal ? renderComposeBackupModal() : ""}
       </main>
+      ${renderMobileBottomNav()}
     </section>
   `;
   if (state.tab === "compose") {
@@ -1593,6 +1649,7 @@ function renderCardModal() {
 function renderContainers() {
   const stats = containerStats();
   const visibleContainers = filteredContainers();
+  const useCards = state.containerView === "cards" || isMobileViewport();
   return `
     <section class="container-page">
       <div class="container-titlebar">
@@ -1621,9 +1678,9 @@ function renderContainers() {
       </div>
       ${
         state.containers.length
-          ? state.containerView === "table"
-            ? renderContainerTable(visibleContainers)
-            : renderContainerCards(visibleContainers)
+          ? useCards
+            ? renderContainerCards(visibleContainers)
+            : renderContainerTable(visibleContainers)
           : `<div class="empty">Docker 没有返回容器。请到“设置”里检查 Docker socket。</div>`
       }
       <input class="hidden-input" id="containerIconUpload" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
@@ -2965,11 +3022,16 @@ document.addEventListener("click", async (event) => {
   try {
     if (action === "nav") {
       state.tab = button.dataset.tab;
+      state.mobileMoreOpen = false;
       if (state.tab === "compose") resetComposeEditor();
       await refreshCurrent();
     }
     if (action === "sidebar-toggle") {
       state.sidebarCollapsed = !state.sidebarCollapsed;
+      render();
+    }
+    if (action === "mobile-more-toggle") {
+      state.mobileMoreOpen = !state.mobileMoreOpen;
       render();
     }
     if (action === "settings-tab") {
@@ -3693,6 +3755,14 @@ document.addEventListener(
   },
   true
 );
+
+if (window.matchMedia) {
+  const mobileQuery = window.matchMedia("(max-width: 720px)");
+  mobileQuery.addEventListener?.("change", () => {
+    state.mobileMoreOpen = false;
+    render();
+  });
+}
 
 function bytesToBase64(buffer) {
   const bytes = new Uint8Array(buffer);

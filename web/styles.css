@@ -6217,11 +6217,11 @@ td.actions button {
 /* Preview-accurate structural pass: glass shell, visible sidebar, compact page canvases. */
 .layout,
 .layout.sidebar-collapsed {
-  grid-template-columns: 236px minmax(0, 1fr);
+  grid-template-columns: 212px minmax(0, 1fr);
   gap: 0;
   min-height: 100vh;
   background:
-    linear-gradient(90deg, rgba(226, 240, 255, 0.82) 0, rgba(226, 240, 255, 0.48) 236px, transparent 236px),
+    linear-gradient(90deg, rgba(226, 240, 255, 0.82) 0, rgba(226, 240, 255, 0.48) 212px, transparent 212px),
     radial-gradient(circle at 22% 4%, rgba(125, 190, 255, 0.34), transparent 28%),
     radial-gradient(circle at 88% 8%, rgba(196, 181, 253, 0.28), transparent 26%),
     linear-gradient(180deg, #f8fbff, #edf6ff);
@@ -6229,9 +6229,9 @@ td.actions button {
 
 .layout:has(.sidebar:hover),
 .layout:has(.sidebar:focus-within) {
-  grid-template-columns: 236px minmax(0, 1fr);
+  grid-template-columns: 212px minmax(0, 1fr);
   background:
-    linear-gradient(90deg, rgba(226, 240, 255, 0.82) 0, rgba(226, 240, 255, 0.48) 236px, transparent 236px),
+    linear-gradient(90deg, rgba(226, 240, 255, 0.82) 0, rgba(226, 240, 255, 0.48) 212px, transparent 212px),
     radial-gradient(circle at 22% 4%, rgba(125, 190, 255, 0.34), transparent 28%),
     radial-gradient(circle at 88% 8%, rgba(196, 181, 253, 0.28), transparent 26%),
     linear-gradient(180deg, #f8fbff, #edf6ff);
@@ -6244,11 +6244,11 @@ td.actions button {
   position: sticky;
   top: 0;
   z-index: 60;
-  width: 236px;
+  width: 212px;
   height: 100vh;
   display: grid;
   align-items: start;
-  padding: 22px 16px;
+  padding: 20px 12px;
   color: #5b708c;
   background: transparent;
 }
@@ -6256,7 +6256,7 @@ td.actions button {
 .sidebar .brand {
   display: flex;
   margin: 0 0 18px;
-  padding: 10px 10px 14px;
+  padding: 8px 8px 13px;
   border-bottom: 1px solid rgba(191, 219, 254, 0.42);
 }
 
@@ -6267,7 +6267,7 @@ td.actions button {
 }
 
 .sidebar .brand h1 {
-  font-size: 20px;
+  font-size: 18px;
 }
 
 .sidebar .brand p,
@@ -6280,15 +6280,15 @@ td.actions button {
 .sidebar:hover .nav,
 .sidebar:focus-within .nav,
 .sidebar-collapsed .nav {
-  width: 204px;
+  width: 188px;
   max-height: calc(100vh - 44px);
   overflow-y: auto;
   border: 1px solid rgba(255, 255, 255, 0.72);
-  border-radius: 28px;
+  border-radius: 24px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(235, 246, 255, 0.58));
   box-shadow: 0 22px 58px rgba(31, 82, 140, 0.14), var(--glass-inner);
-  padding: 12px;
+  padding: 10px;
   backdrop-filter: blur(24px);
 }
 
@@ -6306,10 +6306,10 @@ td.actions button {
 
 .nav button,
 .sidebar-collapsed .nav button {
-  width: 180px;
-  min-height: 44px;
-  grid-template-columns: 36px minmax(0, 1fr);
-  gap: 9px;
+  width: 166px;
+  min-height: 40px;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 8px;
   justify-content: start;
   padding: 0 10px 0 0;
   border-radius: 15px;
@@ -6326,9 +6326,9 @@ td.actions button {
 }
 
 .nav-icon {
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
+  width: 31px;
+  height: 31px;
+  border-radius: 10px;
 }
 
 .nav-icon svg {
@@ -7340,7 +7340,7 @@ td.actions button {
 /* Compose reference layout: four-column light workspace matching the supplied mockup. */
 .compose-reference-layout {
   display: grid;
-  grid-template-columns: 250px minmax(0, 1fr);
+  grid-template-columns: 228px minmax(0, 1fr);
   gap: 0;
   min-height: calc(100vh - 50px);
   overflow: hidden;
@@ -7353,7 +7353,7 @@ td.actions button {
 
 .compose-reference-sidebar {
   min-width: 0;
-  padding: 18px 14px;
+  padding: 16px 12px;
   border-right: 1px solid rgba(213, 225, 242, 0.72);
   background: linear-gradient(180deg, rgba(250, 253, 255, 0.96), rgba(239, 247, 255, 0.94));
 }

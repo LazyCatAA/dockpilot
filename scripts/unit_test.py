@@ -305,9 +305,15 @@ def test_compose_repair_uses_ai_compatible_result_without_rule_fallback() -> Non
     original_call = server.call_ai_compose_repair
     try:
         server.compose_ai_settings = lambda: {"base_url": "http://ai.local/v1", "api_key": "test", "model": "compose-fixer"}
-        server.call_ai_compose_repair = lambda content, error, settings: "```yaml\nservices:\n  app:\n    image: nginx\n    ports:\n      - \"8080:80\"\n```\n"
+        seen_instruction = {}
+
+        def fake_repair(content, error, settings, instruction=""):
+            seen_instruction["value"] = instruction
+            return "```yaml\nservices:\n  app:\n    image: nginx\n    ports:\n      - \"8080:80\"\n```\n"
+
+        server.call_ai_compose_repair = fake_repair
         content = "services\n  app:\n    image nginx\n    ports:\n      -8080:80\n"
-        result = repair_compose_content(content, "yaml parse error")
+        result = repair_compose_content(content, "yaml parse error", "保留端口含义")
     finally:
         server.compose_ai_settings = original_settings
         server.call_ai_compose_repair = original_call
@@ -315,6 +321,7 @@ def test_compose_repair_uses_ai_compatible_result_without_rule_fallback() -> Non
     assert_true(result["content"].startswith("services:"), "Compose AI 修正应使用 AI 返回内容")
     assert_true('- "8080:80"' in result["content"], "Compose AI 修正应保留 AI 返回的修正结果")
     assert_true(result["repaired_lines"], "Compose AI 修正应返回差异行用于高亮")
+    assert_true(seen_instruction["value"] == "保留端口含义", "Compose AI 修正应传递自定义修正要求")
 
 
 def test_compose_command_convert_uses_ai_preview_content() -> None:

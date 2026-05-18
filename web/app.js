@@ -1,3 +1,5 @@
+const DEFAULT_COMPOSE_REPAIR_INSTRUCTION = "只修正格式和明确缺失项，不改变镜像、端口、挂载和环境变量含义。";
+
 const state = {
   session: null,
   tab: "dashboard",
@@ -26,7 +28,7 @@ const state = {
   containerUpdateCheck: { active: false, done: 0, total: 0, failed: 0 },
   sidebarCollapsed: false,
   logs: { id: "", text: "" },
-  compose: { projects: [], selected: "", content: "", output: "", logs: "", repair: null, repairLines: [], aiContent: "", backups: [], backupModal: false, logsAutoScroll: true, busyAction: "" },
+  compose: { projects: [], selected: "", content: "", output: "", logs: "", repair: null, repairLines: [], aiContent: "", repairInstruction: DEFAULT_COMPOSE_REPAIR_INSTRUCTION, backups: [], backupModal: false, logsAutoScroll: true, busyAction: "" },
   files: { roots: [], root: "", path: "", items: [], editPath: "", content: "" },
   settings: null,
 };
@@ -2408,9 +2410,10 @@ function renderCompose() {
               `}
             </div>
             <div class="compose-ai-review-actions">
-              <div>
+              <div class="compose-ai-requirement">
                 <strong>${state.compose.aiContent ? "修复结果待应用" : "AI 修正要求"}</strong>
-                <span>${state.compose.aiContent ? "应用后会写入左侧编辑器，仍需手动保存文件。" : "只修正格式和明确缺失项，不改变镜像、端口、挂载和环境变量含义。"}</span>
+                <textarea id="composeRepairInstruction" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="${h(DEFAULT_COMPOSE_REPAIR_INSTRUCTION)}">${h(state.compose.repairInstruction || DEFAULT_COMPOSE_REPAIR_INSTRUCTION)}</textarea>
+                <span>${state.compose.aiContent ? "应用后会写入左侧编辑器，仍需手动保存文件。" : "可直接编辑这段默认预设，再点重新检测或修复。"}</span>
               </div>
               <button data-action="compose-apply-ai" ${canApplyAi ? "" : "disabled"}>应用修复</button>
             </div>
@@ -3229,7 +3232,14 @@ document.addEventListener("click", async (event) => {
           if (!checked.ok) errorText = checked.output || "";
           state.compose.output = `$ ${checked.command}\n\n${checked.output || ""}`;
         }
-        const result = await api("/api/compose/repair", { method: "POST", body: { content: editorValue, error: errorText } });
+        const result = await api("/api/compose/repair", {
+          method: "POST",
+          body: {
+            content: editorValue,
+            error: errorText,
+            instruction: state.compose.repairInstruction || DEFAULT_COMPOSE_REPAIR_INSTRUCTION,
+          },
+        });
         state.compose.repair = result;
         if (result.changed) {
           state.compose.aiContent = result.content || "";
@@ -3520,6 +3530,9 @@ document.addEventListener("input", (event) => {
   if (event.target.id === "composeEditorFallback") {
     state.compose.content = event.target.value;
     syncComposeHighlight();
+  }
+  if (event.target.id === "composeRepairInstruction") {
+    state.compose.repairInstruction = event.target.value;
   }
 });
 

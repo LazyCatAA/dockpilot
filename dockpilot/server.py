@@ -1426,7 +1426,7 @@ class AppHandler(BaseHTTPRequestHandler):
                 return
             if path == "/api/compose/repair" and self.command == "POST":
                 data = self.read_json()
-                self.write_json(repair_compose_content(str(data.get("content", "")), str(data.get("error", ""))))
+                self.write_json(repair_compose_content(str(data.get("content", "")), str(data.get("error", "")), str(data.get("instruction", ""))))
                 return
             if path == "/api/compose/convert-command-ai" and self.command == "POST":
                 data = self.read_json()
@@ -2312,9 +2312,9 @@ def quote_yaml(value: Any) -> str:
     return json.dumps(text, ensure_ascii=False)
 
 
-def repair_compose_content(content: str, error: str = "") -> dict[str, Any]:
+def repair_compose_content(content: str, error: str = "", instruction: str = "") -> dict[str, Any]:
     original = str(content or "")
-    fixed_content = extract_ai_compose_content(call_ai_compose_repair(original, str(error or ""), compose_ai_settings()))
+    fixed_content = extract_ai_compose_content(call_ai_compose_repair(original, str(error or ""), compose_ai_settings(), str(instruction or "")))
     if not fixed_content:
         raise RuntimeError("AI 没有返回修正后的 compose.yml。")
     if original.endswith("\n") and not fixed_content.endswith("\n"):
@@ -2776,7 +2776,8 @@ def ai_request_origin(base_url: str) -> str:
     return base_url.strip().rstrip("/")
 
 
-def call_ai_compose_repair(content: str, error: str, settings: dict[str, str]) -> str:
+def call_ai_compose_repair(content: str, error: str, settings: dict[str, str], instruction: str = "") -> str:
+    custom_instruction = str(instruction or "").strip()
     system_prompt = (
         "你是 Docker Compose YAML 格式修正器。"
         "只允许修正 YAML/Compose 格式错误。"
@@ -2785,7 +2786,11 @@ def call_ai_compose_repair(content: str, error: str, settings: dict[str, str]) -
         "如果必须加引号、补冒号、修缩进、修列表格式，可以修改。"
         "只输出修正后的 compose.yml 原文，不要解释，不要 Markdown。"
     )
-    user_prompt = f"Compose 检查错误：\n{error or '未提供'}\n\n原始 compose.yml：\n{content}"
+    user_prompt = (
+        f"用户补充修正要求：\n{custom_instruction or '未提供'}\n\n"
+        f"Compose 检查错误：\n{error or '未提供'}\n\n"
+        f"原始 compose.yml：\n{content}"
+    )
     payload = {
         "model": settings["model"],
         "messages": [

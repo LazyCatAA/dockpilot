@@ -10170,7 +10170,7 @@ td.actions button {
     transform: rotate(180deg);
   }
 
-  .compose-project-list {
+  .compose-reference-layout .compose-project-list {
     display: none;
     position: absolute;
     z-index: 30;
@@ -10190,7 +10190,7 @@ td.actions button {
     box-shadow: 0 18px 42px rgba(31, 82, 140, 0.2), inset 0 1px 0 rgba(255,255,255,0.96);
   }
 
-  .compose-mobile-project-select.open ~ .compose-project-list {
+  .compose-reference-layout .compose-mobile-project-select.open ~ .compose-project-list {
     display: grid;
   }
 

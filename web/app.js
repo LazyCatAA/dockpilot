@@ -2148,13 +2148,15 @@ function composeServiceItems(project) {
 
 function renderComposeProjectCard(project) {
   const tone = projectStateTone(project);
+  const serviceCount = Math.max((project.containers || []).length, (project.services || []).length);
   return `
     <button class="compose-project-card ${state.compose.selected === project.path ? "active" : ""} ${h(tone)}" data-action="compose-select" data-path="${h(project.path)}">
       <i class="compose-project-lock">${navIcon("compose")}</i>
-      <span>
+      <span class="compose-project-info">
         <strong>${h(project.name)}</strong>
-        <small><i class="state-dot ${h(tone)}"></i>${h(composeStatusLabel(tone))}</small>
+        <small>${serviceCount} 服务 · compose.yml</small>
       </span>
+      <span class="compose-project-state"><i class="state-dot ${h(tone)}"></i>${h(composeStatusLabel(tone))}</span>
       <em>›</em>
     </button>
   `;

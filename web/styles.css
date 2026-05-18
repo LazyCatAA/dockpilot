@@ -7459,46 +7459,75 @@ td.actions button {
   overflow: auto;
   display: grid;
   align-content: start;
-  gap: 12px;
-  padding: 14px 4px 18px 0;
+  gap: 8px;
+  padding: 12px 4px 18px 0;
 }
 
 .compose-reference-layout .compose-project-card {
+  position: relative;
   min-width: 0;
-  min-height: 72px;
+  min-height: 66px;
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) 40px;
+  grid-template-columns: 32px minmax(0, 1fr) auto 18px;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border: 1px solid rgba(218, 230, 246, 0.72);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.54);
+  gap: 10px;
+  padding: 10px 12px 10px 14px;
+  border: 1px solid rgba(218, 230, 246, 0.68);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.52);
   color: #23304a;
   text-align: left;
-  box-shadow: 0 10px 24px rgba(43, 89, 143, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.64);
+  box-shadow: 0 8px 18px rgba(43, 89, 143, 0.035), inset 0 1px 0 rgba(255, 255, 255, 0.62);
+  transition:
+    transform 0.16s ease,
+    border-color 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.compose-reference-layout .compose-project-card::before {
+  content: "";
+  position: absolute;
+  left: -1px;
+  top: 12px;
+  bottom: 12px;
+  width: 3px;
+  border-radius: 0 999px 999px 0;
+  background: transparent;
+}
+
+.compose-reference-layout .compose-project-card::after {
+  content: none;
 }
 
 .compose-reference-layout .compose-project-card:hover,
 .compose-reference-layout .compose-project-card.active {
   border-color: rgba(199, 216, 241, 0.74);
-  background: rgba(231, 241, 255, 0.92);
-  box-shadow: 0 14px 30px rgba(37, 99, 235, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.82);
+  background: rgba(239, 246, 255, 0.78);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.07), inset 0 1px 0 rgba(255, 255, 255, 0.82);
+}
+
+.compose-reference-layout .compose-project-card:hover {
+  transform: translateY(-1px);
+}
+
+.compose-reference-layout .compose-project-card.active::before {
+  background: #2563eb;
 }
 
 .compose-project-lock {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   display: inline-grid;
   place-items: center;
-  border-radius: 10px;
+  border-radius: 9px;
   color: #111827;
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.7);
 }
 
 .compose-project-lock svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 .compose-reference-layout .compose-project-card.active .compose-project-lock,
@@ -7506,8 +7535,15 @@ td.actions button {
   color: #2563eb;
 }
 
+.compose-project-info {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
 .compose-reference-layout .compose-project-card strong,
-.compose-reference-layout .compose-project-card small {
+.compose-reference-layout .compose-project-card small,
+.compose-project-state {
   display: block;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -7520,31 +7556,47 @@ td.actions button {
 }
 
 .compose-reference-layout .compose-project-card small {
-  margin-top: 8px;
+  color: #8b9ab1;
+  font-size: 11px;
+  font-weight: 760;
+}
+
+.compose-project-state {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  color: #8a9ab4;
-  font-size: 12px;
-  font-weight: 820;
+  gap: 6px;
+  justify-self: end;
+  max-width: 76px;
+  color: #8393ac;
+  font-size: 11px;
+  font-weight: 840;
+}
+
+.compose-project-card.running .compose-project-state {
+  color: #15935b;
+}
+
+.compose-project-card.stopped .compose-project-state {
+  color: #d97706;
 }
 
 .compose-reference-layout .compose-project-card em {
-  width: 38px;
-  height: 38px;
+  width: 18px;
+  height: 18px;
   display: inline-grid;
   place-items: center;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  color: #8da0bd;
+  background: transparent;
+  color: #a3b2c8;
   font-style: normal;
-  font-size: 26px;
+  font-size: 18px;
   line-height: 1;
 }
 
 .compose-reference-layout .compose-project-card .state-dot {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
   box-shadow: none;
 }
 

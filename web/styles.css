@@ -7293,13 +7293,14 @@ td.actions button {
 }
 
 .settings-page {
-  max-width: 980px;
+  max-width: 1680px;
+  margin: 0 auto;
 }
 
 .settings-single-card {
   display: grid;
-  grid-template-columns: 190px minmax(0, 1fr);
-  min-height: 560px;
+  grid-template-columns: 220px minmax(0, 1fr);
+  min-height: min(680px, calc(100vh - 74px));
   border: 1px solid rgba(218, 228, 243, 0.82);
   border-radius: 22px;
   overflow: hidden;
@@ -7354,7 +7355,7 @@ td.actions button {
   min-width: 0;
   display: grid;
   align-content: start;
-  padding: 22px;
+  padding: 24px;
 }
 
 .settings-refined-form {

@@ -7903,13 +7903,13 @@ td.actions button {
 
 .compose-reference-layout .code-highlight {
   counter-reset: yaml-line;
-  z-index: 2;
+  z-index: 4;
   opacity: 1;
   pointer-events: none;
   background: transparent !important;
   filter: none;
   text-shadow: none;
-  -webkit-text-fill-color: initial;
+  -webkit-text-fill-color: unset !important;
 }
 
 .compose-reference-layout .code-input {
@@ -7919,6 +7919,42 @@ td.actions button {
   caret-color: #d8e6f7;
   padding-left: 38px;
   -webkit-text-fill-color: transparent !important;
+}
+
+.compose-reference-layout .code-highlight .yaml-key {
+  color: #7dd3fc;
+  -webkit-text-fill-color: #7dd3fc;
+}
+
+.compose-reference-layout .code-highlight .yaml-punc,
+.compose-reference-layout .code-highlight .yaml-list {
+  color: #c4b5fd;
+  -webkit-text-fill-color: #c4b5fd;
+}
+
+.compose-reference-layout .code-highlight .yaml-string {
+  color: #86efac;
+  -webkit-text-fill-color: #86efac;
+}
+
+.compose-reference-layout .code-highlight .yaml-bool {
+  color: #fde68a;
+  -webkit-text-fill-color: #fde68a;
+}
+
+.compose-reference-layout .code-highlight .yaml-comment {
+  color: #64748b;
+  -webkit-text-fill-color: #64748b;
+}
+
+.compose-reference-layout .code-highlight .code-line-content {
+  color: #c8d5e8;
+  -webkit-text-fill-color: #c8d5e8;
+}
+
+.compose-reference-layout .code-highlight .code-line-number {
+  color: #607086;
+  -webkit-text-fill-color: #607086;
 }
 
 .compose-reference-layout .code-input::placeholder {
@@ -7958,7 +7994,7 @@ td.actions button {
   font-size: 11px;
   font-weight: 760;
   background: rgba(8, 17, 30, 0.72);
-  z-index: 4;
+  z-index: 5;
 }
 
 .compose-reference-preview {

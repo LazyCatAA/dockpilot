@@ -6297,6 +6297,8 @@ td.actions button {
 .sidebar:hover .nav,
 .sidebar:focus-within .nav,
 .sidebar-collapsed .nav {
+  display: grid;
+  gap: 4px;
   width: 134px;
   height: 100%;
   max-height: none;
@@ -6312,17 +6314,11 @@ td.actions button {
 .nav-title,
 .sidebar:hover .nav-title,
 .sidebar:focus-within .nav-title {
-  min-width: 0;
-  margin: 10px 10px 5px;
-  color: #71859f;
-  font-size: 11px;
-  font-weight: 800;
-  opacity: 1;
-  transform: none;
+  display: none;
 }
 
 .nav-group {
-  gap: 2px;
+  gap: 4px;
 }
 
 .nav button,

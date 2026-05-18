@@ -38,6 +38,7 @@ const state = {
   containerDetail: null,
   containerUpdateJobs: {},
   containerUpdateCheck: { active: false, done: 0, total: 0, failed: 0 },
+  mobileContainerActions: {},
   sidebarCollapsed: false,
   logs: { id: "", text: "" },
   compose: { projects: [], selected: "", content: "", output: "", logs: "", repair: null, repairLines: [], aiContent: "", repairInstruction: initialComposeRepairInstruction(), backups: [], backupModal: false, logsAutoScroll: true, busyAction: "" },
@@ -1714,8 +1715,9 @@ function renderContainerCards(containers = filteredContainers()) {
           const running = String(item.State).toLowerCase() === "running";
           const updateHot = Boolean(item.DockPilot?.update_available);
           const updating = isContainerUpdating(item.Id);
+          const mobileOpen = Boolean(state.mobileContainerActions[item.Id]);
           return `
-            <article class="container-card ${h(item.State)} ${updateHot ? "has-update" : ""}" style="--card-color:${h(containerColor(item))}">
+            <article class="container-card ${h(item.State)} ${updateHot ? "has-update" : ""} ${mobileOpen ? "mobile-actions-open" : ""}" style="--card-color:${h(containerColor(item))}">
               ${updateHot ? `<div class="new-ribbon">NEW</div>` : ""}
               <div class="container-card-main">
                 <button class="container-icon" title="点击上传自定义图标" data-action="container-icon-pick" data-id="${h(item.Id)}" data-key="${h(containerKey(item))}">
@@ -1730,8 +1732,12 @@ function renderContainerCards(containers = filteredContainers()) {
                   <span class="container-runtime">${h(containerRuntime(item))}</span>
                   ${item.DockPilot?.update_check_error ? `<span class="container-update-error">${h(zhError(item.DockPilot.update_check_error))}</span>` : ""}
                 </div>
+                <button class="container-mobile-more" data-action="container-mobile-toggle" data-id="${h(item.Id)}" title="${mobileOpen ? "收起操作" : "展开操作"}">•••</button>
               </div>
               <div class="container-card-divider"></div>
+              <button class="container-mobile-toggle" data-action="container-mobile-toggle" data-id="${h(item.Id)}">
+                <span>${mobileOpen ? "收起操作" : "展开操作"}</span><i>${mobileOpen ? "⌃" : "⌄"}</i>
+              </button>
               ${renderContainerCardUpdateProgress(item.Id)}
               <div class="container-action-row">
                 <button class="container-action stop" data-action="container-command" data-command="${running ? "stop" : "start"}" data-id="${h(item.Id)}">
@@ -3063,6 +3069,11 @@ document.addEventListener("click", async (event) => {
     }
     if (action === "container-filter") {
       state.containerFilter = button.dataset.filter || "all";
+      render();
+    }
+    if (action === "container-mobile-toggle") {
+      const id = button.dataset.id || "";
+      state.mobileContainerActions[id] = !state.mobileContainerActions[id];
       render();
     }
     if (action === "container-bulk-check") {

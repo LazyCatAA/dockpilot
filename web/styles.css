@@ -2759,6 +2759,11 @@ a {
   font-size: 9px;
 }
 
+.container-mobile-more,
+.container-mobile-toggle {
+  display: none;
+}
+
 .backup-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
@@ -9477,6 +9482,7 @@ td.actions button {
     display: flex;
     align-items: center;
     gap: 9px;
+    flex: 1 1 auto;
     color: #17233c;
     font-size: 13px;
     font-weight: 900;
@@ -9492,6 +9498,7 @@ td.actions button {
   .mobile-refresh {
     width: 31px;
     height: 31px;
+    margin-left: auto;
     border: 0;
     border-radius: 10px;
     background: #2563eb;
@@ -9662,17 +9669,31 @@ td.actions button {
   .container-card {
     min-height: 0;
     padding: 8px;
-    border-radius: 14px;
+    border-radius: 16px;
+    overflow: hidden;
   }
 
   .container-card-main {
-    gap: 7px;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .container-card-info {
+    display: flex;
+    min-width: 0;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px 8px;
+  }
+
+  .container-name-row {
+    width: 100%;
   }
 
   .container-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 13px;
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
   }
 
   .container-name-row strong {
@@ -9686,12 +9707,57 @@ td.actions button {
     line-height: 1.25;
   }
 
+  .container-image {
+    max-width: 48%;
+    padding-right: 8px;
+    border-right: 1px solid rgba(148, 163, 184, 0.28);
+  }
+
+  .container-runtime {
+    max-width: 44%;
+  }
+
   .container-card-divider {
     margin: 5px 0;
   }
 
+  .container-mobile-more {
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 999px;
+    background: rgba(248, 251, 255, 0.92);
+    color: #64748b;
+    font-size: 16px;
+    box-shadow: none;
+  }
+
+  .container-mobile-toggle {
+    width: 100%;
+    min-height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 2px 0 6px;
+    border: 0;
+    border-radius: 10px;
+    background: rgba(248, 251, 255, 0.72);
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .container-mobile-toggle i {
+    font-style: normal;
+    font-size: 12px;
+    line-height: 1;
+  }
+
   .container-action-row {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    display: none;
     gap: 5px;
   }
 
@@ -9706,9 +9772,13 @@ td.actions button {
   }
 
   .container-extra-actions {
+    position: static;
+    display: none;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 4px;
-    margin-top: 6px;
+    margin-top: 4px;
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .container-extra-actions button {
@@ -9719,6 +9789,11 @@ td.actions button {
     color: #64748b;
     font-size: 9px;
     box-shadow: none;
+  }
+
+  .container-card.mobile-actions-open .container-action-row,
+  .container-card.mobile-actions-open .container-extra-actions {
+    display: grid;
   }
 
   .settings-single-card {

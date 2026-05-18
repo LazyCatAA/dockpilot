@@ -4,59 +4,56 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>DockPilot</title>
-    <link rel="stylesheet" href="/styles.css?v=20260518-9" />
+    <link rel="stylesheet" href="/vendor/codemirror/codemirror.min.css?v=20260518-10" />
+    <link rel="stylesheet" href="/styles.css?v=20260518-10" />
   </head>
   <body>
     <div id="app" class="app-shell"></div>
-    <script type="module">
-      import { EditorState } from "/vendor/codemirror/state.bundle.mjs";
-      import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, highlightActiveLine } from "/vendor/codemirror/view.bundle.mjs";
-      import { defaultKeymap, history, historyKeymap } from "/vendor/codemirror/commands.bundle.mjs";
-      import { bracketMatching, indentOnInput, syntaxHighlighting, defaultHighlightStyle } from "/vendor/codemirror/language.bundle.mjs";
-      import { yaml } from "/vendor/codemirror/lang-yaml.bundle.mjs";
-
-      const composeTheme = EditorView.theme({
-        "&": { height: "100%", color: "#d8e6f7", backgroundColor: "#0d1725" },
-        ".cm-scroller": { fontFamily: '"SFMono-Regular", "Menlo", "Consolas", monospace', fontSize: "12px", lineHeight: "1.38" },
-        ".cm-content": { padding: "11px 0 45px 0", caretColor: "#d8e6f7" },
-        ".cm-line": { padding: "0 18px" },
-        ".cm-gutters": { backgroundColor: "rgba(8, 17, 30, 0.42)", color: "#607086", borderRight: "1px solid rgba(96, 112, 134, 0.22)" },
-        ".cm-gutterElement": { padding: "0 10px 0 8px" },
-        ".cm-activeLineGutter": { backgroundColor: "rgba(37, 99, 235, 0.12)", color: "#93c5fd" },
-        ".cm-activeLine": { backgroundColor: "rgba(37, 99, 235, 0.06)" },
-        ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": { backgroundColor: "rgba(96, 165, 250, 0.32)" },
-        "&.cm-focused": { outline: "none" }
-      }, { dark: true });
-
+    <script src="/vendor/codemirror/codemirror.min.js?v=20260518-10"></script>
+    <script src="/vendor/codemirror/yaml.min.js?v=20260518-10"></script>
+    <script>
       window.DockPilotCodeMirror = {
         mount(parent, content, onChange) {
           parent.textContent = "";
-          const view = new EditorView({
-            parent,
-            state: EditorState.create({
-              doc: content || "",
-              extensions: [
-                lineNumbers(),
-                highlightActiveLineGutter(),
-                highlightSpecialChars(),
-                history(),
-                drawSelection(),
-                indentOnInput(),
-                bracketMatching(),
-                syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-                yaml(),
-                keymap.of([...defaultKeymap, ...historyKeymap]),
-                composeTheme,
-                EditorView.updateListener.of((update) => {
-                  if (update.docChanged) onChange(update.state.doc.toString());
-                })
-              ]
-            })
+          const textarea = document.createElement("textarea");
+          textarea.value = content || "";
+          parent.appendChild(textarea);
+          const editor = CodeMirror.fromTextArea(textarea, {
+            mode: "yaml",
+            lineNumbers: true,
+            lineWrapping: false,
+            indentUnit: 2,
+            tabSize: 2,
+            smartIndent: true,
+            autofocus: false,
+            extraKeys: {
+              Tab(cm) {
+                if (cm.somethingSelected()) {
+                  cm.indentSelection("add");
+                  return;
+                }
+                cm.replaceSelection("  ", "end", "+input");
+              }
+            }
           });
-          return view;
+          editor.setSize("100%", "100%");
+          editor.on("change", (instance) => onChange(instance.getValue()));
+          requestAnimationFrame(() => editor.refresh());
+          return {
+            get state() {
+              return { doc: { toString: () => editor.getValue() } };
+            },
+            destroy() {
+              editor.toTextArea();
+              textarea.remove();
+            },
+            focus() {
+              editor.focus();
+            }
+          };
         }
       };
     </script>
-    <script src="/app.js?v=20260518-9"></script>
+    <script src="/app.js?v=20260518-10"></script>
   </body>
 </html>

@@ -1124,7 +1124,7 @@ function render() {
       <aside class="sidebar">
         <div class="brand">
           ${renderBrandMark()}
-          <div class="brand-text"><h1>DockPilot</h1><p>私有 NAS 控制台</p></div>
+          <div class="brand-text"><h1>DockPilot</h1></div>
           <button class="sidebar-toggle" title="隐藏/显示侧边栏" data-action="sidebar-toggle">${state.sidebarCollapsed ? "›" : "‹"}</button>
         </div>
         <nav class="nav">${renderNav()}</nav>

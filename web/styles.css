@@ -8353,12 +8353,12 @@ td.actions button {
   position: sticky;
   bottom: 0;
   z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   gap: 12px;
   margin: 0 -2px -2px;
-  padding: 12px;
+  padding: 14px 12px 12px;
   border: 1px solid rgba(218, 228, 243, 0.86);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.94);
@@ -8368,7 +8368,7 @@ td.actions button {
 .compose-ai-review-actions div {
   min-width: 0;
   display: grid;
-  gap: 6px;
+  gap: 7px;
 }
 
 .compose-ai-review-actions strong {
@@ -8385,8 +8385,8 @@ td.actions button {
 
 .compose-ai-requirement textarea {
   width: 100%;
-  min-height: 88px;
-  max-height: 180px;
+  min-height: 122px;
+  max-height: 220px;
   resize: vertical;
   border: 1px solid rgba(216, 227, 242, 0.92);
   border-radius: 9px;
@@ -8405,6 +8405,7 @@ td.actions button {
 
 .compose-ai-review-actions button {
   min-height: 34px;
+  margin-top: 21px;
   border-radius: 9px;
   padding: 0 14px;
   background: #2563eb;

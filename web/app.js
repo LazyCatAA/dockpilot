@@ -2425,9 +2425,9 @@ function renderCompose() {
               <div class="compose-ai-requirement">
                 <strong>${state.compose.aiContent ? "修复结果待应用" : "AI 修正要求"}</strong>
                 <textarea id="composeRepairInstruction" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="${h(DEFAULT_COMPOSE_REPAIR_INSTRUCTION)}">${h(state.compose.repairInstruction || DEFAULT_COMPOSE_REPAIR_INSTRUCTION)}</textarea>
-                <span>保存后会作为默认预设，用于后续 AI 检测；应用修复内容请使用上方“应用到编辑器”。</span>
+                <span>保存后会作为默认预设，用于后续 AI 检测；上方按钮只负责把 AI 结果写入编辑器。</span>
               </div>
-              <button data-action="compose-save-repair-instruction">保存要求</button>
+              <button data-action="compose-save-repair-instruction">保存</button>
             </div>
           </section>
           <aside class="compose-reference-settings compose-log-panel compose-workspace-pane">

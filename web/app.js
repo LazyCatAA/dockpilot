@@ -40,6 +40,7 @@ const state = {
   compose: { projects: [], selected: "", content: "", output: "", logs: "", repair: null, repairLines: [], aiContent: "", repairInstruction: initialComposeRepairInstruction(), backups: [], backupModal: false, logsAutoScroll: true, busyAction: "" },
   files: { roots: [], root: "", path: "", items: [], editPath: "", content: "" },
   settings: null,
+  settingsTab: "basic",
 };
 
 const containerUpdatePollTimers = {};
@@ -2601,75 +2602,72 @@ function renderSettings() {
   if (!settings) return `<div class="empty">正在加载设置...</div>`;
   const fileRoots = (settings.file_roots || []).map((root) => `${root.name}=${root.path}`).join("\n");
   const composeRoots = (settings.compose_roots || []).join("\n");
+  const active = ["basic", "docker", "compose", "ai", "account"].includes(state.settingsTab) ? state.settingsTab : "basic";
+  const navItems = [
+    ["basic", "基础设置", "文件根目录"],
+    ["docker", "Docker 设置", "连接和代理"],
+    ["compose", "Compose 设置", "项目扫描目录"],
+    ["ai", "AI 接口", "修复和转换"],
+    ["account", "安全与账户", "密码管理"],
+  ];
+  const settingPanels = {
+    basic: `
+      <section class="settings-section-card">
+        <header><div><h4>基础设置</h4><p>管理文件访问根目录和常用路径。</p></div></header>
+        <label class="field"><span>文件根目录</span><textarea name="file_roots" spellcheck="false">${h(fileRoots)}</textarea><small>每行一个，格式：名称=/路径。</small></label>
+      </section>
+    `,
+    docker: `
+      <section class="settings-section-card">
+        <header><div><h4>Docker 设置</h4><p>配置 Docker 连接和镜像/网络代理。</p></div></header>
+        <label class="field"><span>Docker socket 路径</span><input name="docker_socket" value="${h(settings.docker_socket)}" /></label>
+        <label class="field"><span>镜像代理前缀</span><input name="image_registry_proxy" value="${h(settings.image_registry_proxy || "")}" placeholder="例如 docker.1ms.run" /></label>
+        <label class="field"><span>局域网网络代理</span><input name="network_proxy" value="${h(settings.network_proxy || "")}" placeholder="例如 192.168.1.2:7890 或 socks5://192.168.1.2:7890" /></label>
+      </section>
+    `,
+    compose: `
+      <section class="settings-section-card">
+        <header><div><h4>Compose 设置</h4><p>设置 Compose 项目扫描目录。</p></div></header>
+        <label class="field"><span>Compose 目录</span><textarea name="compose_roots" spellcheck="false">${h(composeRoots)}</textarea><small>每行一个目录，会在这些目录下查找 compose.yml。</small></label>
+      </section>
+    `,
+    ai: `
+      <section class="settings-section-card">
+        <header>
+          <div><h4>AI 接口</h4><p>配置 OpenAI 兼容接口，用于 Compose 修复和命令转换。</p></div>
+          <label class="settings-switch"><input type="checkbox" name="compose_ai_enabled" value="1" ${settings.compose_ai_enabled ? "checked" : ""} /><span>启用</span></label>
+        </header>
+        <label class="field"><span>AI Base URL</span><input name="compose_ai_base_url" value="${h(settings.compose_ai_base_url || "")}" placeholder="例如 https://api.openai.com/v1 或 http://oneapi:3000/v1" /></label>
+        <label class="field"><span>AI 模型名</span><input name="compose_ai_model" value="${h(settings.compose_ai_model || "")}" placeholder="例如 gpt-4.1-mini / qwen-plus / deepseek-chat" /></label>
+        <label class="field"><span>AI API Key${settings.compose_ai_api_key_set ? "（已配置，留空不修改）" : ""}</span><input name="compose_ai_api_key" type="password" autocomplete="off" placeholder="${settings.compose_ai_api_key_set ? "已配置，留空不修改" : "请输入 API Key"}" /></label>
+      </section>
+    `,
+  };
   return `
     <section class="settings-page">
+      <div class="settings-single-card">
       <aside class="settings-side-nav" aria-label="设置分类">
-        <a href="#settings-basic">基础设置</a>
-        <a href="#settings-docker">Docker 设置</a>
-        <a href="#settings-compose">Compose 设置</a>
-        <a href="#settings-ai">AI 接口</a>
-        <a href="#settings-account">安全与账户</a>
+        ${navItems.map(([key, label, desc]) => `<button type="button" data-action="settings-tab" data-tab="${h(key)}" class="${active === key ? "active" : ""}"><strong>${h(label)}</strong><span>${h(desc)}</span></button>`).join("")}
       </aside>
       <div class="settings-content">
-        <form class="settings-grid-form settings-refined-form" id="settingsForm">
-          <section class="settings-card settings-section-card" id="settings-basic">
-            <header>
-              <div>
-                <h4>基础设置</h4>
-                <p>管理文件访问根目录和常用路径。</p>
-              </div>
-            </header>
-            <label class="field"><span>文件根目录</span><textarea name="file_roots" spellcheck="false">${h(fileRoots)}</textarea><small>每行一个，格式：名称=/路径。</small></label>
+        ${active === "account" ? `
+          <section class="settings-section-card settings-account-card">
+            <header><div><h4>安全与账户</h4><p>修改当前管理员密码，保存后旧会话会失效。</p></div></header>
+            <form class="form-stack settings-password-form" id="passwordForm">
+              <label class="field"><span>当前密码</span><input name="current_password" type="password" autocomplete="current-password" required /></label>
+              <label class="field"><span>新密码</span><input name="new_password" type="password" autocomplete="new-password" minlength="8" required /></label>
+              <div class="settings-form-actions"><button class="primary" type="submit">修改密码</button></div>
+            </form>
           </section>
-          <section class="settings-card settings-section-card" id="settings-docker">
-            <header>
-              <div>
-                <h4>Docker 设置</h4>
-                <p>配置 Docker 连接和镜像/网络代理。</p>
-              </div>
-            </header>
-            <label class="field"><span>Docker socket 路径</span><input name="docker_socket" value="${h(settings.docker_socket)}" /></label>
-            <label class="field"><span>镜像代理前缀</span><input name="image_registry_proxy" value="${h(settings.image_registry_proxy || "")}" placeholder="例如 docker.1ms.run" /></label>
-            <label class="field"><span>局域网网络代理</span><input name="network_proxy" value="${h(settings.network_proxy || "")}" placeholder="例如 192.168.1.2:7890 或 socks5://192.168.1.2:7890" /></label>
-          </section>
-          <section class="settings-card settings-section-card" id="settings-compose">
-            <header>
-              <div>
-                <h4>Compose 设置</h4>
-                <p>设置 Compose 项目扫描目录。</p>
-              </div>
-            </header>
-            <label class="field"><span>Compose 目录</span><textarea name="compose_roots" spellcheck="false">${h(composeRoots)}</textarea><small>每行一个目录，会在这些目录下查找 compose.yml。</small></label>
-          </section>
-          <section class="settings-card settings-section-card" id="settings-ai">
-            <header>
-              <div>
-                <h4>AI 接口</h4>
-                <p>配置 OpenAI 兼容接口，用于 Compose 修复和命令转换。</p>
-              </div>
-              <label class="settings-switch"><input type="checkbox" name="compose_ai_enabled" value="1" ${settings.compose_ai_enabled ? "checked" : ""} /><span>启用</span></label>
-            </header>
-            <label class="field"><span>AI Base URL</span><input name="compose_ai_base_url" value="${h(settings.compose_ai_base_url || "")}" placeholder="例如 https://api.openai.com/v1 或 http://oneapi:3000/v1" /></label>
-            <label class="field"><span>AI 模型名</span><input name="compose_ai_model" value="${h(settings.compose_ai_model || "")}" placeholder="例如 gpt-4.1-mini / qwen-plus / deepseek-chat" /></label>
-            <label class="field"><span>AI API Key${settings.compose_ai_api_key_set ? "（已配置，留空不修改）" : ""}</span><input name="compose_ai_api_key" type="password" autocomplete="off" placeholder="${settings.compose_ai_api_key_set ? "已配置，留空不修改" : "请输入 API Key"}" /></label>
-          </section>
+        ` : `
+        <form class="settings-grid-form settings-refined-form" id="settingsForm" data-section="${h(active)}">
+          ${settingPanels[active] || settingPanels.basic}
           <div class="settings-form-actions">
             <button class="primary" type="submit">保存系统设置</button>
           </div>
         </form>
-        <section class="settings-card settings-section-card settings-account-card" id="settings-account">
-          <header>
-            <div>
-              <h4>安全与账户</h4>
-              <p>修改当前管理员密码，保存后旧会话会失效。</p>
-            </div>
-          </header>
-          <form class="form-stack settings-password-form" id="passwordForm">
-            <label class="field"><span>当前密码</span><input name="current_password" type="password" autocomplete="current-password" required /></label>
-            <label class="field"><span>新密码</span><input name="new_password" type="password" autocomplete="new-password" minlength="8" required /></label>
-            <div class="settings-form-actions"><button class="primary" type="submit">修改密码</button></div>
-          </form>
-        </section>
+        `}
+      </div>
       </div>
     </section>
   `;
@@ -2753,27 +2751,31 @@ document.addEventListener("submit", async (event) => {
     }
     if (form.id === "settingsForm") {
       const data = Object.fromEntries(new FormData(form));
+      const currentSettings = state.settings || {};
+      const currentFileRoots = currentSettings.file_roots || [];
+      const currentComposeRoots = currentSettings.compose_roots || [];
+      const parseFileRoots = (value) => String(value || "")
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const index = line.indexOf("=");
+          if (index <= 0) return null;
+          return { name: line.slice(0, index), path: line.slice(index + 1) };
+        })
+        .filter(Boolean);
       await api("/api/settings", {
         method: "PUT",
         body: {
-          docker_socket: data.docker_socket,
-          registry_mirrors: data.image_registry_proxy,
-          network_proxy: data.network_proxy,
-          compose_ai_enabled: data.compose_ai_enabled === "1",
-          compose_ai_base_url: data.compose_ai_base_url,
-          compose_ai_model: data.compose_ai_model,
-          compose_ai_api_key: data.compose_ai_api_key,
-          compose_roots: data.compose_roots.split("\n").map((line) => line.trim()).filter(Boolean),
-          file_roots: data.file_roots
-            .split("\n")
-            .map((line) => line.trim())
-            .filter(Boolean)
-            .map((line) => {
-              const index = line.indexOf("=");
-              if (index <= 0) return null;
-              return { name: line.slice(0, index), path: line.slice(index + 1) };
-            })
-            .filter(Boolean),
+          docker_socket: data.docker_socket ?? currentSettings.docker_socket,
+          registry_mirrors: data.image_registry_proxy ?? currentSettings.image_registry_proxy ?? currentSettings.registry_mirrors ?? [],
+          network_proxy: data.network_proxy ?? currentSettings.network_proxy ?? "",
+          compose_ai_enabled: Object.hasOwn(data, "compose_ai_enabled") ? data.compose_ai_enabled === "1" : Boolean(currentSettings.compose_ai_enabled),
+          compose_ai_base_url: data.compose_ai_base_url ?? currentSettings.compose_ai_base_url ?? "",
+          compose_ai_model: data.compose_ai_model ?? currentSettings.compose_ai_model ?? "",
+          compose_ai_api_key: data.compose_ai_api_key ?? "",
+          compose_roots: Object.hasOwn(data, "compose_roots") ? String(data.compose_roots).split("\n").map((line) => line.trim()).filter(Boolean) : currentComposeRoots,
+          file_roots: Object.hasOwn(data, "file_roots") ? parseFileRoots(data.file_roots) : currentFileRoots,
         },
       });
       state.files.roots = [];
@@ -2879,6 +2881,10 @@ document.addEventListener("click", async (event) => {
     }
     if (action === "sidebar-toggle") {
       state.sidebarCollapsed = !state.sidebarCollapsed;
+      render();
+    }
+    if (action === "settings-tab") {
+      state.settingsTab = button.dataset.tab || "basic";
       render();
     }
     if (action === "refresh") await refreshCurrent();

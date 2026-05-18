@@ -443,6 +443,66 @@ function dashboardWidgetValue(widget, overview) {
   };
 }
 
+function pct(used, total) {
+  const value = total ? Math.round((Number(used || 0) / Number(total || 0)) * 100) : 0;
+  return Math.max(0, Math.min(100, value));
+}
+
+function sidebarOverview() {
+  const overview = state.overview || {};
+  const containers = overview.containers || containerStats();
+  return {
+    docker: overview.docker || { available: Boolean(state.containers.length), message: "" },
+    host: overview.host || {},
+    containers,
+    updates: containerStats().updates,
+  };
+}
+
+function renderMiniMeter(label, value) {
+  const safe = Math.max(0, Math.min(100, Number(value || 0)));
+  return `
+    <div class="sidebar-meter">
+      <span>${h(label)}</span>
+      <i><b style="width:${safe}%"></b></i>
+      <em>${safe}%</em>
+    </div>
+  `;
+}
+
+function renderSidebarSystemStatus() {
+  const { host } = sidebarOverview();
+  const memory = pct(host.memory_used, host.memory_total);
+  const disk = pct(host.disk_used, host.disk_total);
+  const load = Number((host.load || [0])[0] || 0);
+  const loadPct = Math.min(100, Math.round(load * 25));
+  return `
+    <section class="sidebar-widget sidebar-widget-system" aria-label="系统状态">
+      <div class="sidebar-widget-head"><i class="ok"></i><span>系统状态</span></div>
+      ${renderMiniMeter("负载", loadPct)}
+      ${renderMiniMeter("内存", memory)}
+      ${renderMiniMeter("存储", disk)}
+    </section>
+  `;
+}
+
+function renderSidebarDockerMonitor() {
+  const { docker, containers, updates } = sidebarOverview();
+  const running = Number(containers.running || 0);
+  const total = Number(containers.total || state.containers.length || 0);
+  const online = Boolean(docker.available);
+  return `
+    <section class="sidebar-widget sidebar-widget-docker" aria-label="Docker 监控">
+      <div class="sidebar-widget-head"><i class="${online ? "ok" : "bad"}"></i><span>Docker</span></div>
+      <div class="sidebar-docker-grid">
+        <strong>${h(total)}</strong><span>容器</span>
+        <strong>${h(running)}</strong><span>运行</span>
+        <strong>${h(updates)}</strong><span>更新</span>
+      </div>
+    </section>
+  `;
+}
+
 async function saveDashboardWidgets(widgets) {
   const data = await api("/api/dashboard/widgets", { method: "PUT", body: { widgets } });
   state.dashboardWidgets = data.widgets || [];
@@ -843,6 +903,7 @@ async function refreshCurrent() {
   state.notice = "";
   render();
   try {
+    if (state.session?.authenticated && state.tab !== "dashboard") await loadOverview();
     if (state.tab === "dashboard") await loadDashboard();
     if (state.tab === "containers") await loadContainers();
     if (state.tab === "images") await loadImages();
@@ -864,6 +925,14 @@ async function loadDashboard() {
   state.dashboardWidgets = overview.dashboard_widgets || [];
   state.cards = cards.cards || [];
   state.navPrefs = nav.prefs || defaultNavPrefs();
+}
+
+async function loadOverview() {
+  try {
+    state.overview = await api("/api/overview");
+  } catch {
+    state.overview = state.overview || null;
+  }
 }
 
 async function loadContainers() {
@@ -1128,7 +1197,9 @@ function render() {
           <div class="brand-text"><h1>DockPilot</h1></div>
           <button class="sidebar-toggle" title="隐藏/显示侧边栏" data-action="sidebar-toggle">${state.sidebarCollapsed ? "›" : "‹"}</button>
         </div>
+        ${renderSidebarSystemStatus()}
         <nav class="nav">${renderNav()}</nav>
+        ${renderSidebarDockerMonitor()}
       </aside>
       <main class="content">
         ${state.notice ? `<div class="notice ${h(state.noticeTone)}">${h(state.notice)}</div>` : ""}

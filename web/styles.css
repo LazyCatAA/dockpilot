@@ -1165,6 +1165,185 @@ a {
   padding: 26px 28px;
 }
 
+.bookmark-editor-modal {
+  width: min(860px, calc(100vw - 56px));
+  max-height: min(92vh, 1320px);
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 30px 90px rgba(7, 14, 44, 0.3);
+}
+
+.bookmark-editor-modal .card-modal-head {
+  align-items: center;
+  padding: 24px 28px;
+  border-bottom: 1px solid #e7ebf0;
+}
+
+.bookmark-editor-modal .card-modal-head h3 {
+  font-size: 28px;
+  font-weight: 950;
+  letter-spacing: -0.02em;
+}
+
+.bookmark-editor-modal .card-modal-head-tools {
+  gap: 16px;
+}
+
+.bookmark-editor-modal .card-modal-head-tools input {
+  width: 128px;
+  height: 40px;
+  border-radius: 12px;
+}
+
+.bookmark-editor-modal .switch-label {
+  gap: 10px;
+  color: #657086;
+  font-size: 18px;
+  font-weight: 850;
+}
+
+.bookmark-editor-modal .switch-label i {
+  width: 76px;
+  height: 36px;
+  background: #e3e7ee;
+}
+
+.bookmark-editor-modal .switch-label i::after {
+  top: 4px;
+  left: 4px;
+  width: 28px;
+  height: 28px;
+}
+
+.bookmark-editor-modal .card-modal-body {
+  gap: 22px;
+  padding: 0;
+}
+
+.bookmark-editor-modal .card-modal-grid,
+.bookmark-editor-modal .card-modal-options,
+.bookmark-editor-modal .card-icon-editor,
+.bookmark-editor-modal .icon-library-grid {
+  margin: 0 28px;
+}
+
+.bookmark-editor-modal .card-modal-grid {
+  padding-top: 28px;
+  row-gap: 22px;
+  column-gap: 18px;
+}
+
+.bookmark-editor-modal .field span {
+  color: #657086;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.bookmark-editor-modal .field input,
+.bookmark-editor-modal .field textarea,
+.bookmark-editor-modal .field select {
+  min-height: 62px;
+  border-radius: 16px;
+  border-color: #d8dee8;
+  background: #ffffff;
+  font-size: 18px;
+}
+
+.bookmark-editor-modal .field textarea {
+  min-height: 118px;
+  line-height: 1.45;
+}
+
+.bookmark-editor-modal .card-modal-options {
+  gap: 16px;
+  padding: 0 0 4px;
+}
+
+.bookmark-editor-modal .card-modal-options .field {
+  gap: 12px;
+}
+
+.bookmark-editor-modal .card-modal-options .field span {
+  font-size: 18px;
+}
+
+.bookmark-editor-modal .card-icon-editor {
+  gap: 20px;
+  align-items: center;
+  padding: 8px 0 0;
+}
+
+.bookmark-editor-modal .card-icon-editor h4 {
+  color: #657086;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.bookmark-editor-modal .card-icon-editor p {
+  color: #8a94a8;
+  font-size: 15px;
+}
+
+.bookmark-editor-modal .card-icon-preview {
+  width: 132px;
+  height: 132px;
+  border-radius: 22px;
+  box-shadow: 0 18px 34px rgba(7, 14, 44, 0.16);
+}
+
+.bookmark-editor-modal .mini-actions {
+  gap: 12px;
+}
+
+.bookmark-editor-modal .mini-actions button,
+.bookmark-editor-modal .icon-library-grid button {
+  min-height: 44px;
+  border-radius: 14px;
+  font-size: 14px;
+}
+
+.bookmark-editor-modal .icon-library-grid {
+  gap: 10px;
+  padding: 0 0 28px;
+}
+
+.bookmark-editor-modal .card-modal-foot {
+  padding: 20px 28px 24px;
+  border-top: 1px solid #e7ebf0;
+}
+
+.bookmark-editor-modal .card-modal-foot button {
+  min-height: 50px;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+@media (max-width: 720px) {
+  .bookmark-editor-modal {
+    width: 100%;
+    max-height: 100vh;
+    border-radius: 18px;
+  }
+
+  .bookmark-editor-modal .card-modal-head,
+  .bookmark-editor-modal .card-modal-foot {
+    padding: 12px 14px;
+  }
+
+  .bookmark-editor-modal .card-modal-head h3 {
+    font-size: 22px;
+  }
+
+  .bookmark-editor-modal .card-modal-grid,
+  .bookmark-editor-modal .card-modal-options,
+  .bookmark-editor-modal .card-icon-editor,
+  .bookmark-editor-modal .icon-library-grid {
+    margin-left: 14px;
+    margin-right: 14px;
+  }
+}
+
 .card-modal-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 120px;

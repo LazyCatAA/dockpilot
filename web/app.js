@@ -1567,7 +1567,7 @@ function renderCardModal() {
   const title = card.id ? "修改项目" : "添加项目";
   return `
     <div class="card-modal-backdrop" id="cardModal">
-      <form id="cardForm" class="card-modal">
+      <form id="cardForm" class="card-modal bookmark-editor-modal">
         <div class="card-modal-head">
           <h3>${title}</h3>
           <div class="card-modal-head-tools">

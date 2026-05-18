@@ -10177,11 +10177,11 @@ td.actions button {
     top: calc(100% + 8px);
     left: 0;
     right: 0;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 7px;
-    max-height: min(272px, 52vh);
+    grid-template-columns: 1fr;
+    gap: 6px;
+    max-height: min(224px, 42vh);
     overflow: auto;
-    padding: 8px;
+    padding: 6px;
     border: 1px solid rgba(202, 219, 243, 0.92);
     border-radius: 16px;
     background:
@@ -10195,9 +10195,10 @@ td.actions button {
   }
 
   .compose-project-card {
-    min-height: 48px;
-    padding: 8px 10px;
-    border-radius: 12px;
+    min-height: 44px;
+    padding: 6px 10px;
+    border-radius: 11px;
+    gap: 8px;
   }
 
   .compose-project-card strong {
@@ -10206,7 +10207,9 @@ td.actions button {
 
   .compose-project-card .compose-project-info {
     min-width: 0;
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
   .compose-project-card .compose-project-state {
@@ -10219,6 +10222,12 @@ td.actions button {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .compose-project-card small {
+    font-size: 11px;
+    font-weight: 800;
+    color: #64748b;
   }
 
   .compose-reference-main {

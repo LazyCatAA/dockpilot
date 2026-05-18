@@ -286,9 +286,9 @@ function updateContainerCheckState(containerId, data) {
   const item = state.containers.find((container) => container.Id === containerId);
   if (!item) return;
   item.DockPilot = item.DockPilot || {};
+  item.DockPilot.update_checked_at = Math.floor(Date.now() / 1000);
   if (data.ok && typeof data.update_available === "boolean") {
     item.DockPilot.update_available = data.update_available;
-    item.DockPilot.update_checked_at = Math.floor(Date.now() / 1000);
     item.DockPilot.update_check_error = "";
   } else if (!data.ok) {
     item.DockPilot.update_check_error = data.message || "检查更新失败。";
@@ -1143,6 +1143,7 @@ async function checkContainerUpdates(containers, { force = false } = {}) {
       updateContainerCheckState(item.Id, data);
     } catch (error) {
       item.DockPilot = item.DockPilot || {};
+      item.DockPilot.update_checked_at = Math.floor(Date.now() / 1000);
       item.DockPilot.update_check_error = error.message;
       state.containerUpdateCheck.failed += 1;
     } finally {

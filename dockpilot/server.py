@@ -550,6 +550,7 @@ class Store:
         color: str | None = None,
         update_available: bool | None = None,
         icon_data: str | None = None,
+        touch_update_checked_at: bool = False,
     ) -> dict[str, Any]:
         if not container_key:
             raise ValueError("container key is required")
@@ -559,7 +560,7 @@ class Store:
         next_icon = str(current.get("icon_data", "")) if icon_data is None else icon_data
         next_update = bool(current.get("update_available", False)) if update_available is None else bool(update_available)
         checked_at = current.get("update_checked_at")
-        if update_available is not None:
+        if update_available is not None or touch_update_checked_at:
             checked_at = now_ts()
         with self.connect() as conn:
             conn.execute(
@@ -1299,6 +1300,8 @@ class AppHandler(BaseHTTPRequestHandler):
                     result = check_container_update(inspect_data, docker.socket_path)
                     if should_persist_update_check_result(result):
                         STORE.set_container_pref(container_key_from_inspect(inspect_data), update_available=bool(result["update_available"]))
+                    else:
+                        STORE.set_container_pref(container_key_from_inspect(inspect_data), touch_update_checked_at=True)
                     self.write_json(result)
                     return
                 if self.command == "POST" and action == "update":

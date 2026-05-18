@@ -207,6 +207,17 @@ def test_failed_update_check_should_not_clear_existing_update_state() -> None:
     )
 
 
+def test_touch_update_check_time_keeps_existing_update_state() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        store = server.Store(Path(tmp) / "dockpilot.db")
+        store.set_container_pref("nginx:latest", update_available=True)
+        first = store.get_container_prefs()["nginx:latest"]
+        store.set_container_pref("nginx:latest", touch_update_checked_at=True)
+        second = store.get_container_prefs()["nginx:latest"]
+        assert_true(second["update_available"] is True, "只更新时间戳不应清除已有更新状态")
+        assert_true(second["update_checked_at"] >= first["update_checked_at"], "只更新时间戳应记录最近检测尝试")
+
+
 def test_container_card_uses_repo_tag_when_summary_image_is_digest() -> None:
     containers = [
         {

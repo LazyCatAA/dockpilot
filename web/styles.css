@@ -10165,35 +10165,30 @@ td.actions button {
   }
 
   .compose-reference-main {
-    position: fixed;
-    left: 6px;
-    right: 6px;
-    bottom: calc(6px + env(safe-area-inset-bottom));
-    top: 32vh;
-    z-index: 90;
+    position: static;
     display: grid;
     gap: 7px;
     padding: 8px;
     border: 1px solid rgba(205, 218, 238, 0.8);
-    border-radius: 16px 16px 18px 18px;
+    border-radius: 16px;
     background:
       linear-gradient(180deg, rgba(255,255,255,0.88), rgba(243,249,255,0.82)),
       rgba(255,255,255,0.8);
     box-shadow: 0 16px 40px rgba(31, 82, 140, 0.18), inset 0 1px 0 rgba(255,255,255,0.9);
-    transform: translateY(calc(100% + 80px));
-    transition: transform 0.24s ease;
-    overflow: auto;
-    pointer-events: none;
+    overflow: visible;
   }
 
   .compose-reference-main.open,
   .compose-reference-main.compose-mobile-drawer.open {
-    transform: translateY(0);
-    pointer-events: auto;
+    display: grid;
+  }
+
+  .compose-reference-main.compose-mobile-drawer:not(.open) {
+    display: none;
   }
 
   .compose-mobile-drawer-grip {
-    display: block;
+    display: none;
     width: 42px;
     height: 4px;
     margin: 0 auto 2px;

@@ -102,8 +102,8 @@ def main() -> int:
 
         _, page = client.request("GET", "/")
         assert_true("DockPilot" in page, "首页静态文件应可访问")
-        assert_true("app.js?v=20260518-34" in page, "首页应引用新的前端资源版本，避免浏览器缓存旧 app.js")
-        assert_true("styles.css?v=20260518-34" in page, "首页应引用新的样式资源版本，避免浏览器缓存旧 styles.css")
+        assert_true("app.js?v=20260518-35" in page, "首页应引用新的前端资源版本，避免浏览器缓存旧 app.js")
+        assert_true("styles.css?v=20260518-35" in page, "首页应引用新的样式资源版本，避免浏览器缓存旧 styles.css")
         assert_true("/vendor/codemirror/codemirror.min.js" in page, "首页应加载本地 CodeMirror 编辑器")
         assert_true("/vendor/codemirror/yaml.min.js" in page, "首页应加载本地 CodeMirror YAML 高亮模式")
         assert_true("/vendor/codemirror/codemirror.bundle.mjs" not in page, "首页不应加载会造成扩展实例不一致的 CM6 bundle")

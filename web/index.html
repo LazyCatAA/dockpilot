@@ -4,16 +4,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>DockPilot</title>
-    <link rel="stylesheet" href="/styles.css?v=20260518-8" />
+    <link rel="stylesheet" href="/styles.css?v=20260518-9" />
   </head>
   <body>
     <div id="app" class="app-shell"></div>
     <script type="module">
-      import { EditorState } from "https://esm.sh/@codemirror/state@6.4.1";
-      import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, highlightActiveLine } from "https://esm.sh/@codemirror/view@6.28.6";
-      import { defaultKeymap, history, historyKeymap } from "https://esm.sh/@codemirror/commands@6.6.0";
-      import { bracketMatching, indentOnInput, syntaxHighlighting, defaultHighlightStyle } from "https://esm.sh/@codemirror/language@6.10.2";
-      import { yaml } from "https://esm.sh/@codemirror/lang-yaml@6.1.2";
+      import { EditorState } from "/vendor/codemirror/state.bundle.mjs";
+      import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, highlightActiveLine } from "/vendor/codemirror/view.bundle.mjs";
+      import { defaultKeymap, history, historyKeymap } from "/vendor/codemirror/commands.bundle.mjs";
+      import { bracketMatching, indentOnInput, syntaxHighlighting, defaultHighlightStyle } from "/vendor/codemirror/language.bundle.mjs";
+      import { yaml } from "/vendor/codemirror/lang-yaml.bundle.mjs";
 
       const composeTheme = EditorView.theme({
         "&": { height: "100%", color: "#d8e6f7", backgroundColor: "#0d1725" },
@@ -57,6 +57,6 @@
         }
       };
     </script>
-    <script src="/app.js?v=20260518-8"></script>
+    <script src="/app.js?v=20260518-9"></script>
   </body>
 </html>

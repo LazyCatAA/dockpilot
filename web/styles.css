@@ -476,10 +476,24 @@ a {
 
 .notice {
   margin: 0 0 16px;
-  padding: 12px 14px;
-  border: 1px solid #ffd4ce;
-  border-radius: 8px;
-  background: #fff5f3;
+  padding: 10px 14px;
+  border: 1px solid rgba(191, 219, 254, 0.72);
+  border-radius: 10px;
+  background: rgba(245, 250, 255, 0.92);
+  color: #27415f;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.86);
+}
+
+.notice.success {
+  border-color: rgba(167, 243, 208, 0.9);
+  background: rgba(240, 253, 244, 0.95);
+  color: #166534;
+}
+
+.notice.warn,
+.notice.error {
+  border-color: rgba(254, 202, 202, 0.92);
+  background: rgba(255, 247, 245, 0.96);
   color: #b23628;
 }
 
@@ -6217,11 +6231,11 @@ td.actions button {
 /* Preview-accurate structural pass: glass shell, visible sidebar, compact page canvases. */
 .layout,
 .layout.sidebar-collapsed {
-  grid-template-columns: 176px minmax(0, 1fr);
+  grid-template-columns: 156px minmax(0, 1fr);
   gap: 0;
   min-height: 100vh;
   background:
-    linear-gradient(90deg, rgba(226, 240, 255, 0.82) 0, rgba(226, 240, 255, 0.48) 176px, transparent 176px),
+    linear-gradient(90deg, rgba(226, 240, 255, 0.82) 0, rgba(226, 240, 255, 0.48) 156px, transparent 156px),
     radial-gradient(circle at 22% 4%, rgba(125, 190, 255, 0.34), transparent 28%),
     radial-gradient(circle at 88% 8%, rgba(196, 181, 253, 0.28), transparent 26%),
     linear-gradient(180deg, #f8fbff, #edf6ff);
@@ -6229,9 +6243,9 @@ td.actions button {
 
 .layout:has(.sidebar:hover),
 .layout:has(.sidebar:focus-within) {
-  grid-template-columns: 176px minmax(0, 1fr);
+  grid-template-columns: 156px minmax(0, 1fr);
   background:
-    linear-gradient(90deg, rgba(226, 240, 255, 0.82) 0, rgba(226, 240, 255, 0.48) 176px, transparent 176px),
+    linear-gradient(90deg, rgba(226, 240, 255, 0.82) 0, rgba(226, 240, 255, 0.48) 156px, transparent 156px),
     radial-gradient(circle at 22% 4%, rgba(125, 190, 255, 0.34), transparent 28%),
     radial-gradient(circle at 88% 8%, rgba(196, 181, 253, 0.28), transparent 26%),
     linear-gradient(180deg, #f8fbff, #edf6ff);
@@ -6244,12 +6258,12 @@ td.actions button {
   position: sticky;
   top: 0;
   z-index: 60;
-  width: 176px;
+  width: 156px;
   height: 100vh;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   align-items: stretch;
-  padding: 18px 10px 18px 18px;
+  padding: 16px 8px 16px 14px;
   color: #5b708c;
   background:
     linear-gradient(180deg, rgba(239, 248, 255, 0.72), rgba(220, 238, 255, 0.58));
@@ -6258,19 +6272,19 @@ td.actions button {
 
 .sidebar .brand {
   display: flex;
-  margin: 0 0 14px;
-  padding: 6px 6px 11px;
+  margin: 0 0 12px;
+  padding: 4px 4px 10px;
   border-bottom: 1px solid rgba(191, 219, 254, 0.42);
 }
 
 .sidebar .mark {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
 }
 
 .sidebar .brand h1 {
-  font-size: 16px;
+  font-size: 15px;
 }
 
 .sidebar .brand p,
@@ -6283,7 +6297,7 @@ td.actions button {
 .sidebar:hover .nav,
 .sidebar:focus-within .nav,
 .sidebar-collapsed .nav {
-  width: 148px;
+  width: 134px;
   height: 100%;
   max-height: none;
   overflow-y: auto;
@@ -6299,7 +6313,7 @@ td.actions button {
 .sidebar:hover .nav-title,
 .sidebar:focus-within .nav-title {
   min-width: 0;
-  margin: 7px 7px 6px;
+  margin: 6px 6px 5px;
   color: #71859f;
   font-size: 11px;
   font-weight: 900;
@@ -6309,13 +6323,13 @@ td.actions button {
 
 .nav button,
 .sidebar-collapsed .nav button {
-  width: 140px;
-  min-height: 38px;
-  grid-template-columns: 30px minmax(0, 1fr);
-  gap: 6px;
+  width: 126px;
+  min-height: 36px;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 5px;
   justify-content: start;
   padding: 0 10px 0 0;
-  border-radius: 13px;
+  border-radius: 12px;
 }
 
 .nav button span:not(.nav-icon),
@@ -6329,14 +6343,14 @@ td.actions button {
 }
 
 .nav-icon {
-  width: 29px;
-  height: 29px;
-  border-radius: 9px;
+  width: 27px;
+  height: 27px;
+  border-radius: 8px;
 }
 
 .nav-icon svg {
-  width: 21px;
-  height: 21px;
+  width: 19px;
+  height: 19px;
 }
 
 .nav button.active,
@@ -6355,7 +6369,7 @@ td.actions button {
 
 .content {
   min-height: 100vh;
-  padding: 24px clamp(18px, 3vw, 40px) 34px 22px;
+  padding: 20px clamp(16px, 2.5vw, 32px) 34px 18px;
 }
 
 .container-page,

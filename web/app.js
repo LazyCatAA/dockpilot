@@ -13,6 +13,8 @@ const state = {
   session: null,
   tab: "dashboard",
   error: "",
+  notice: "",
+  noticeTone: "info",
   loading: false,
   overview: null,
   dashboardWidgets: [],
@@ -172,6 +174,12 @@ function formatPorts(ports) {
 
 function pageTitle() {
   return tabs.find(([key]) => key === state.tab)?.[1] || "总览";
+}
+
+function setNotice(message, tone = "info") {
+  state.notice = String(message || "");
+  state.noticeTone = tone;
+  if (tone !== "error") state.error = "";
 }
 
 function containerName(container) {
@@ -825,6 +833,7 @@ async function boot() {
 async function refreshCurrent() {
   state.loading = true;
   state.error = "";
+  state.notice = "";
   render();
   try {
     if (state.tab === "dashboard") await loadDashboard();
@@ -1004,6 +1013,7 @@ async function checkContainerUpdates(containers, { force = false } = {}) {
   const targets = force ? containers : containers.filter(shouldAutoCheckContainerUpdate);
   if (!targets.length || state.containerUpdateCheck.active) return;
   state.containerUpdateCheck = { active: true, done: 0, total: targets.length, failed: 0 };
+  setNotice("正在检测容器更新…", "info");
   render();
   for (const item of targets) {
     const key = containerKey(item);
@@ -1021,9 +1031,12 @@ async function checkContainerUpdates(containers, { force = false } = {}) {
     }
   }
   state.containerUpdateCheck.active = false;
-  state.error = state.containerUpdateCheck.failed
-    ? `更新检测完成，${state.containerUpdateCheck.failed} 个容器检测失败。`
-    : "更新检测完成。";
+  setNotice(
+    state.containerUpdateCheck.failed
+      ? `更新检测完成，${state.containerUpdateCheck.failed} 个容器检测失败。`
+      : "更新检测完成。",
+    state.containerUpdateCheck.failed ? "warn" : "success"
+  );
   render();
 }
 
@@ -1114,7 +1127,8 @@ function render() {
         <nav class="nav">${renderNav()}</nav>
       </aside>
       <main class="content">
-        ${state.error ? `<div class="notice">${h(state.error)}</div>` : ""}
+        ${state.notice ? `<div class="notice ${h(state.noticeTone)}">${h(state.notice)}</div>` : ""}
+        ${state.error ? `<div class="notice error">${h(state.error)}</div>` : ""}
         ${state.loading ? `<div class="empty">正在加载当前页面...</div>` : renderCurrent()}
         ${state.compose.backupModal ? renderComposeBackupModal() : ""}
       </main>
@@ -1138,7 +1152,8 @@ function renderAuth() {
             <p>${setup ? "创建第一个管理员账号。" : "登录后管理这台主机。"}</p>
           </div>
         </div>
-        ${state.error ? `<div class="notice">${h(state.error)}</div>` : ""}
+        ${state.notice ? `<div class="notice ${h(state.noticeTone)}">${h(state.notice)}</div>` : ""}
+        ${state.error ? `<div class="notice error">${h(state.error)}</div>` : ""}
         <div class="field">
           <label>用户名</label>
           <input name="username" autocomplete="username" value="${setup ? "admin" : ""}" required />
@@ -3019,12 +3034,11 @@ document.addEventListener("click", async (event) => {
     if (action === "container-check-update") {
       const data = await api(`/api/docker/containers/${encodeURIComponent(button.dataset.id)}/check-update`, { method: "POST" });
       updateContainerCheckState(button.dataset.id, data);
-      const message = data.ok
-        ? data.update_available
-          ? "发现可更新镜像。"
-          : "当前镜像没有检测到更新。"
-        : zhError(data.message || "检查更新失败。");
-      state.error = message;
+      if (data.ok) {
+        setNotice(data.update_available ? "发现可更新镜像。" : "当前镜像没有检测到更新。", data.update_available ? "warn" : "success");
+      } else {
+        state.error = zhError(data.message || "检查更新失败。");
+      }
       render();
     }
     if (action === "container-update") {

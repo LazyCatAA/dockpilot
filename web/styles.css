@@ -7062,9 +7062,9 @@ td.actions button {
 }
 
 .nav-minimal-card {
-  min-height: 66px;
-  gap: 10px;
-  padding: 10px 12px;
+  min-height: 96px;
+  gap: 12px;
+  padding: 14px;
   border-radius: 18px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(248, 251, 255, 0.42)),
@@ -7073,9 +7073,9 @@ td.actions button {
 }
 
 .nav-minimal-card-icon {
-  width: 40px;
-  height: 40px;
-  flex-basis: 40px;
+  width: 46px;
+  height: 46px;
+  flex-basis: 46px;
   border-radius: 13px;
   font-size: 14px;
 }
@@ -10156,8 +10156,8 @@ td.actions button {
   }
 
   .nav-minimal-card {
-    min-height: 56px;
-    padding: 8px;
+    min-height: 72px;
+    padding: 10px;
     border-radius: 13px;
   }
 

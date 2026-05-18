@@ -2509,11 +2509,7 @@ function renderCompose() {
             <strong>项目列表</strong>
           </div>
           <button class="compose-mobile-project-select ${mobileProjectOpen ? "open" : ""}" data-action="compose-mobile-project-toggle" type="button" aria-expanded="${mobileProjectOpen ? "true" : "false"}">
-            <i class="compose-mobile-project-icon">${navIcon("compose")}</i>
-            <span>
-              <strong>${h(selectedName)}</strong>
-              <small>${h(selected ? `${composeStatusLabel(selectedTone)} · ${selected.file || "compose.yml"}` : "点开选择项目")}</small>
-            </span>
+            <span>Compose 项目</span>
             <b>⌄</b>
           </button>
           <label class="compose-reference-search">

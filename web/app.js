@@ -1316,7 +1316,8 @@ function render() {
         ${state.compose.backupModal ? renderComposeBackupModal() : ""}
       </main>
       ${renderMobileBottomNav()}
-    </section>
+    </div>
+    ${renderCardContextMenu()}
   `;
   if (state.tab === "compose") {
     mountComposeEditor();
@@ -1426,7 +1427,6 @@ function renderDashboard() {
       </div>
       ${renderNavGroupSettingsModal()}
       ${renderNavSettingsModal()}
-      ${renderCardContextMenu()}
       ${renderCardModal()}
     </section>
   `;
@@ -3908,6 +3908,7 @@ document.addEventListener("contextmenu", (event) => {
   const cardNode = event.target.closest("[data-card-id]");
   if (!cardNode || state.tab !== "dashboard") return;
   event.preventDefault();
+  if (state.cardContextMenu.open) return;
   openCardContextMenuFromNode(cardNode, event.clientX, event.clientY);
 });
 

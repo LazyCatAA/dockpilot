@@ -1030,14 +1030,20 @@ a {
 
 .bookmark-context-menu {
   position: fixed;
-  z-index: 1200;
+  z-index: 5000;
+  width: 248px;
   min-width: 248px;
+  max-width: calc(100vw - 16px);
+  right: auto;
+  bottom: auto;
+  display: block;
   overflow: hidden;
   border: 1px solid rgba(226, 232, 240, 0.95);
   border-radius: 28px;
   background: rgba(255, 255, 255, 0.98);
   box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
   backdrop-filter: blur(18px);
+  transform: translateZ(0);
 }
 
 .bookmark-context-menu button {

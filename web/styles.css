@@ -9006,3 +9006,216 @@ td.actions button {
   }
 
 }
+
+/* Final review pass: harder tool UI rhythm for sidebar and containers. */
+.sidebar .brand {
+  align-items: center;
+  min-height: 56px;
+  margin-bottom: 0;
+  padding: 8px 4px 14px;
+}
+
+.sidebar .mark {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.34),
+    0 8px 16px rgba(37, 99, 235, 0.12);
+}
+
+.sidebar .brand h1 {
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.nav,
+.sidebar:hover .nav,
+.sidebar:focus-within .nav,
+.sidebar-collapsed .nav {
+  gap: 6px;
+  align-content: center;
+  padding: 0;
+}
+
+.nav button,
+.sidebar-collapsed .nav button {
+  height: 40px;
+  min-height: 40px;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 8px;
+  padding: 0 9px;
+  border-radius: 9px;
+  color: #415a78;
+}
+
+.nav button span:not(.nav-icon),
+.sidebar:hover .nav button span:not(.nav-icon),
+.sidebar:focus-within .nav button span:not(.nav-icon),
+.sidebar-collapsed .nav button span:not(.nav-icon) {
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.nav-icon {
+  width: 27px;
+  height: 27px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.nav button.active {
+  background: rgba(37, 99, 235, 0.1);
+  color: #1d4ed8;
+}
+
+.nav button.active::before {
+  top: 8px;
+  height: 24px;
+}
+
+.container-page {
+  gap: 14px;
+}
+
+.container-titlebar,
+.image-library .panel-head,
+.volume-library .panel-head {
+  min-height: 78px;
+  align-items: center;
+  padding: 16px 20px;
+  border-radius: 20px;
+  box-shadow: var(--glass-shadow-sm), var(--glass-inner);
+}
+
+.container-titlebar h2,
+.image-library .panel-head h3,
+.volume-library .panel-head h3 {
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.container-titlebar p {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.bulk-button,
+.refresh-button {
+  min-height: 38px;
+  border-radius: 10px;
+  padding: 0 15px;
+  box-shadow: var(--glass-inner), 0 8px 18px rgba(31, 82, 140, 0.08);
+}
+
+.container-statbar {
+  border-radius: 16px;
+}
+
+.container-stat {
+  min-height: 64px;
+}
+
+.container-stat strong {
+  font-size: 25px;
+}
+
+.container-stat span {
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.container-filter-label {
+  margin-top: 0;
+}
+
+.container-cards {
+  gap: 10px;
+}
+
+.container-card {
+  min-height: 98px;
+  padding: 10px;
+  border-radius: 14px;
+  box-shadow: var(--glass-inner), 0 10px 24px rgba(31, 82, 140, 0.08);
+}
+
+.container-card-main {
+  grid-template-columns: 36px minmax(0, 1fr);
+}
+
+.container-icon {
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  border-radius: 10px;
+}
+
+.container-name-row strong {
+  font-size: 13px;
+}
+
+.container-action {
+  min-height: 27px;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.container-page .table-wrap {
+  border-color: rgba(213, 225, 242, 0.88);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.76);
+  box-shadow: var(--glass-inner), 0 14px 30px rgba(31, 82, 140, 0.08);
+  backdrop-filter: blur(18px);
+}
+
+.container-page table {
+  min-width: 980px;
+}
+
+.container-page th,
+.container-page td {
+  padding: 10px 12px;
+}
+
+.container-page th {
+  background: rgba(248, 251, 255, 0.82);
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.container-page td {
+  color: #475569;
+  font-size: 12px;
+}
+
+.container-page td strong {
+  color: #0f172a;
+  font-size: 13px;
+}
+
+.container-page td code {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.container-page td.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  max-width: 420px;
+  white-space: normal;
+}
+
+.container-page td.actions button {
+  min-height: 26px;
+  margin: 0;
+  padding: 0 8px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  font-size: 11px;
+  font-weight: 850;
+  box-shadow: none;
+}

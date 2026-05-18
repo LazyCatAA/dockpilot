@@ -1013,7 +1013,7 @@ async function checkContainerUpdates(containers, { force = false } = {}) {
   const targets = force ? containers : containers.filter(shouldAutoCheckContainerUpdate);
   if (!targets.length || state.containerUpdateCheck.active) return;
   state.containerUpdateCheck = { active: true, done: 0, total: targets.length, failed: 0 };
-  setNotice("正在检测容器更新…", "info");
+  state.notice = "";
   render();
   for (const item of targets) {
     const key = containerKey(item);
@@ -1031,12 +1031,9 @@ async function checkContainerUpdates(containers, { force = false } = {}) {
     }
   }
   state.containerUpdateCheck.active = false;
-  setNotice(
-    state.containerUpdateCheck.failed
-      ? `更新检测完成，${state.containerUpdateCheck.failed} 个容器检测失败。`
-      : "更新检测完成。",
-    state.containerUpdateCheck.failed ? "warn" : "success"
-  );
+  if (state.containerUpdateCheck.failed) {
+    state.error = `${state.containerUpdateCheck.failed} 个容器检测失败。`;
+  }
   render();
 }
 

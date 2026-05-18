@@ -6299,7 +6299,7 @@ td.actions button {
 .sidebar-collapsed .nav {
   display: grid;
   gap: 4px;
-  align-content: start;
+  align-content: center;
   grid-auto-rows: max-content;
   width: 134px;
   height: 100%;

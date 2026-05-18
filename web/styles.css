@@ -10099,6 +10099,9 @@ td.actions button {
   }
 
   .compose-reference-sidebar {
+    display: grid;
+    gap: 8px;
+    align-content: start;
     padding: 8px;
     border-right: 0;
     border-bottom: 1px solid rgba(213, 225, 242, 0.72);
@@ -10106,6 +10109,9 @@ td.actions button {
 
   .compose-reference-projects {
     position: relative;
+    height: auto;
+    min-height: 0;
+    grid-template-rows: none;
     gap: 7px;
   }
 

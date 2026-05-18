@@ -52,7 +52,6 @@ const state = {
 
 const containerUpdatePollTimers = {};
 const containerUpdateClearTimers = {};
-const containerAutoChecked = new Set();
 let imagePullPollTimer = null;
 let volumeBackupPollTimer = null;
 let composeEditorView = null;
@@ -276,10 +275,10 @@ function renderContainerCardUpdateProgress(containerId) {
 
 function shouldAutoCheckContainerUpdate(container) {
   const key = containerKey(container);
-  if (!key || containerAutoChecked.has(key)) return false;
+  if (!key) return false;
   const checkedAt = Number(container.DockPilot?.update_checked_at || 0);
   if (!checkedAt) return true;
-  return Date.now() / 1000 - checkedAt > 12 * 60 * 60;
+  return Date.now() / 1000 - checkedAt > 60 * 60;
 }
 
 function updateContainerCheckState(containerId, data) {
@@ -1138,8 +1137,6 @@ async function checkContainerUpdates(containers, { force = false } = {}) {
   state.notice = "";
   render();
   for (const item of targets) {
-    const key = containerKey(item);
-    if (key) containerAutoChecked.add(key);
     try {
       const data = await api(`/api/docker/containers/${encodeURIComponent(item.Id)}/check-update`, { method: "POST" });
       updateContainerCheckState(item.Id, data);
@@ -1163,7 +1160,9 @@ function scheduleContainerUpdateChecks() {
   if (state.tab !== "containers") return;
   const targets = state.containers.filter(shouldAutoCheckContainerUpdate);
   if (!targets.length) return;
-  setTimeout(() => checkContainerUpdates(state.containers), 300);
+  setTimeout(() => {
+    if (state.tab === "containers") checkContainerUpdates(state.containers);
+  }, 5000);
 }
 
 async function loadCompose() {
@@ -1355,12 +1354,6 @@ function renderDashboard() {
   return `
     <section class="nav-home nav-minimal nav-width-${h(prefs.layout_width)} nav-density-${h(prefs.density)} nav-style-${h(prefs.card_style)} nav-icon-${h(prefs.icon_size)} nav-title-${h(prefs.title_font_size)}" style="--nav-bg:${h(prefs.background)}">
       <div class="nav-minimal-topbar">
-        <div class="nav-minimal-brand">
-          <div class="nav-minimal-title">
-            <strong>${h(prefs.title)}</strong>
-          </div>
-          <div class="nav-minimal-section-title"><i></i><span>${h(prefs.section_title || "应用")}</span></div>
-        </div>
         <button class="nav-minimal-settings" data-action="nav-settings-open" title="导航页设置">设置</button>
       </div>
       <div class="nav-minimal-hero">

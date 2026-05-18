@@ -6849,7 +6849,7 @@ td.actions button {
 .nav-minimal-topbar {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 18px;
 }
 

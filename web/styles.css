@@ -279,7 +279,7 @@ a {
 }
 
 .sidebar-collapsed .nav-group {
-  gap: 7px;
+  gap: 4px;
 }
 
 .nav {
@@ -339,7 +339,7 @@ a {
 
 .nav-group {
   display: grid;
-  gap: 7px;
+  gap: 4px;
 }
 
 .nav button {
@@ -5164,7 +5164,7 @@ td.actions button {
 
   .nav-group {
     display: grid;
-    gap: 7px;
+    gap: 4px;
   }
 
   .nav button {

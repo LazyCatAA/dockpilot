@@ -666,7 +666,6 @@ function renderNav() {
     .map(
       (group) => `
       <div class="nav-group">
-        <div class="nav-title">${h(group.title)}</div>
         ${group.items
           .map(
             ([key, label, icon]) =>

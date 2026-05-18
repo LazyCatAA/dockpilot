@@ -6579,8 +6579,8 @@ td.actions button {
 }
 
 .nav-bookmark-area {
-  width: min(1120px, 100%);
-  justify-self: center;
+  width: 100%;
+  justify-self: stretch;
 }
 
 .nav-minimal-board {
@@ -7095,6 +7095,34 @@ td.actions button {
 
 .nav-minimal-card-copy em {
   font-size: 9px;
+}
+
+@media (min-width: 721px) {
+  .nav-minimal {
+    width: 100%;
+  }
+
+  .nav-minimal-hero,
+  .nav-bookmark-area,
+  .nav-minimal-board {
+    width: 100%;
+    justify-self: stretch;
+  }
+
+  .nav-minimal-hero {
+    justify-items: center;
+  }
+
+  .nav-minimal-library {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+    align-items: center;
+    padding: 0 4px;
+  }
+
+  .nav-minimal-group {
+    width: 100%;
+  }
 }
 
 .container-page {

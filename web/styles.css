@@ -9019,8 +9019,8 @@ td.actions button {
 .sidebar:hover,
 .sidebar:focus-within,
 .sidebar-collapsed .sidebar {
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-  row-gap: 12px;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  row-gap: 10px;
 }
 
 .sidebar .mark {
@@ -9040,24 +9040,26 @@ td.actions button {
 
 .sidebar-widget {
   width: 134px;
-  border: 1px solid rgba(191, 219, 254, 0.62);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.46);
-  box-shadow: var(--glass-inner), 0 10px 22px rgba(31, 82, 140, 0.06);
+  border: 1px solid rgba(191, 219, 254, 0.72);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(244, 249, 255, 0.62));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.82),
+    0 10px 22px rgba(31, 82, 140, 0.06);
   backdrop-filter: blur(16px);
 }
 
 .sidebar-widget-system {
   align-self: start;
   display: grid;
-  gap: 7px;
+  gap: 8px;
   padding: 10px;
 }
 
 .sidebar-widget-docker {
-  align-self: end;
+  align-self: start;
   display: grid;
-  gap: 9px;
+  gap: 8px;
   padding: 10px;
 }
 
@@ -9121,8 +9123,19 @@ td.actions button {
 .sidebar-docker-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
+  gap: 5px;
   text-align: center;
+}
+
+.sidebar-docker-grid div {
+  display: grid;
+  justify-items: center;
+  gap: 3px;
+  min-width: 0;
+  padding: 7px 3px 6px;
+  border: 1px solid rgba(191, 219, 254, 0.58);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.58);
 }
 
 .sidebar-docker-grid strong {
@@ -9143,8 +9156,9 @@ td.actions button {
 .sidebar:focus-within .nav,
 .sidebar-collapsed .nav {
   gap: 6px;
-  align-content: center;
-  align-self: center;
+  align-content: start;
+  align-self: start;
+  margin-top: 4px;
   padding: 0;
 }
 

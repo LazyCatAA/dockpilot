@@ -495,9 +495,9 @@ function renderSidebarDockerMonitor() {
     <section class="sidebar-widget sidebar-widget-docker" aria-label="Docker 监控">
       <div class="sidebar-widget-head"><i class="${online ? "ok" : "bad"}"></i><span>Docker</span></div>
       <div class="sidebar-docker-grid">
-        <strong>${h(total)}</strong><span>容器</span>
-        <strong>${h(running)}</strong><span>运行</span>
-        <strong>${h(updates)}</strong><span>更新</span>
+        <div><strong>${h(total)}</strong><span>容器</span></div>
+        <div><strong>${h(running)}</strong><span>运行</span></div>
+        <div><strong>${h(updates)}</strong><span>更新</span></div>
       </div>
     </section>
   `;
@@ -1198,8 +1198,8 @@ function render() {
           <button class="sidebar-toggle" title="隐藏/显示侧边栏" data-action="sidebar-toggle">${state.sidebarCollapsed ? "›" : "‹"}</button>
         </div>
         ${renderSidebarSystemStatus()}
-        <nav class="nav">${renderNav()}</nav>
         ${renderSidebarDockerMonitor()}
+        <nav class="nav">${renderNav()}</nav>
       </aside>
       <main class="content">
         ${state.notice ? `<div class="notice ${h(state.noticeTone)}">${h(state.notice)}</div>` : ""}

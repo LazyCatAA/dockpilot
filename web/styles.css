@@ -9378,7 +9378,7 @@ td.actions button {
 
   .content {
     min-height: 100vh;
-    padding: calc(10px + env(safe-area-inset-top)) 10px calc(92px + env(safe-area-inset-bottom));
+    padding: calc(6px + env(safe-area-inset-top)) 7px calc(74px + env(safe-area-inset-bottom));
   }
 
   .mobile-topbar {
@@ -9389,11 +9389,11 @@ td.actions button {
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    min-height: 52px;
-    margin: -2px 0 10px;
-    padding: 8px 10px;
+    min-height: 44px;
+    margin: -1px 0 7px;
+    padding: 6px 8px;
     border: 1px solid rgba(191, 219, 254, 0.74);
-    border-radius: 18px;
+    border-radius: 15px;
     background: rgba(246, 251, 255, 0.86);
     box-shadow: 0 12px 26px rgba(31, 82, 140, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.86);
     backdrop-filter: blur(18px);
@@ -9405,22 +9405,22 @@ td.actions button {
     align-items: center;
     gap: 9px;
     color: #17233c;
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 900;
   }
 
   .mobile-topbar .mark {
-    width: 32px;
-    height: 32px;
-    border-radius: 10px;
+    width: 28px;
+    height: 28px;
+    border-radius: 9px;
     flex: 0 0 auto;
   }
 
   .mobile-refresh {
-    width: 40px;
-    height: 40px;
+    width: 36px;
+    height: 36px;
     border: 0;
-    border-radius: 13px;
+    border-radius: 12px;
     background: #2563eb;
     color: #fff;
     font-size: 18px;
@@ -9430,17 +9430,17 @@ td.actions button {
 
   .mobile-bottom-nav {
     position: fixed;
-    left: 10px;
-    right: 10px;
-    bottom: calc(10px + env(safe-area-inset-bottom));
+    left: 7px;
+    right: 7px;
+    bottom: calc(7px + env(safe-area-inset-bottom));
     z-index: 80;
     display: grid;
     grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: 4px;
-    min-height: 62px;
-    padding: 7px;
+    gap: 3px;
+    min-height: 54px;
+    padding: 5px;
     border: 1px solid rgba(191, 219, 254, 0.8);
-    border-radius: 22px;
+    border-radius: 18px;
     background: rgba(247, 251, 255, 0.92);
     box-shadow: 0 18px 42px rgba(31, 82, 140, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.88);
     backdrop-filter: blur(22px);
@@ -9449,16 +9449,16 @@ td.actions button {
   .mobile-bottom-nav > button,
   .mobile-more-sheet button {
     min-width: 0;
-    min-height: 48px;
+    min-height: 42px;
     display: grid;
     place-items: center;
     align-content: center;
-    gap: 3px;
+    gap: 2px;
     border: 0;
-    border-radius: 15px;
+    border-radius: 13px;
     background: transparent;
     color: #5f7593;
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 850;
   }
 
@@ -9469,15 +9469,15 @@ td.actions button {
   }
 
   .mobile-nav-icon {
-    width: 22px;
-    height: 22px;
+    width: 19px;
+    height: 19px;
     display: grid;
     place-items: center;
   }
 
   .mobile-nav-icon svg {
-    width: 21px;
-    height: 21px;
+    width: 18px;
+    height: 18px;
     fill: currentColor;
   }
 
@@ -9485,13 +9485,13 @@ td.actions button {
     position: absolute;
     left: 0;
     right: 0;
-    bottom: calc(100% + 8px);
+    bottom: calc(100% + 6px);
     display: none;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
-    padding: 8px;
+    gap: 5px;
+    padding: 6px;
     border: 1px solid rgba(191, 219, 254, 0.82);
-    border-radius: 18px;
+    border-radius: 16px;
     background: rgba(247, 251, 255, 0.96);
     box-shadow: 0 18px 36px rgba(31, 82, 140, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.9);
     backdrop-filter: blur(22px);
@@ -9514,14 +9514,20 @@ td.actions button {
   }
 
   .container-page {
-    gap: 10px;
+    gap: 8px;
   }
 
   .container-titlebar,
   .image-library .panel-head,
   .volume-library .panel-head {
-    padding: 12px;
-    border-radius: 18px;
+    padding: 9px;
+    border-radius: 15px;
+  }
+
+  .container-titlebar h2,
+  .image-library .panel-head h3,
+  .volume-library .panel-head h3 {
+    font-size: 18px;
   }
 
   .container-title-actions {
@@ -9531,16 +9537,19 @@ td.actions button {
 
   .bulk-button,
   .refresh-button {
-    min-height: 42px;
+    min-height: 38px;
+    border-radius: 11px;
+    padding: 0 9px;
+    font-size: 12px;
   }
 
   .container-statbar {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    border-radius: 16px;
+    border-radius: 14px;
   }
 
   .container-stat {
-    min-height: 58px;
+    min-height: 46px;
     border-top: 0;
   }
 
@@ -9550,67 +9559,109 @@ td.actions button {
   }
 
   .container-stat strong {
-    font-size: 19px;
+    font-size: 17px;
   }
 
   .container-stat span {
-    font-size: 10px;
+    font-size: 9px;
   }
 
   .container-cards {
     grid-template-columns: 1fr;
-    gap: 10px;
+    gap: 8px;
   }
 
   .container-card {
     min-height: 0;
-    padding: 12px;
-    border-radius: 18px;
+    padding: 9px;
+    border-radius: 15px;
   }
 
   .container-card-main {
-    gap: 10px;
+    gap: 8px;
   }
 
   .container-icon {
-    width: 54px;
-    height: 54px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .container-name-row strong {
+    font-size: 14px;
+  }
+
+  .container-image,
+  .container-runtime,
+  .container-update-error {
+    font-size: 11px;
   }
 
   .container-action-row {
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 7px;
+    gap: 5px;
   }
 
   .container-action {
-    min-height: 44px;
+    min-height: 38px;
+    border-radius: 12px;
+    font-size: 12px;
   }
 
   .container-extra-actions {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 6px;
+    gap: 5px;
   }
 
   .container-extra-actions button {
-    min-height: 38px;
-    padding: 0 4px;
-    font-size: 11px;
+    min-height: 34px;
+    padding: 0 3px;
+    border-radius: 10px;
+    font-size: 10px;
   }
 
   .settings-single-card {
     grid-template-columns: 1fr;
     min-height: 0;
-    border-radius: 20px;
+    border-radius: 16px;
   }
 
   .settings-side-nav {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    padding: 10px;
+    gap: 5px;
+    padding: 7px;
     border-right: 0;
     border-bottom: 1px solid rgba(226, 234, 246, 0.9);
   }
 
   .settings-content {
-    padding: 14px;
+    padding: 10px;
+  }
+}
+
+@media (max-width: 390px) {
+  .content {
+    padding-left: 5px;
+    padding-right: 5px;
+  }
+
+  .mobile-bottom-nav {
+    left: 5px;
+    right: 5px;
+  }
+
+  .container-title-actions {
+    gap: 6px;
+  }
+
+  .container-stat strong {
+    font-size: 16px;
+  }
+
+  .container-stat span {
+    font-size: 8px;
+  }
+
+  .container-extra-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

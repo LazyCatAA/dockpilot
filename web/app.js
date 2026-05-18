@@ -33,7 +33,7 @@ const state = {
   volumes: { items: [], backups: [], query: "", backupOpen: false, createOpen: false, detail: null },
   imagePullJob: null,
   volumeBackupJob: null,
-  containerView: "table",
+  containerView: "card",
   containerFilter: "all",
   containerDetail: null,
   containerUpdateJobs: {},

@@ -9482,9 +9482,9 @@ td.actions button {
     position: sticky;
     top: 0;
     z-index: 40;
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 31px;
     align-items: center;
-    justify-content: space-between;
     gap: 8px;
     min-height: 38px;
     margin: -1px 0 6px;
@@ -9516,10 +9516,13 @@ td.actions button {
 
   .mobile-refresh {
     width: 31px;
+    min-width: 31px;
+    max-width: 31px;
     height: 31px;
     margin-left: auto;
     border: 0;
     border-radius: 10px;
+    padding: 0;
     background: #2563eb;
     color: #fff;
     font-size: 16px;
@@ -9693,14 +9696,16 @@ td.actions button {
   }
 
   .container-card-main {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) 30px;
     gap: 8px;
     align-items: center;
   }
 
   .container-card-info {
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
     min-width: 0;
-    flex-wrap: wrap;
     align-items: center;
     gap: 2px 8px;
   }
@@ -9727,13 +9732,18 @@ td.actions button {
   }
 
   .container-image {
-    max-width: 48%;
+    max-width: none;
+    min-width: 0;
     padding-right: 8px;
     border-right: 1px solid rgba(148, 163, 184, 0.28);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .container-runtime {
-    max-width: 44%;
+    max-width: none;
+    white-space: nowrap;
   }
 
   .container-card-divider {

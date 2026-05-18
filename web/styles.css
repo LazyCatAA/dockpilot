@@ -9377,7 +9377,9 @@ td.actions button {
 
 .mobile-topbar,
 .mobile-bottom-nav,
-.compose-mobile-tabs {
+.compose-mobile-tabs,
+.compose-mobile-drawer-grip,
+.compose-mobile-drawer-close {
   display: none;
 }
 
@@ -10120,32 +10122,73 @@ td.actions button {
   }
 
   .compose-project-list {
-    display: flex;
+    display: grid;
     gap: 6px;
-    overflow-x: auto;
-    padding-bottom: 2px;
-    scrollbar-width: none;
+    max-height: 31vh;
+    overflow: auto;
   }
 
   .compose-project-card {
-    min-width: 96px;
-    min-height: 42px;
-    padding: 7px 8px;
+    min-height: 44px;
+    padding: 8px 9px;
     border-radius: 12px;
   }
 
   .compose-project-card strong {
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .compose-project-card span {
-    display: none;
+    display: block;
+    font-size: 10px;
   }
 
   .compose-reference-main {
+    position: fixed;
+    left: 6px;
+    right: 6px;
+    bottom: calc(6px + env(safe-area-inset-bottom));
+    top: 32vh;
+    z-index: 90;
     display: grid;
     gap: 7px;
     padding: 8px;
+    border: 1px solid rgba(205, 218, 238, 0.8);
+    border-radius: 16px 16px 18px 18px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.88), rgba(243,249,255,0.82)),
+      rgba(255,255,255,0.8);
+    box-shadow: 0 16px 40px rgba(31, 82, 140, 0.18), inset 0 1px 0 rgba(255,255,255,0.9);
+    transform: translateY(106%);
+    transition: transform 0.24s ease;
+    overflow: auto;
+  }
+
+  .compose-reference-main.open {
+    transform: translateY(0);
+  }
+
+  .compose-mobile-drawer-grip {
+    display: block;
+    width: 42px;
+    height: 4px;
+    margin: 0 auto 2px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.38);
+  }
+
+  .compose-mobile-drawer-close {
+    display: inline-flex;
+    align-self: end;
+    justify-self: end;
+    min-height: 28px;
+    border: 0;
+    border-radius: 9px;
+    padding: 0 10px;
+    background: rgba(241, 245, 249, 0.8);
+    color: #52647f;
+    font-size: 11px;
+    font-weight: 900;
   }
 
   .compose-reference-top {
@@ -10204,8 +10247,10 @@ td.actions button {
 
   .compose-workspace-shell {
     gap: 7px;
-    padding: 8px;
-    border-radius: 14px;
+    padding: 0;
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
   }
 
   .compose-workspace-head strong {

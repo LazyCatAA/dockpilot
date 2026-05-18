@@ -9590,6 +9590,10 @@ td.actions button {
     gap: 6px;
   }
 
+  .container-page .container-titlebar {
+    display: none;
+  }
+
   .container-titlebar,
   .image-library .panel-head,
   .volume-library .panel-head {

@@ -41,6 +41,7 @@ const state = {
   mobileContainerActions: {},
   sidebarCollapsed: false,
   logs: { id: "", text: "" },
+  composeMobileTab: "config",
   compose: { projects: [], selected: "", content: "", output: "", logs: "", repair: null, repairLines: [], aiContent: "", repairInstruction: initialComposeRepairInstruction(), backups: [], backupModal: false, logsAutoScroll: true, busyAction: "" },
   files: { roots: [], root: "", path: "", items: [], editPath: "", content: "" },
   settings: null,
@@ -2494,6 +2495,7 @@ function renderCompose() {
   const aiReviewItems = composeAiReviewItems(rawAiPreviewText, repairSummary);
   const requiredAiItems = aiReviewItems.filter((item) => item.tone === "required").length;
   const suggestedAiItems = aiReviewItems.filter((item) => item.tone === "suggestion").length;
+  const mobileTab = ["config", "repair", "logs"].includes(state.composeMobileTab) ? state.composeMobileTab : "config";
   return `
     <section class="compose-monitor-layout compose-reference-layout compose-reference-shell">
       <aside class="compose-reference-sidebar">
@@ -2536,6 +2538,11 @@ function renderCompose() {
             <button data-action="compose-convert-command-ai" class="${state.compose.busyAction === "convert" ? "loading" : ""}" title="Docker run 转 Compose" ${hasBusy ? "disabled" : ""}><span>${state.compose.busyAction === "convert" ? "…" : "↦"}</span>转 Compose</button>
           </div>
         </header>
+        <div class="compose-mobile-tabs" aria-label="编排页面分段">
+          <button data-action="compose-mobile-tab" data-tab="config" class="${mobileTab === "config" ? "active" : ""}">配置</button>
+          <button data-action="compose-mobile-tab" data-tab="repair" class="${mobileTab === "repair" ? "active" : ""}">修复</button>
+          <button data-action="compose-mobile-tab" data-tab="logs" class="${mobileTab === "logs" ? "active" : ""}">日志</button>
+        </div>
         <section class="compose-workspace-shell">
           <div class="compose-workspace-head">
             <div>
@@ -2544,7 +2551,7 @@ function renderCompose() {
             </div>
           </div>
           <div class="compose-reference-workbench">
-          <section class="compose-reference-editor compose-workspace-pane">
+          <section class="compose-reference-editor compose-workspace-pane ${mobileTab === "config" ? "mobile-active" : ""}">
             <div class="compose-editor-titlebar">
               <strong>${h(selected?.file || "docker-compose.yml")}</strong>
             </div>
@@ -2555,7 +2562,7 @@ function renderCompose() {
               <div class="compose-editor-statusbar"><span>YAML</span><span>Ln ${lineCount}, Col 1</span><span>${fmtBytes(new Blob([state.compose.content || ""]).size)}</span><span>UTF-8</span></div>
             </div>
           </section>
-          <section class="compose-reference-preview compose-workspace-pane">
+          <section class="compose-reference-preview compose-workspace-pane ${mobileTab === "repair" ? "mobile-active" : ""}">
             <div class="compose-reference-panelhead">
               <div>
                 <strong>AI 修复审核</strong>
@@ -2606,7 +2613,7 @@ function renderCompose() {
               <button data-action="compose-save-repair-instruction">保存</button>
             </div>
           </section>
-          <aside class="compose-reference-settings compose-log-panel compose-workspace-pane">
+          <aside class="compose-reference-settings compose-log-panel compose-workspace-pane ${mobileTab === "logs" ? "mobile-active" : ""}">
             <div class="compose-reference-panelhead compose-log-head">
               <div>
                 <strong>容器日志</strong>
@@ -3065,6 +3072,10 @@ document.addEventListener("click", async (event) => {
     }
     if (action === "settings-tab") {
       state.settingsTab = button.dataset.tab || "basic";
+      render();
+    }
+    if (action === "compose-mobile-tab") {
+      state.composeMobileTab = button.dataset.tab || "config";
       render();
     }
     if (action === "refresh") await refreshCurrent();

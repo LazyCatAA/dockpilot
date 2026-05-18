@@ -9376,7 +9376,8 @@ td.actions button {
 }
 
 .mobile-topbar,
-.mobile-bottom-nav {
+.mobile-bottom-nav,
+.compose-mobile-tabs {
   display: none;
 }
 
@@ -10108,46 +10109,54 @@ td.actions button {
 
   .compose-reference-search,
   .compose-reference-create {
-    grid-template-columns: 1fr;
-    gap: 6px;
+    display: none;
   }
 
-  .compose-reference-search input,
-  .compose-reference-create input,
-  .compose-reference-create button {
-    min-height: 36px;
-    font-size: 12px;
+  .compose-reference-projects-head {
+    min-height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
 
   .compose-project-list {
-    gap: 7px;
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
   }
 
   .compose-project-card {
-    min-height: 52px;
-    padding: 8px 9px;
-    border-radius: 13px;
+    min-width: 96px;
+    min-height: 42px;
+    padding: 7px 8px;
+    border-radius: 12px;
   }
 
   .compose-project-card strong {
-    font-size: 13px;
+    font-size: 12px;
+  }
+
+  .compose-project-card span {
+    display: none;
   }
 
   .compose-reference-main {
     display: grid;
-    gap: 8px;
+    gap: 7px;
     padding: 8px;
   }
 
   .compose-reference-top {
     grid-template-columns: 1fr;
-    gap: 8px;
-    padding: 10px;
+    gap: 7px;
+    padding: 9px;
     border-radius: 14px;
   }
 
   .compose-reference-title h3 {
-    font-size: 16px;
+    font-size: 15px;
   }
 
   .compose-reference-title p {
@@ -10155,17 +10164,46 @@ td.actions button {
   }
 
   .compose-reference-actions {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 6px;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 5px;
   }
 
   .compose-reference-actions button {
-    min-height: 36px;
+    min-height: 34px;
     font-size: 11px;
+    border-radius: 10px;
+    padding: 0 8px;
+  }
+
+  .compose-mobile-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid rgba(205, 218, 238, 0.78);
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.62);
+    box-shadow: var(--glass-inner);
+  }
+
+  .compose-mobile-tabs button {
+    min-height: 34px;
+    border: 0;
+    border-radius: 10px;
+    background: transparent;
+    color: #52647f;
+    font-size: 12px;
+    font-weight: 900;
+  }
+
+  .compose-mobile-tabs button.active {
+    background: #2563eb;
+    color: #fff;
+    box-shadow: 0 8px 16px rgba(37, 99, 235, 0.18);
   }
 
   .compose-workspace-shell {
-    gap: 8px;
+    gap: 7px;
     padding: 8px;
     border-radius: 14px;
   }
@@ -10181,14 +10219,21 @@ td.actions button {
 
   .compose-reference-workbench {
     grid-template-columns: 1fr;
-    gap: 8px;
+    gap: 0;
   }
 
   .compose-reference-editor,
   .compose-reference-preview,
   .compose-reference-settings {
+    display: none;
     padding: 8px;
     border-radius: 14px;
+  }
+
+  .compose-reference-editor.mobile-active,
+  .compose-reference-preview.mobile-active,
+  .compose-reference-settings.mobile-active {
+    display: grid;
   }
 
   .compose-editor-titlebar {
@@ -10196,9 +10241,9 @@ td.actions button {
   }
 
   .compose-dark-editor {
-    height: 280px;
-    min-height: 240px;
-    max-height: 340px;
+    height: 260px;
+    min-height: 220px;
+    max-height: 320px;
   }
 
   .compose-editor-statusbar {

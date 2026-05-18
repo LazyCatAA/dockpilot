@@ -2760,7 +2760,8 @@ a {
 }
 
 .container-mobile-more,
-.container-mobile-toggle {
+.container-mobile-toggle,
+.container-mobile-update-badge {
   display: none;
 }
 
@@ -9616,10 +9617,15 @@ td.actions button {
   }
 
   .container-page {
-    gap: 6px;
+    gap: 0;
   }
 
   .container-page .container-titlebar {
+    display: none;
+  }
+
+  .container-page .container-statbar,
+  .container-page .container-filter-label {
     display: none;
   }
 
@@ -9685,19 +9691,35 @@ td.actions button {
 
   .container-cards {
     grid-template-columns: 1fr;
-    gap: 7px;
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid rgba(210, 224, 242, 0.82);
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.72);
+    box-shadow: 0 12px 28px rgba(31, 82, 140, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.86);
+    backdrop-filter: blur(18px);
   }
 
   .container-card {
-    min-height: 0;
-    padding: 8px;
-    border-radius: 16px;
-    overflow: hidden;
+    min-height: 58px;
+    padding: 0 10px;
+    border: 0;
+    border-bottom: 1px solid rgba(226, 234, 246, 0.86);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    overflow: visible;
+  }
+
+  .container-card:last-child {
+    border-bottom: 0;
   }
 
   .container-card-main {
     display: grid;
-    grid-template-columns: 36px minmax(0, 1fr) 30px;
+    grid-template-columns: 34px minmax(0, 1fr) 22px;
+    min-height: 58px;
     gap: 8px;
     align-items: center;
   }
@@ -9707,7 +9729,7 @@ td.actions button {
     grid-template-columns: minmax(0, 1fr) auto;
     min-width: 0;
     align-items: center;
-    gap: 2px 8px;
+    gap: 2px;
   }
 
   .container-name-row {
@@ -9718,13 +9740,19 @@ td.actions button {
   }
 
   .container-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 12px;
+    width: 28px;
+    height: 28px;
+    min-height: 28px;
+    border-radius: 8px;
+  }
+
+  .container-icon svg {
+    width: 16px;
+    height: 16px;
   }
 
   .container-name-row strong {
-    font-size: 13px;
+    font-size: 12px;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -9741,8 +9769,8 @@ td.actions button {
   .container-image {
     max-width: none;
     min-width: 0;
-    padding-right: 8px;
-    border-right: 1px solid rgba(148, 163, 184, 0.28);
+    padding-right: 0;
+    border-right: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -9751,6 +9779,9 @@ td.actions button {
   .container-runtime {
     max-width: none;
     white-space: nowrap;
+    color: #52647f;
+    font-size: 10px;
+    font-weight: 780;
   }
 
   .container-update-error {
@@ -9759,47 +9790,47 @@ td.actions button {
   }
 
   .container-card-divider {
-    margin: 5px 0;
+    display: none;
   }
 
   .container-mobile-more {
-    width: 30px;
-    height: 30px;
+    grid-column: 3;
+    width: 22px;
+    height: 22px;
     display: grid;
     place-items: center;
     border: 0;
-    border-radius: 999px;
-    background: rgba(248, 251, 255, 0.92);
+    border-radius: 8px;
+    background: transparent;
     color: #64748b;
-    font-size: 16px;
+    font-size: 14px;
     box-shadow: none;
   }
 
   .container-mobile-toggle {
-    width: 100%;
-    min-height: 34px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    margin: 2px 0 6px;
-    border: 0;
-    border-radius: 10px;
-    background: rgba(248, 251, 255, 0.72);
-    color: #64748b;
-    font-size: 11px;
-    font-weight: 800;
+    display: none;
   }
 
-  .container-mobile-toggle i {
-    font-style: normal;
-    font-size: 12px;
-    line-height: 1;
+  .container-mobile-update-badge {
+    display: inline-flex;
+    align-items: center;
+    height: 16px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: rgba(250, 204, 21, 0.18);
+    color: #c78200;
+    font-size: 8px;
+    font-weight: 900;
+  }
+
+  .container-card .new-ribbon {
+    display: none;
   }
 
   .container-action-row {
     display: none;
     gap: 5px;
+    padding: 0 0 8px 42px;
   }
 
   .container-action {
@@ -9817,9 +9848,13 @@ td.actions button {
     display: none;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 4px;
-    margin-top: 4px;
+    margin: 0 0 8px 42px;
     opacity: 1;
     pointer-events: auto;
+  }
+
+  .container-card-update-progress {
+    margin: 0 0 8px 42px;
   }
 
   .container-extra-actions button {

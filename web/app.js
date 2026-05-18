@@ -751,10 +751,17 @@ function tabLabel(key) {
   return (tabs.find(([tab]) => tab === key) || [key, key])[1];
 }
 
+function mobilePageTitle() {
+  if (state.tab === "containers") return "容器管理";
+  if (state.tab === "compose") return "编排";
+  if (state.tab === "vps") return "VPS 管理";
+  return tabLabel(state.tab);
+}
+
 function renderMobileTopbar() {
   return `
     <header class="mobile-topbar">
-      <div class="mobile-topbar-brand">${renderBrandMark()}<strong>${h(tabLabel(state.tab))}</strong></div>
+      <div class="mobile-topbar-brand">${renderBrandMark()}<strong>${h(mobilePageTitle())}</strong></div>
       <button class="mobile-refresh" data-action="refresh" title="刷新" aria-label="刷新">↻</button>
     </header>
   `;
@@ -1728,12 +1735,13 @@ function renderContainerCards(containers = filteredContainers()) {
                   <div class="container-name-row">
                     <strong>${h(containerName(item))}</strong>
                     <span class="state-dot ${h(item.State)}" title="${h(zhContainerState(item.State))}"></span>
+                    ${mobileMode && updateHot ? `<span class="container-mobile-update-badge">有更新</span>` : ""}
                   </div>
                   <span class="container-image">${h(containerImageName(item))}</span>
                   <span class="container-runtime">${h(containerRuntime(item))}</span>
                   ${item.DockPilot?.update_check_error ? `<span class="container-update-error">${h(zhError(item.DockPilot.update_check_error))}</span>` : ""}
                 </div>
-                ${mobileMode ? `<button class="container-mobile-more" data-action="container-mobile-toggle" data-id="${h(item.Id)}" title="${mobileOpen ? "收起操作" : "展开操作"}">•••</button>` : ""}
+                ${mobileMode ? `<button class="container-mobile-more" data-action="container-mobile-toggle" data-id="${h(item.Id)}" title="${mobileOpen ? "收起操作" : "展开操作"}">${mobileOpen ? "⌃" : "⌄"}</button>` : ""}
               </div>
               <div class="container-card-divider"></div>
               ${mobileMode ? `<button class="container-mobile-toggle" data-action="container-mobile-toggle" data-id="${h(item.Id)}">

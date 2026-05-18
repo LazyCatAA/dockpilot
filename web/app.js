@@ -685,10 +685,11 @@ function renderBrandMark() {
   return `
     <div class="mark" aria-hidden="true">
       <svg viewBox="0 0 40 40">
-        <rect class="mark-screen" x="7" y="8" width="26" height="21" rx="7" />
-        <path class="mark-panel" d="M13 15h7.2c4.5 0 7.8 2.8 7.8 7s-3.3 7-7.8 7H13V15Z" />
-        <path class="mark-cut" d="M18 19v6M18 19h3.2c1.9 0 3.1 1.1 3.1 3s-1.2 3-3.1 3H18" />
-        <path class="mark-line" d="M11.5 31.5h17" />
+        <rect class="mark-screen" x="6.5" y="8" width="27" height="24" rx="7" />
+        <path class="mark-topline" d="M10.5 14.5h19" />
+        <circle class="mark-dot" cx="12.5" cy="11.5" r="1.2" />
+        <circle class="mark-dot" cx="16.5" cy="11.5" r="1.2" />
+        <text class="mark-text" x="20" y="27" text-anchor="middle">DP</text>
       </svg>
     </div>
   `;

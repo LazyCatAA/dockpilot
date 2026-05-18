@@ -754,7 +754,7 @@ function renderMobileTopbar() {
   return `
     <header class="mobile-topbar">
       <div class="mobile-topbar-brand">${renderBrandMark()}<strong>${h(tabLabel(state.tab))}</strong></div>
-      <button class="mobile-refresh" data-action="refresh" title="刷新">↻</button>
+      <button class="mobile-refresh" data-action="refresh" title="刷新" aria-label="刷新">↻</button>
     </header>
   `;
 }

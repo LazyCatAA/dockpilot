@@ -9451,7 +9451,7 @@ td.actions button {
 
   .content {
     min-height: 100vh;
-    padding: calc(6px + env(safe-area-inset-top)) 7px calc(74px + env(safe-area-inset-bottom));
+    padding: calc(4px + env(safe-area-inset-top)) 6px calc(86px + env(safe-area-inset-bottom));
   }
 
   .mobile-topbar {
@@ -9461,12 +9461,12 @@ td.actions button {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
-    min-height: 44px;
-    margin: -1px 0 7px;
-    padding: 6px 8px;
+    gap: 8px;
+    min-height: 38px;
+    margin: -1px 0 6px;
+    padding: 5px 7px;
     border: 1px solid rgba(191, 219, 254, 0.74);
-    border-radius: 15px;
+    border-radius: 13px;
     background: rgba(246, 251, 255, 0.86);
     box-shadow: 0 12px 26px rgba(31, 82, 140, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.86);
     backdrop-filter: blur(18px);
@@ -9478,42 +9478,42 @@ td.actions button {
     align-items: center;
     gap: 9px;
     color: #17233c;
-    font-size: 14px;
+    font-size: 13px;
     font-weight: 900;
   }
 
   .mobile-topbar .mark {
-    width: 28px;
-    height: 28px;
-    border-radius: 9px;
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
     flex: 0 0 auto;
   }
 
   .mobile-refresh {
-    width: 36px;
-    height: 36px;
+    width: 31px;
+    height: 31px;
     border: 0;
-    border-radius: 12px;
+    border-radius: 10px;
     background: #2563eb;
     color: #fff;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 900;
     box-shadow: 0 10px 20px rgba(37, 99, 235, 0.22);
   }
 
   .mobile-bottom-nav {
     position: fixed;
-    left: 7px;
-    right: 7px;
-    bottom: calc(7px + env(safe-area-inset-bottom));
+    left: 6px;
+    right: 6px;
+    bottom: calc(6px + env(safe-area-inset-bottom));
     z-index: 80;
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 3px;
-    min-height: 54px;
-    padding: 5px;
+    min-height: 48px;
+    padding: 4px;
     border: 1px solid rgba(191, 219, 254, 0.8);
-    border-radius: 18px;
+    border-radius: 16px;
     background: rgba(247, 251, 255, 0.92);
     box-shadow: 0 18px 42px rgba(31, 82, 140, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.88);
     backdrop-filter: blur(22px);
@@ -9522,13 +9522,13 @@ td.actions button {
   .mobile-bottom-nav > button,
   .mobile-more-sheet button {
     min-width: 0;
-    min-height: 42px;
+    min-height: 38px;
     display: grid;
     place-items: center;
     align-content: center;
     gap: 2px;
     border: 0;
-    border-radius: 13px;
+    border-radius: 12px;
     background: transparent;
     color: #5f7593;
     font-size: 9px;
@@ -9542,15 +9542,15 @@ td.actions button {
   }
 
   .mobile-nav-icon {
-    width: 19px;
-    height: 19px;
+    width: 18px;
+    height: 18px;
     display: grid;
     place-items: center;
   }
 
   .mobile-nav-icon svg {
-    width: 18px;
-    height: 18px;
+    width: 17px;
+    height: 17px;
     fill: currentColor;
   }
 
@@ -9587,33 +9587,44 @@ td.actions button {
   }
 
   .container-page {
-    gap: 8px;
+    gap: 6px;
   }
 
   .container-titlebar,
   .image-library .panel-head,
   .volume-library .panel-head {
-    padding: 9px;
-    border-radius: 15px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-radius: 14px;
   }
 
   .container-titlebar h2,
   .image-library .panel-head h3,
   .volume-library .panel-head h3 {
-    font-size: 18px;
+    font-size: 17px;
+    line-height: 1.15;
+  }
+
+  .container-titlebar p {
+    display: none;
   }
 
   .container-title-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: min(52vw, 190px);
+    gap: 6px;
   }
 
   .bulk-button,
   .refresh-button {
-    min-height: 38px;
-    border-radius: 11px;
-    padding: 0 9px;
-    font-size: 12px;
+    min-height: 34px;
+    border-radius: 10px;
+    padding: 0 7px;
+    font-size: 11px;
   }
 
   .container-statbar {
@@ -9622,7 +9633,7 @@ td.actions button {
   }
 
   .container-stat {
-    min-height: 46px;
+    min-height: 40px;
     border-top: 0;
   }
 
@@ -9632,41 +9643,47 @@ td.actions button {
   }
 
   .container-stat strong {
-    font-size: 17px;
+    font-size: 16px;
   }
 
   .container-stat span {
-    font-size: 9px;
+    font-size: 8px;
   }
 
   .container-cards {
     grid-template-columns: 1fr;
-    gap: 8px;
+    gap: 7px;
   }
 
   .container-card {
     min-height: 0;
-    padding: 9px;
-    border-radius: 15px;
+    padding: 8px;
+    border-radius: 14px;
   }
 
   .container-card-main {
-    gap: 8px;
+    gap: 7px;
   }
 
   .container-icon {
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
+    border-radius: 13px;
   }
 
   .container-name-row strong {
-    font-size: 14px;
+    font-size: 13px;
   }
 
   .container-image,
   .container-runtime,
   .container-update-error {
-    font-size: 11px;
+    font-size: 10px;
+    line-height: 1.25;
+  }
+
+  .container-card-divider {
+    margin: 5px 0;
   }
 
   .container-action-row {
@@ -9675,21 +9692,29 @@ td.actions button {
   }
 
   .container-action {
-    min-height: 38px;
-    border-radius: 12px;
+    min-height: 34px;
+    border-radius: 10px;
+    font-size: 11px;
+  }
+
+  .container-action span {
     font-size: 12px;
   }
 
   .container-extra-actions {
     grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 5px;
+    gap: 4px;
+    margin-top: 6px;
   }
 
   .container-extra-actions button {
-    min-height: 34px;
-    padding: 0 3px;
-    border-radius: 10px;
-    font-size: 10px;
+    min-height: 29px;
+    padding: 0 2px;
+    border-radius: 9px;
+    background: rgba(248, 251, 255, 0.64);
+    color: #64748b;
+    font-size: 9px;
+    box-shadow: none;
   }
 
   .settings-single-card {
@@ -9723,11 +9748,13 @@ td.actions button {
   }
 
   .container-title-actions {
-    gap: 6px;
+    width: 100%;
+    grid-column: 1 / -1;
+    gap: 5px;
   }
 
   .container-stat strong {
-    font-size: 16px;
+    font-size: 15px;
   }
 
   .container-stat span {

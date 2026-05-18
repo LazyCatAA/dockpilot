@@ -2202,6 +2202,46 @@ function composeAiStatus() {
   return "待检测";
 }
 
+function composeAiDiffLines(content) {
+  const text = String(content || "").trimEnd();
+  if (!text) return `<div class="compose-ai-diff-empty">暂无修复预览</div>`;
+  return text.split("\n").map((line, index) => {
+    const trimmed = line.trim();
+    const tone = trimmed.startsWith("-") ? "remove" : trimmed.startsWith("+") ? "add" : line.includes("healthcheck") || line.includes("interval:") || line.includes("timeout:") || line.includes("retries:") ? "add" : "context";
+    return `<div class="compose-ai-diff-line ${tone}"><span>${index + 1}</span><code>${h(line || " ")}</code></div>`;
+  }).join("");
+}
+
+function composeAiReviewItems(aiPreviewText, repairSummary) {
+  if (state.compose.repair) {
+    const changes = state.compose.repair.changes || [];
+    const title = state.compose.repair.changed ? "AI 已生成修复内容" : "未发现必须修复项";
+    return [{
+      kind: state.compose.repair.changed ? "必须修复" : "检测结果",
+      title,
+      before: changes.length ? changes.join("\n") : "当前内容未发现语法级错误。",
+      after: aiPreviewText,
+      tone: state.compose.repair.changed ? "required" : "neutral"
+    }];
+  }
+  return [
+    {
+      kind: "必须修复",
+      title: "端口映射格式检查",
+      before: '- "3000:3000"',
+      after: aiPreviewText,
+      tone: "required"
+    },
+    {
+      kind: "建议优化",
+      title: "补充健康检查",
+      before: "未配置",
+      after: "healthcheck:\n  interval: 30s\n  timeout: 10s\n  retries: 3",
+      tone: "suggestion"
+    }
+  ];
+}
+
 function renderContainerDetail() {
   const detail = state.containerDetail || {};
   const config = detail.Config || {};
@@ -2257,7 +2297,6 @@ function renderCompose() {
   const selectedName = selected?.name || "moviepilot";
   const selectedPath = selected?.path || state.compose.selected || "/data/compose/moviepilot/docker-compose.yml";
   const lineCount = Math.max(String(state.compose.content || "").split("\n").length, 1);
-  const issueCount = state.compose.repair ? Math.max((state.compose.repair.changes || []).length, state.compose.repair.changed ? 1 : 0) : 2;
   const repairSummary = (state.compose.repair?.changes || []).join("；") || "可继续使用检查功能确认配置。";
   const logRows = composeLogRows(state.compose.logs);
   const logStatusText = selected ? `${services.length || 0} 个服务` : "未选择项目";
@@ -2267,9 +2306,10 @@ function renderCompose() {
   const aiStatus = composeAiStatus();
   const hasBusy = Boolean(state.compose.busyAction);
   const canApplyAi = Boolean(state.compose.aiContent) && !hasBusy;
-  const aiPreviewText = state.compose.aiContent
-    ? h(state.compose.aiContent)
-    : h(`healthcheck:\n  test: ["CMD", "curl", "-f", "http://localhost:3000"]\n  interval: 30s\n  timeout: 10s\n  retries: 3`);
+  const rawAiPreviewText = state.compose.aiContent || `healthcheck:\n  test: ["CMD", "curl", "-f", "http://localhost:3000"]\n  interval: 30s\n  timeout: 10s\n  retries: 3`;
+  const aiReviewItems = composeAiReviewItems(rawAiPreviewText, repairSummary);
+  const requiredAiItems = aiReviewItems.filter((item) => item.tone === "required").length;
+  const suggestedAiItems = aiReviewItems.filter((item) => item.tone === "suggestion").length;
   return `
     <section class="compose-monitor-layout compose-reference-layout compose-reference-shell">
       <aside class="compose-reference-sidebar">
@@ -2340,36 +2380,43 @@ function renderCompose() {
           </section>
           <section class="compose-reference-preview compose-workspace-pane">
             <div class="compose-reference-panelhead">
-              <strong>AI 修复预览</strong>
+              <div>
+                <strong>AI 修复审核</strong>
+                <span>${requiredAiItems} 个必须修复 · ${suggestedAiItems} 个建议优化</span>
+              </div>
               <span class="compose-ai-status ${h(aiStatus)}">${h(aiStatus)}</span>
             </div>
             <div class="compose-ai-issue-summary">
-              <span><i></i>检测到 ${issueCount} 个问题</span>
-              <button data-action="compose-apply-ai" ${canApplyAi ? "" : "disabled"}>应用修复</button>
+              <span><i></i>${state.compose.repair ? h(repairSummary) : "等待 AI 检测 Compose 内容，修复会先进入审核区。"}</span>
+              <button data-action="compose-repair" class="${state.compose.busyAction === "repair" ? "loading" : ""}" ${hasBusy ? "disabled" : ""}>重新检测</button>
             </div>
             <div class="compose-ai-issue-list">
-              <article class="compose-ai-issue-card">
-                <header><b>1</b><strong>${state.compose.repair?.changed ? "AI 已生成修复内容" : "端口映射不规范"}</strong><span>⌄</span></header>
-                <div class="compose-ai-diff">
-                  <small>修复前：</small>
-                  <code>${h(state.compose.repair ? repairSummary : "- \"3000:3000\"")}</code>
-                  <small>修复后：</small>
-                  <pre id="composeAiPreview" class="compose-ai-preview-code">${aiPreviewText}\n</pre>
-                </div>
-              </article>
-              <article class="compose-ai-issue-card">
-                <header><b>2</b><strong>缺少健康检查</strong><span>⌄</span></header>
-                <div class="compose-ai-diff soft">
-                  <small>修复前：</small>
-                  <code>未配置</code>
-                  <small>修复后：</small>
-                  <pre class="compose-ai-preview-code">healthcheck:\n  interval: 30s\n  timeout: 10s\n  retries: 3\n</pre>
-                </div>
-              </article>
+              ${aiReviewItems.map((item, index) => `
+                <article class="compose-ai-issue-card ${h(item.tone)}">
+                  <header>
+                    <b>${index + 1}</b>
+                    <div><strong>${h(item.title)}</strong><em>${h(item.kind)}</em></div>
+                    <span>⌄</span>
+                  </header>
+                  <div class="compose-ai-review-diff">
+                    <div class="compose-ai-before">
+                      <small>修复前</small>
+                      <code>${h(item.before)}</code>
+                    </div>
+                    <div class="compose-ai-after">
+                      <small>修复后</small>
+                      <div id="${index === 0 ? "composeAiPreview" : ""}" class="compose-ai-preview-code">${composeAiDiffLines(item.after)}</div>
+                    </div>
+                  </div>
+                </article>
+              `).join("")}
             </div>
-            <div class="compose-repair-note compose-dark-note">
-              <strong>${state.compose.repair?.changed ? "AI 修复可应用" : "AI 修正要求"}</strong>
-              <span>${state.compose.repair ? h(repairSummary) : "AI 只允许修正格式，不应改变服务、镜像、端口含义、挂载路径和环境变量含义。"}</span>
+            <div class="compose-ai-review-actions">
+              <div>
+                <strong>${state.compose.aiContent ? "修复结果待应用" : "AI 修正要求"}</strong>
+                <span>${state.compose.aiContent ? "应用后会写入左侧编辑器，仍需手动保存文件。" : "只修正格式和明确缺失项，不改变镜像、端口、挂载和环境变量含义。"}</span>
+              </div>
+              <button data-action="compose-apply-ai" ${canApplyAi ? "" : "disabled"}>应用修复</button>
             </div>
           </section>
           <aside class="compose-reference-settings compose-log-panel compose-workspace-pane">

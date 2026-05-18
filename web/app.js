@@ -758,6 +758,17 @@ function closeCardContextMenu() {
   state.cardContextMenu = { open: false, x: 0, y: 0, id: null };
 }
 
+function contextMenuPositionForCard(cardNode) {
+  const rect = cardNode.getBoundingClientRect();
+  const menuWidth = 248;
+  const menuHeight = 232;
+  const gap = 8;
+  return {
+    x: Math.max(8, Math.min(rect.right + gap, window.innerWidth - menuWidth - 8)),
+    y: Math.max(8, Math.min(rect.bottom + gap, window.innerHeight - menuHeight - 8)),
+  };
+}
+
 function openNavGroupModal(group) {
   state.navGroupModal = { open: true, group: group || "Docker" };
   closeCardContextMenu();
@@ -3885,10 +3896,11 @@ document.addEventListener("contextmenu", (event) => {
   const cardNode = event.target.closest("[data-card-id]");
   if (!cardNode || state.tab !== "dashboard") return;
   event.preventDefault();
+  const position = contextMenuPositionForCard(cardNode);
   state.cardContextMenu = {
     open: true,
-    x: Math.min(event.clientX, window.innerWidth - 190),
-    y: Math.min(event.clientY, window.innerHeight - 210),
+    x: position.x,
+    y: position.y,
     id: Number(cardNode.dataset.cardId),
   };
   render();

@@ -7376,6 +7376,10 @@ td.actions button {
   max-width: 520px;
 }
 
+.settings-account-card {
+  padding-top: 0;
+}
+
 @media (max-width: 980px) {
   .settings-single-card {
     grid-template-columns: 1fr;

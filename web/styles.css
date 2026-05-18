@@ -9624,9 +9624,20 @@ td.actions button {
     display: none;
   }
 
-  .container-page .container-statbar,
   .container-page .container-filter-label {
-    display: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 30px;
+    margin: 0;
+    padding: 2px 2px 4px;
+    color: #52647f;
+    font-size: 14px;
+    font-weight: 900;
+  }
+
+  .container-page .container-statbar {
+    display: grid;
   }
 
   .container-titlebar,

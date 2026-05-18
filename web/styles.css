@@ -169,10 +169,44 @@ a {
   height: 42px;
   display: grid;
   place-items: center;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #2f80ed, #16a36a);
+  border-radius: 14px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.16), transparent 42%),
+    linear-gradient(135deg, #2563eb 0%, #0f9f8f 100%);
   color: #fff;
-  font-weight: 800;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 10px 22px rgba(37, 99, 235, 0.16);
+}
+
+.mark svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.mark-screen {
+  fill: rgba(255, 255, 255, 0.16);
+  stroke: rgba(255, 255, 255, 0.48);
+  stroke-width: 1.2;
+}
+
+.mark-panel {
+  fill: rgba(255, 255, 255, 0.94);
+}
+
+.mark-cut,
+.mark-line {
+  fill: none;
+  stroke: #0f766e;
+  stroke-width: 2.15;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.mark-line {
+  stroke: rgba(255, 255, 255, 0.72);
+  stroke-width: 1.55;
 }
 
 .brand h1 {

@@ -681,6 +681,19 @@ function renderNav() {
     .join("");
 }
 
+function renderBrandMark() {
+  return `
+    <div class="mark" aria-hidden="true">
+      <svg viewBox="0 0 40 40">
+        <rect class="mark-screen" x="7" y="8" width="26" height="21" rx="7" />
+        <path class="mark-panel" d="M13 15h7.2c4.5 0 7.8 2.8 7.8 7s-3.3 7-7.8 7H13V15Z" />
+        <path class="mark-cut" d="M18 19v6M18 19h3.2c1.9 0 3.1 1.1 3.1 3s-1.2 3-3.1 3H18" />
+        <path class="mark-line" d="M11.5 31.5h17" />
+      </svg>
+    </div>
+  `;
+}
+
 function navIcon(name) {
   const icons = {
     home: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.2 12 4l8 7.2v8.3a1.5 1.5 0 0 1-1.5 1.5H15v-6h-6v6H5.5A1.5 1.5 0 0 1 4 19.5v-8.3Z"/></svg>`,
@@ -1110,7 +1123,7 @@ function render() {
     <div class="layout ${state.sidebarCollapsed ? "sidebar-collapsed" : ""}">
       <aside class="sidebar">
         <div class="brand">
-          <div class="mark">DP</div>
+          ${renderBrandMark()}
           <div class="brand-text"><h1>DockPilot</h1><p>私有 NAS 控制台</p></div>
           <button class="sidebar-toggle" title="隐藏/显示侧边栏" data-action="sidebar-toggle">${state.sidebarCollapsed ? "›" : "‹"}</button>
         </div>
@@ -1136,7 +1149,7 @@ function renderAuth() {
     <div class="auth-wrap">
       <form class="auth-card form-stack" id="authForm">
         <div class="brand">
-          <div class="mark">DP</div>
+          ${renderBrandMark()}
           <div>
             <h1>DockPilot</h1>
             <p>${setup ? "创建第一个管理员账号。" : "登录后管理这台主机。"}</p>

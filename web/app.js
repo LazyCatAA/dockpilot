@@ -2345,7 +2345,6 @@ function renderCompose() {
             ${composeActionButton("down", "停止", "●", "danger")}
             ${composeActionButton("restart", "重启", "↻")}
             ${composeActionButton("config", "刷新状态", "◷")}
-            <button data-action="compose-repair" class="${state.compose.busyAction === "repair" ? "loading" : ""}" ${hasBusy ? "disabled" : ""}><span>${state.compose.busyAction === "repair" ? "…" : "A"}</span>修复</button>
             <button data-action="compose-save" class="${state.compose.busyAction === "save" ? "loading" : ""}" ${!state.compose.selected || hasBusy ? "disabled" : ""}>保存</button>
             <button data-action="compose-convert-command-ai" class="${state.compose.busyAction === "convert" ? "loading" : ""}" title="命令转 Compose" ${hasBusy ? "disabled" : ""}><span>${state.compose.busyAction === "convert" ? "…" : "···"}</span></button>
           </div>
@@ -2356,17 +2355,11 @@ function renderCompose() {
               <strong>${h(selected?.file || "docker-compose.yml")}</strong>
               <span>${h(composeStatusLabel(selectedTone))} · YAML · ${lineCount} 行 · ${fmtBytes(new Blob([state.compose.content || ""]).size)}</span>
             </div>
-            <div>
-              <button data-action="compose-repair" class="${state.compose.busyAction === "repair" ? "loading" : ""}" ${hasBusy ? "disabled" : ""}>AI 修复</button>
-              <button data-action="compose-action" data-command="logs" class="${state.compose.busyAction === "logs" ? "loading" : ""}" ${!state.compose.selected || hasBusy ? "disabled" : ""}>刷新日志</button>
-              <button data-action="compose-save" class="${state.compose.busyAction === "save" ? "loading" : ""}" ${!state.compose.selected || hasBusy ? "disabled" : ""}>保存</button>
-            </div>
           </div>
           <div class="compose-reference-workbench">
           <section class="compose-reference-editor compose-workspace-pane">
             <div class="compose-editor-titlebar">
               <strong>${h(selected?.file || "docker-compose.yml")}</strong>
-              <button data-action="compose-apply-ai" ${canApplyAi ? "" : "disabled"} title="应用 AI 修正">⇱</button>
             </div>
             <div class="editor-shell compose-dark-editor">
               <div id="composeEditor" class="compose-codemirror-host" data-editor="codemirror">
@@ -2428,7 +2421,6 @@ function renderCompose() {
                 <strong>容器日志</strong>
                 <span>${h(logStatusText)}</span>
               </div>
-              <button data-action="compose-action" data-command="logs" class="${state.compose.busyAction === "logs" ? "loading" : ""}" ${!state.compose.selected || hasBusy ? "disabled" : ""} title="刷新日志">↻</button>
             </div>
             <div class="compose-log-service-strip">
               ${

@@ -10122,6 +10122,13 @@ td.actions button {
     justify-content: space-between;
   }
 
+  .compose-reference-projects-head::after {
+    content: "点项目打开编辑";
+    color: #71839b;
+    font-size: 10px;
+    font-weight: 780;
+  }
+
   .compose-project-list {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -10179,7 +10186,8 @@ td.actions button {
     pointer-events: none;
   }
 
-  .compose-reference-main.open {
+  .compose-reference-main.open,
+  .compose-reference-main.compose-mobile-drawer.open {
     transform: translateY(0);
     pointer-events: auto;
   }
@@ -10294,7 +10302,13 @@ td.actions button {
   .compose-reference-editor.mobile-active,
   .compose-reference-preview.mobile-active,
   .compose-reference-settings.mobile-active {
-    display: grid;
+    display: block;
+  }
+
+  .compose-reference-main.open .compose-workspace-shell,
+  .compose-reference-main.open .compose-reference-workbench {
+    display: block;
+    min-height: 0;
   }
 
   .compose-editor-titlebar {

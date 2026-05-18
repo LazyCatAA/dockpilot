@@ -3395,10 +3395,8 @@ document.addEventListener("click", async (event) => {
     }
     if (action === "compose-select") {
       await selectCompose(button.dataset.path);
-      if (isMobileViewport()) {
-        state.composeMobileDrawerOpen = true;
-        state.composeMobileTab = state.composeMobileTab || "config";
-      }
+      state.composeMobileDrawerOpen = true;
+      state.composeMobileTab = state.composeMobileTab || "config";
       render();
     }
     if (action === "compose-mobile-close") {

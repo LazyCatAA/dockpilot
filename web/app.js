@@ -758,20 +758,19 @@ function closeCardContextMenu() {
   state.cardContextMenu = { open: false, x: 0, y: 0, id: null };
 }
 
-function contextMenuPositionForCard(cardNode) {
-  const rect = cardNode.getBoundingClientRect();
+function contextMenuPositionForPoint(x, y) {
   const menuWidth = 248;
   const menuHeight = 232;
   const gap = 8;
   return {
-    x: Math.max(8, Math.min(rect.right + gap, window.innerWidth - menuWidth - 8)),
-    y: Math.max(8, Math.min(rect.bottom + gap, window.innerHeight - menuHeight - 8)),
+    x: Math.max(8, Math.min(x + gap, window.innerWidth - menuWidth - 8)),
+    y: Math.max(8, Math.min(y + gap, window.innerHeight - menuHeight - 8)),
   };
 }
 
-function openCardContextMenuFromNode(cardNode) {
+function openCardContextMenuFromNode(cardNode, x, y) {
   if (!cardNode || state.tab !== "dashboard") return false;
-  const position = contextMenuPositionForCard(cardNode);
+  const position = contextMenuPositionForPoint(x ?? 0, y ?? 0);
   state.cardContextMenu = {
     open: true,
     x: position.x,
@@ -3909,16 +3908,17 @@ document.addEventListener("contextmenu", (event) => {
   const cardNode = event.target.closest("[data-card-id]");
   if (!cardNode || state.tab !== "dashboard") return;
   event.preventDefault();
-  openCardContextMenuFromNode(cardNode);
+  openCardContextMenuFromNode(cardNode, event.clientX, event.clientY);
 });
 
-document.addEventListener("pointerup", (event) => {
+document.addEventListener("pointerdown", (event) => {
   if (event.button !== 2) return;
   const cardNode = event.target.closest("[data-card-id]");
   if (!cardNode || state.tab !== "dashboard") return;
   event.preventDefault();
-  openCardContextMenuFromNode(cardNode);
-});
+  event.stopPropagation();
+  openCardContextMenuFromNode(cardNode, event.clientX, event.clientY);
+}, true);
 
 document.addEventListener("change", async (event) => {
   try {

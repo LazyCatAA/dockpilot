@@ -9380,7 +9380,8 @@ td.actions button {
 .compose-mobile-tabs,
 .compose-mobile-drawer-grip,
 .compose-mobile-drawer-close,
-.compose-mobile-project-select {
+.compose-mobile-project-select,
+.compose-mobile-actions {
   display: none;
 }
 
@@ -10188,6 +10189,35 @@ td.actions button {
 
   .compose-reference-layout .compose-mobile-project-select.open ~ .compose-project-list {
     display: grid;
+  }
+
+  .compose-mobile-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+    padding-top: 2px;
+  }
+
+  .compose-mobile-actions button {
+    min-height: 34px;
+    border: 1px solid rgba(202, 219, 243, 0.92);
+    border-radius: 11px;
+    background: rgba(255, 255, 255, 0.88);
+    color: #334155;
+    font-size: 11px;
+    font-weight: 900;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
+  }
+
+  .compose-mobile-actions button.primary {
+    background: linear-gradient(180deg, #3b82f6, #2563eb);
+    color: #fff;
+    border-color: rgba(37, 99, 235, 0.56);
+  }
+
+  .compose-mobile-actions button.danger {
+    border-color: rgba(248, 180, 180, 0.88);
+    color: #dc2626;
   }
 
   .compose-project-card {

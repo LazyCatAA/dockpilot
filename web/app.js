@@ -2528,6 +2528,14 @@ function renderCompose() {
             }
           </div>
         </div>
+        <div class="compose-mobile-actions">
+          ${composeActionButton("up", "启动", "▷")}
+          ${composeActionButton("down", "停止", "●", "danger")}
+          ${composeActionButton("restart", "重启", "↻")}
+          ${composeActionButton("config", "刷新状态", "◷")}
+          <button data-action="compose-save" class="${state.compose.busyAction === "save" ? "loading" : ""}" ${!state.compose.selected || hasBusy ? "disabled" : ""}>保存</button>
+          <button data-action="compose-convert-command-ai" class="${state.compose.busyAction === "convert" ? "loading" : ""}" title="Docker run 转 Compose" ${hasBusy ? "disabled" : ""}><span>${state.compose.busyAction === "convert" ? "…" : "↦"}</span>转 Compose</button>
+        </div>
       </aside>
       <main class="compose-reference-main">
         <header class="compose-reference-top">

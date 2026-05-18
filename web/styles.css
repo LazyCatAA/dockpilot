@@ -10206,6 +10206,10 @@ td.actions button {
 
   .compose-mobile-actions button {
     min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
     border: 1px solid rgba(202, 219, 243, 0.92);
     border-radius: 11px;
     background: rgba(255, 255, 255, 0.88);
@@ -10213,6 +10217,13 @@ td.actions button {
     font-size: 11px;
     font-weight: 900;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
+  }
+
+  .compose-mobile-actions button span {
+    color: #2563eb;
+    font-size: 13px;
+    font-weight: 950;
+    line-height: 1;
   }
 
   .compose-mobile-actions button.primary {
@@ -10223,6 +10234,10 @@ td.actions button {
 
   .compose-mobile-actions button.danger {
     border-color: rgba(248, 180, 180, 0.88);
+    color: #dc2626;
+  }
+
+  .compose-mobile-actions button.danger span {
     color: #dc2626;
   }
 

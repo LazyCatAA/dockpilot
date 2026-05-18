@@ -2385,6 +2385,10 @@ function composeActionButton(command, label, icon, extraClass = "") {
   return `<button data-action="compose-action" data-command="${h(command)}" class="${h(extraClass)} ${busy ? "loading" : ""}" ${disabled ? "disabled" : ""}><span>${busy ? "…" : h(icon)}</span>${h(label)}</button>`;
 }
 
+function composeMobileActionButton(action, label, icon, extraClass = "", attrs = "") {
+  return `<button ${attrs} data-action="${h(action)}" class="${h(extraClass)}"><span>${h(icon)}</span>${h(label)}</button>`;
+}
+
 function composeAiStatus() {
   if (state.compose.busyAction === "repair") return "检测中";
   if (state.compose.busyAction === "convert") return "转换中";
@@ -2532,9 +2536,9 @@ function renderCompose() {
           ${composeActionButton("up", "启动", "▷")}
           ${composeActionButton("down", "停止", "●", "danger")}
           ${composeActionButton("restart", "重启", "↻")}
-          ${composeActionButton("config", "刷新状态", "◷")}
-          <button data-action="compose-save" class="${state.compose.busyAction === "save" ? "loading" : ""}" ${!state.compose.selected || hasBusy ? "disabled" : ""}>保存</button>
-          <button data-action="compose-convert-command-ai" class="${state.compose.busyAction === "convert" ? "loading" : ""}" title="Docker run 转 Compose" ${hasBusy ? "disabled" : ""}><span>${state.compose.busyAction === "convert" ? "…" : "↦"}</span>转 Compose</button>
+          ${composeActionButton("config", "刷新", "◷")}
+          ${composeMobileActionButton("compose-save", "保存", state.compose.busyAction === "save" ? "…" : "✓", state.compose.busyAction === "save" ? "loading" : "", !state.compose.selected || hasBusy ? "disabled" : "")}
+          ${composeMobileActionButton("compose-convert-command-ai", "转compose", state.compose.busyAction === "convert" ? "…" : "↦", state.compose.busyAction === "convert" ? "loading" : "", `title="Docker run 转 Compose" ${hasBusy ? "disabled" : ""}`)}
         </div>
       </aside>
       <main class="compose-reference-main">
@@ -2550,9 +2554,9 @@ function renderCompose() {
             ${composeActionButton("up", "启动", "▷")}
             ${composeActionButton("down", "停止", "●", "danger")}
             ${composeActionButton("restart", "重启", "↻")}
-            ${composeActionButton("config", "刷新状态", "◷")}
+            ${composeActionButton("config", "刷新", "◷")}
             <button data-action="compose-save" class="${state.compose.busyAction === "save" ? "loading" : ""}" ${!state.compose.selected || hasBusy ? "disabled" : ""}>保存</button>
-            <button data-action="compose-convert-command-ai" class="${state.compose.busyAction === "convert" ? "loading" : ""}" title="Docker run 转 Compose" ${hasBusy ? "disabled" : ""}><span>${state.compose.busyAction === "convert" ? "…" : "↦"}</span>转 Compose</button>
+            <button data-action="compose-convert-command-ai" class="${state.compose.busyAction === "convert" ? "loading" : ""}" title="Docker run 转 Compose" ${hasBusy ? "disabled" : ""}><span>${state.compose.busyAction === "convert" ? "…" : "↦"}</span>转compose</button>
           </div>
         </header>
         <div class="compose-mobile-tabs" aria-label="编排页面分段">

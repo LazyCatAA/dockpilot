@@ -91,11 +91,11 @@ function highlightYaml(value) {
 
 function syncComposeHighlight() {
   const editor = document.getElementById("composeEditor");
-  const highlight = document.getElementById("composeHighlight");
-  if (!editor || !highlight) return;
-  highlight.innerHTML = `${highlightYaml(editor.value)}\n`;
-  highlight.scrollTop = editor.scrollTop;
-  highlight.scrollLeft = editor.scrollLeft;
+  const gutter = document.getElementById("composeLineNumbers");
+  if (!editor || !gutter) return;
+  const lines = Math.max(String(editor.value || "").split("\n").length, 1);
+  gutter.innerHTML = Array.from({ length: lines }, (_, index) => `<span>${index + 1}</span>`).join("");
+  gutter.scrollTop = editor.scrollTop;
 }
 
 function syncComposeAiHighlight() {
@@ -2306,7 +2306,7 @@ function renderCompose() {
               <button data-action="compose-apply-ai" ${canApplyAi ? "" : "disabled"} title="应用 AI 修正">⇱</button>
             </div>
             <div class="editor-shell compose-dark-editor">
-              <pre id="composeHighlight" class="code-highlight" aria-hidden="true">${highlightYaml(state.compose.content)}\n</pre>
+              <div id="composeLineNumbers" class="compose-line-numbers" aria-hidden="true">${Array.from({ length: lineCount }, (_, index) => `<span>${index + 1}</span>`).join("")}</div>
               <textarea id="composeEditor" class="code-input" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="粘贴 compose.yml，或粘贴 docker run 命令后点击 AI 转 Compose">${h(state.compose.content)}</textarea>
               <div class="compose-editor-statusbar"><span>YAML</span><span>Ln ${lineCount}, Col 1</span><span>${fmtBytes(new Blob([state.compose.content || ""]).size)}</span><span>UTF-8</span></div>
             </div>

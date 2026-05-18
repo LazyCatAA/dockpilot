@@ -7894,11 +7894,11 @@ td.actions button {
 .compose-reference-layout .code-input {
   top: 0;
   bottom: 34px;
-  padding: 13px 18px 13px 0;
+  padding: 11px 18px 11px 0;
   color: #c8d5e8;
   font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
   font-size: 12px;
-  line-height: 1.48;
+  line-height: 1.38;
 }
 
 .compose-reference-layout .code-highlight {
@@ -7913,12 +7913,14 @@ td.actions button {
 }
 
 .compose-reference-layout .code-input {
+  left: 40px;
+  width: calc(100% - 40px);
   z-index: 3;
   background: transparent !important;
-  color: transparent !important;
+  color: #d8e6f7 !important;
   caret-color: #d8e6f7;
-  padding-left: 38px;
-  -webkit-text-fill-color: transparent !important;
+  padding-left: 0;
+  -webkit-text-fill-color: #d8e6f7 !important;
 }
 
 .compose-reference-layout .code-highlight .yaml-key {
@@ -7960,6 +7962,30 @@ td.actions button {
 .compose-reference-layout .code-input::placeholder {
   color: rgba(216, 230, 247, 0.58);
   -webkit-text-fill-color: rgba(216, 230, 247, 0.58);
+}
+
+.compose-line-numbers {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 34px;
+  z-index: 2;
+  width: 40px;
+  overflow: hidden;
+  border-right: 1px solid rgba(96, 112, 134, 0.18);
+  padding: 11px 9px 11px 0;
+  background: rgba(8, 17, 30, 0.24);
+  color: #607086;
+  font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
+  font-size: 12px;
+  line-height: 1.38;
+  text-align: right;
+  user-select: none;
+}
+
+.compose-line-numbers span {
+  display: block;
+  height: 16.56px;
 }
 
 .code-line {
@@ -8463,8 +8489,12 @@ td.actions button {
     min-height: 380px;
   }
 
-  .compose-reference-layout .code-highlight,
   .compose-reference-layout .code-input {
-    padding-left: 18px;
+    left: 38px;
+    width: calc(100% - 38px);
+  }
+
+  .compose-line-numbers {
+    width: 38px;
   }
 }

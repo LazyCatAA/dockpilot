@@ -2764,6 +2764,25 @@ a {
   display: none;
 }
 
+@media (min-width: 721px) {
+  .container-card.mobile-actions-open .container-action-row {
+    display: grid;
+  }
+
+  .container-card.mobile-actions-open .container-extra-actions {
+    position: absolute;
+    display: flex;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .container-card.mobile-actions-open:hover .container-extra-actions,
+  .container-card.mobile-actions-open:focus-within .container-extra-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
 .backup-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));

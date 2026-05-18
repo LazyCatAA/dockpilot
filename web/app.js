@@ -1708,6 +1708,7 @@ function renderContainers() {
 
 function renderContainerCards(containers = filteredContainers()) {
   if (!containers.length) return `<div class="empty">当前筛选下没有容器。</div>`;
+  const mobileMode = isMobileViewport();
   return `
     <div class="container-cards">
       ${containers
@@ -1715,7 +1716,7 @@ function renderContainerCards(containers = filteredContainers()) {
           const running = String(item.State).toLowerCase() === "running";
           const updateHot = Boolean(item.DockPilot?.update_available);
           const updating = isContainerUpdating(item.Id);
-          const mobileOpen = Boolean(state.mobileContainerActions[item.Id]);
+          const mobileOpen = mobileMode && Boolean(state.mobileContainerActions[item.Id]);
           return `
             <article class="container-card ${h(item.State)} ${updateHot ? "has-update" : ""} ${mobileOpen ? "mobile-actions-open" : ""}" style="--card-color:${h(containerColor(item))}">
               ${updateHot ? `<div class="new-ribbon">NEW</div>` : ""}
@@ -1732,12 +1733,12 @@ function renderContainerCards(containers = filteredContainers()) {
                   <span class="container-runtime">${h(containerRuntime(item))}</span>
                   ${item.DockPilot?.update_check_error ? `<span class="container-update-error">${h(zhError(item.DockPilot.update_check_error))}</span>` : ""}
                 </div>
-                <button class="container-mobile-more" data-action="container-mobile-toggle" data-id="${h(item.Id)}" title="${mobileOpen ? "收起操作" : "展开操作"}">•••</button>
+                ${mobileMode ? `<button class="container-mobile-more" data-action="container-mobile-toggle" data-id="${h(item.Id)}" title="${mobileOpen ? "收起操作" : "展开操作"}">•••</button>` : ""}
               </div>
               <div class="container-card-divider"></div>
-              <button class="container-mobile-toggle" data-action="container-mobile-toggle" data-id="${h(item.Id)}">
+              ${mobileMode ? `<button class="container-mobile-toggle" data-action="container-mobile-toggle" data-id="${h(item.Id)}">
                 <span>${mobileOpen ? "收起操作" : "展开操作"}</span><i>${mobileOpen ? "⌃" : "⌄"}</i>
-              </button>
+              </button>` : ""}
               ${renderContainerCardUpdateProgress(item.Id)}
               <div class="container-action-row">
                 <button class="container-action stop" data-action="container-command" data-command="${running ? "stop" : "start"}" data-id="${h(item.Id)}">

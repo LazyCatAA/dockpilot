@@ -4,10 +4,59 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>DockPilot</title>
-    <link rel="stylesheet" href="/styles.css?v=20260518-6" />
+    <link rel="stylesheet" href="/styles.css?v=20260518-8" />
   </head>
   <body>
     <div id="app" class="app-shell"></div>
-    <script src="/app.js?v=20260518-6"></script>
+    <script type="module">
+      import { EditorState } from "https://esm.sh/@codemirror/state@6.4.1";
+      import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightSpecialChars, drawSelection, highlightActiveLine } from "https://esm.sh/@codemirror/view@6.28.6";
+      import { defaultKeymap, history, historyKeymap } from "https://esm.sh/@codemirror/commands@6.6.0";
+      import { bracketMatching, indentOnInput, syntaxHighlighting, defaultHighlightStyle } from "https://esm.sh/@codemirror/language@6.10.2";
+      import { yaml } from "https://esm.sh/@codemirror/lang-yaml@6.1.2";
+
+      const composeTheme = EditorView.theme({
+        "&": { height: "100%", color: "#d8e6f7", backgroundColor: "#0d1725" },
+        ".cm-scroller": { fontFamily: '"SFMono-Regular", "Menlo", "Consolas", monospace', fontSize: "12px", lineHeight: "1.38" },
+        ".cm-content": { padding: "11px 0 45px 0", caretColor: "#d8e6f7" },
+        ".cm-line": { padding: "0 18px" },
+        ".cm-gutters": { backgroundColor: "rgba(8, 17, 30, 0.42)", color: "#607086", borderRight: "1px solid rgba(96, 112, 134, 0.22)" },
+        ".cm-gutterElement": { padding: "0 10px 0 8px" },
+        ".cm-activeLineGutter": { backgroundColor: "rgba(37, 99, 235, 0.12)", color: "#93c5fd" },
+        ".cm-activeLine": { backgroundColor: "rgba(37, 99, 235, 0.06)" },
+        ".cm-selectionBackground, &.cm-focused .cm-selectionBackground": { backgroundColor: "rgba(96, 165, 250, 0.32)" },
+        "&.cm-focused": { outline: "none" }
+      }, { dark: true });
+
+      window.DockPilotCodeMirror = {
+        mount(parent, content, onChange) {
+          parent.textContent = "";
+          const view = new EditorView({
+            parent,
+            state: EditorState.create({
+              doc: content || "",
+              extensions: [
+                lineNumbers(),
+                highlightActiveLineGutter(),
+                highlightSpecialChars(),
+                history(),
+                drawSelection(),
+                indentOnInput(),
+                bracketMatching(),
+                syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
+                yaml(),
+                keymap.of([...defaultKeymap, ...historyKeymap]),
+                composeTheme,
+                EditorView.updateListener.of((update) => {
+                  if (update.docChanged) onChange(update.state.doc.toString());
+                })
+              ]
+            })
+          });
+          return view;
+        }
+      };
+    </script>
+    <script src="/app.js?v=20260518-8"></script>
   </body>
 </html>

@@ -7890,73 +7890,43 @@ td.actions button {
   pointer-events: none;
 }
 
-.compose-reference-layout .code-highlight,
+.compose-codemirror-host {
+  position: absolute;
+  inset: 0 0 34px 0;
+  overflow: hidden;
+}
+
+.compose-codemirror-host .cm-editor {
+  height: 100%;
+}
+
+.compose-codemirror-host .cm-scroller {
+  overflow: auto;
+}
+
 .compose-reference-layout .code-input {
   top: 0;
   bottom: 34px;
-  padding: 11px 18px 11px 0;
+  padding: 11px 18px 45px 48px;
   color: #c8d5e8;
   font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
   font-size: 12px;
   line-height: 1.38;
 }
 
-.compose-reference-layout .code-highlight {
-  counter-reset: yaml-line;
-  z-index: 4;
-  opacity: 1;
-  pointer-events: none;
-  background: transparent !important;
-  filter: none;
-  text-shadow: none;
-  -webkit-text-fill-color: unset !important;
-}
-
 .compose-reference-layout .code-input {
-  left: 40px;
-  width: calc(100% - 40px);
+  position: absolute;
+  inset: 0 0 0 0;
+  width: 100%;
+  height: 100%;
   z-index: 3;
-  background: transparent !important;
+  border: 0;
+  border-radius: 0;
+  resize: none;
+  background: #0d1725 !important;
   color: #d8e6f7 !important;
   caret-color: #d8e6f7;
-  padding-left: 0;
   -webkit-text-fill-color: #d8e6f7 !important;
-}
-
-.compose-reference-layout .code-highlight .yaml-key {
-  color: #7dd3fc;
-  -webkit-text-fill-color: #7dd3fc;
-}
-
-.compose-reference-layout .code-highlight .yaml-punc,
-.compose-reference-layout .code-highlight .yaml-list {
-  color: #c4b5fd;
-  -webkit-text-fill-color: #c4b5fd;
-}
-
-.compose-reference-layout .code-highlight .yaml-string {
-  color: #86efac;
-  -webkit-text-fill-color: #86efac;
-}
-
-.compose-reference-layout .code-highlight .yaml-bool {
-  color: #fde68a;
-  -webkit-text-fill-color: #fde68a;
-}
-
-.compose-reference-layout .code-highlight .yaml-comment {
-  color: #64748b;
-  -webkit-text-fill-color: #64748b;
-}
-
-.compose-reference-layout .code-highlight .code-line-content {
-  color: #c8d5e8;
-  -webkit-text-fill-color: #c8d5e8;
-}
-
-.compose-reference-layout .code-highlight .code-line-number {
-  color: #607086;
-  -webkit-text-fill-color: #607086;
 }
 
 .compose-reference-layout .code-input::placeholder {
@@ -7964,28 +7934,13 @@ td.actions button {
   -webkit-text-fill-color: rgba(216, 230, 247, 0.58);
 }
 
-.compose-line-numbers {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 34px;
-  z-index: 2;
-  width: 40px;
-  overflow: hidden;
-  border-right: 1px solid rgba(96, 112, 134, 0.18);
-  padding: 11px 9px 11px 0;
-  background: rgba(8, 17, 30, 0.24);
-  color: #607086;
-  font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
-  font-size: 12px;
-  line-height: 1.38;
-  text-align: right;
-  user-select: none;
+.compose-editor-fallback {
+  display: block;
 }
 
-.compose-line-numbers span {
-  display: block;
-  height: 16.56px;
+.compose-codemirror-host .cm-editor + .compose-editor-fallback,
+.compose-codemirror-host .cm-editor ~ .compose-editor-fallback {
+  display: none;
 }
 
 .code-line {
@@ -8489,12 +8444,4 @@ td.actions button {
     min-height: 380px;
   }
 
-  .compose-reference-layout .code-input {
-    left: 38px;
-    width: calc(100% - 38px);
-  }
-
-  .compose-line-numbers {
-    width: 38px;
-  }
 }

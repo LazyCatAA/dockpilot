@@ -36,6 +36,7 @@ const containerUpdateClearTimers = {};
 const containerAutoChecked = new Set();
 let imagePullPollTimer = null;
 let volumeBackupPollTimer = null;
+let composeEditorView = null;
 
 const tabs = [
   ["dashboard", "总览"],
@@ -90,12 +91,33 @@ function highlightYaml(value) {
 }
 
 function syncComposeHighlight() {
-  const editor = document.getElementById("composeEditor");
-  const gutter = document.getElementById("composeLineNumbers");
-  if (!editor || !gutter) return;
-  const lines = Math.max(String(editor.value || "").split("\n").length, 1);
-  gutter.innerHTML = Array.from({ length: lines }, (_, index) => `<span>${index + 1}</span>`).join("");
-  gutter.scrollTop = editor.scrollTop;
+  if (composeEditorView) {
+    state.compose.content = composeEditorView.state.doc.toString();
+    return;
+  }
+  const editor = document.getElementById("composeEditorFallback");
+  if (editor) state.compose.content = editor.value;
+}
+
+function composeEditorValue() {
+  if (composeEditorView) return composeEditorView.state.doc.toString();
+  return document.getElementById("composeEditorFallback")?.value ?? state.compose.content;
+}
+
+function destroyComposeEditor() {
+  if (!composeEditorView) return;
+  composeEditorView.destroy();
+  composeEditorView = null;
+}
+
+function mountComposeEditor() {
+  const mount = document.getElementById("composeEditor");
+  if (!mount) return;
+  destroyComposeEditor();
+  if (!window.DockPilotCodeMirror?.mount) return;
+  composeEditorView = window.DockPilotCodeMirror.mount(mount, state.compose.content, (value) => {
+    state.compose.content = value;
+  });
 }
 
 function syncComposeAiHighlight() {
@@ -1061,6 +1083,7 @@ async function loadSettings() {
 }
 
 function render() {
+  destroyComposeEditor();
   if (!state.session) {
     app.innerHTML = `<div class="auth-wrap"><div class="auth-card">正在加载...</div></div>`;
     return;
@@ -1086,7 +1109,10 @@ function render() {
       </main>
     </section>
   `;
-  if (state.tab === "compose") syncComposeLogScroll();
+  if (state.tab === "compose") {
+    mountComposeEditor();
+    syncComposeLogScroll();
+  }
 }
 
 function renderAuth() {
@@ -2306,8 +2332,9 @@ function renderCompose() {
               <button data-action="compose-apply-ai" ${canApplyAi ? "" : "disabled"} title="应用 AI 修正">⇱</button>
             </div>
             <div class="editor-shell compose-dark-editor">
-              <div id="composeLineNumbers" class="compose-line-numbers" aria-hidden="true">${Array.from({ length: lineCount }, (_, index) => `<span>${index + 1}</span>`).join("")}</div>
-              <textarea id="composeEditor" class="code-input" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="粘贴 compose.yml，或粘贴 docker run 命令后点击 AI 转 Compose">${h(state.compose.content)}</textarea>
+              <div id="composeEditor" class="compose-codemirror-host" data-editor="codemirror">
+                <textarea id="composeEditorFallback" class="code-input compose-editor-fallback" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="粘贴 compose.yml，或粘贴 docker run 命令后点击 AI 转 Compose">${h(state.compose.content)}</textarea>
+              </div>
               <div class="compose-editor-statusbar"><span>YAML</span><span>Ln ${lineCount}, Col 1</span><span>${fmtBytes(new Blob([state.compose.content || ""]).size)}</span><span>UTF-8</span></div>
             </div>
           </section>
@@ -3072,7 +3099,7 @@ document.addEventListener("click", async (event) => {
       render();
     }
     if (action === "compose-save") {
-      const editorValue = document.getElementById("composeEditor")?.value ?? state.compose.content;
+      const editorValue = composeEditorValue();
       state.compose.content = editorValue;
       state.compose.busyAction = "save";
       render();
@@ -3090,7 +3117,7 @@ document.addEventListener("click", async (event) => {
     if (action === "compose-backup") {
       await api("/api/compose/backups", {
         method: "POST",
-        body: { path: state.compose.selected, content: document.getElementById("composeEditor").value },
+        body: { path: state.compose.selected, content: composeEditorValue() },
       });
       state.error = "Compose 备份已创建。";
       render();
@@ -3142,7 +3169,7 @@ document.addEventListener("click", async (event) => {
       }
     }
     if (action === "compose-repair") {
-      const editorValue = document.getElementById("composeEditor")?.value ?? state.compose.content;
+      const editorValue = composeEditorValue();
       state.compose.content = editorValue;
       state.compose.busyAction = "repair";
       render();
@@ -3177,7 +3204,7 @@ document.addEventListener("click", async (event) => {
       render();
     }
     if (action === "compose-convert-command-ai") {
-      const editorValue = document.getElementById("composeEditor")?.value ?? state.compose.content;
+      const editorValue = composeEditorValue();
       state.compose.content = editorValue;
       state.compose.busyAction = "convert";
       render();
@@ -3218,7 +3245,7 @@ document.addEventListener("click", async (event) => {
     if (action === "compose-action") {
       if (!state.compose.selected) throw new Error("请先选择一个 Compose 项目。");
       const command = button.dataset.command;
-      const editorValue = document.getElementById("composeEditor")?.value ?? state.compose.content;
+      const editorValue = composeEditorValue();
       state.compose.content = editorValue;
       state.compose.busyAction = command;
       render();
@@ -3448,7 +3475,7 @@ document.addEventListener("input", (event) => {
 });
 
 document.addEventListener("input", (event) => {
-  if (event.target.id === "composeEditor") {
+  if (event.target.id === "composeEditorFallback") {
     state.compose.content = event.target.value;
     syncComposeHighlight();
   }
@@ -3457,7 +3484,7 @@ document.addEventListener("input", (event) => {
 document.addEventListener(
   "scroll",
   (event) => {
-    if (event.target.id === "composeEditor") syncComposeHighlight();
+    if (event.target.id === "composeEditorFallback") syncComposeHighlight();
   },
   true
 );

@@ -1,4 +1,13 @@
 const DEFAULT_COMPOSE_REPAIR_INSTRUCTION = "只修正格式和明确缺失项，不改变镜像、端口、挂载和环境变量含义。";
+const COMPOSE_REPAIR_INSTRUCTION_KEY = "dockpilot.compose.repairInstruction";
+
+function initialComposeRepairInstruction() {
+  try {
+    return localStorage.getItem(COMPOSE_REPAIR_INSTRUCTION_KEY) || DEFAULT_COMPOSE_REPAIR_INSTRUCTION;
+  } catch {
+    return DEFAULT_COMPOSE_REPAIR_INSTRUCTION;
+  }
+}
 
 const state = {
   session: null,
@@ -28,7 +37,7 @@ const state = {
   containerUpdateCheck: { active: false, done: 0, total: 0, failed: 0 },
   sidebarCollapsed: false,
   logs: { id: "", text: "" },
-  compose: { projects: [], selected: "", content: "", output: "", logs: "", repair: null, repairLines: [], aiContent: "", repairInstruction: DEFAULT_COMPOSE_REPAIR_INSTRUCTION, backups: [], backupModal: false, logsAutoScroll: true, busyAction: "" },
+  compose: { projects: [], selected: "", content: "", output: "", logs: "", repair: null, repairLines: [], aiContent: "", repairInstruction: initialComposeRepairInstruction(), backups: [], backupModal: false, logsAutoScroll: true, busyAction: "" },
   files: { roots: [], root: "", path: "", items: [], editPath: "", content: "" },
   settings: null,
 };
@@ -2380,7 +2389,10 @@ function renderCompose() {
             </div>
             <div class="compose-ai-issue-summary">
               <span><i></i>${state.compose.repair ? h(repairSummary) : "等待 AI 检测 Compose 内容，修复会先进入审核区。"}</span>
-              <button data-action="compose-repair" class="${state.compose.busyAction === "repair" ? "loading" : ""}" ${hasBusy ? "disabled" : ""}>重新检测</button>
+              <div class="compose-ai-summary-actions">
+                <button data-action="compose-repair" class="${state.compose.busyAction === "repair" ? "loading" : ""}" ${hasBusy ? "disabled" : ""}>重新检测</button>
+                ${canApplyAi ? `<button data-action="compose-apply-ai" class="primary">应用到编辑器</button>` : ""}
+              </div>
             </div>
             <div class="compose-ai-issue-list">
               ${aiReviewItems.length ? aiReviewItems.map((item, index) => `
@@ -2413,9 +2425,9 @@ function renderCompose() {
               <div class="compose-ai-requirement">
                 <strong>${state.compose.aiContent ? "修复结果待应用" : "AI 修正要求"}</strong>
                 <textarea id="composeRepairInstruction" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" placeholder="${h(DEFAULT_COMPOSE_REPAIR_INSTRUCTION)}">${h(state.compose.repairInstruction || DEFAULT_COMPOSE_REPAIR_INSTRUCTION)}</textarea>
-                <span>${state.compose.aiContent ? "应用后会写入左侧编辑器，仍需手动保存文件。" : "可直接编辑这段默认预设，再点重新检测或修复。"}</span>
+                <span>保存后会作为默认预设，用于后续 AI 检测；应用修复内容请使用上方“应用到编辑器”。</span>
               </div>
-              <button data-action="compose-apply-ai" ${canApplyAi ? "" : "disabled"}>应用修复</button>
+              <button data-action="compose-save-repair-instruction">保存要求</button>
             </div>
           </section>
           <aside class="compose-reference-settings compose-log-panel compose-workspace-pane">
@@ -3283,6 +3295,17 @@ document.addEventListener("click", async (event) => {
       state.error = "已应用 AI 修正，请检查后保存或部署。";
       render();
       syncComposeHighlight();
+    }
+    if (action === "compose-save-repair-instruction") {
+      const value = (state.compose.repairInstruction || "").trim() || DEFAULT_COMPOSE_REPAIR_INSTRUCTION;
+      state.compose.repairInstruction = value;
+      try {
+        localStorage.setItem(COMPOSE_REPAIR_INSTRUCTION_KEY, value);
+      } catch {
+        // Ignore storage errors; the current session still keeps the edited value.
+      }
+      state.error = "AI 修正要求已保存。";
+      render();
     }
     if (action === "compose-copy-logs") {
       if (!state.compose.logs) throw new Error("当前没有可复制的日志。");

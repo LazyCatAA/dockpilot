@@ -43,6 +43,7 @@ const state = {
   logs: { id: "", text: "" },
   composeMobileTab: "config",
   composeMobileDrawerOpen: false,
+  composeMobileProjectOpen: false,
   compose: { projects: [], selected: "", content: "", output: "", logs: "", repair: null, repairLines: [], aiContent: "", repairInstruction: initialComposeRepairInstruction(), backups: [], backupModal: false, logsAutoScroll: true, busyAction: "" },
   files: { roots: [], root: "", path: "", items: [], editPath: "", content: "" },
   settings: null,
@@ -2499,7 +2500,7 @@ function renderCompose() {
   const suggestedAiItems = aiReviewItems.filter((item) => item.tone === "suggestion").length;
   const mobileTab = ["config", "repair", "logs"].includes(state.composeMobileTab) ? state.composeMobileTab : "config";
   const mobileMode = isMobileViewport();
-  const mobileDrawerOpen = mobileMode && Boolean(state.composeMobileDrawerOpen);
+  const mobileProjectOpen = mobileMode && Boolean(state.composeMobileProjectOpen);
   return `
     <section class="compose-monitor-layout compose-reference-layout compose-reference-shell">
       <aside class="compose-reference-sidebar">
@@ -2507,6 +2508,14 @@ function renderCompose() {
           <div class="compose-reference-projects-head">
             <strong>项目列表</strong>
           </div>
+          <button class="compose-mobile-project-select ${mobileProjectOpen ? "open" : ""}" data-action="compose-mobile-project-toggle" type="button" aria-expanded="${mobileProjectOpen ? "true" : "false"}">
+            <i class="compose-mobile-project-icon">${navIcon("compose")}</i>
+            <span>
+              <strong>${h(selectedName)}</strong>
+              <small>${h(selected ? `${composeStatusLabel(selectedTone)} · ${selected.file || "compose.yml"}` : "点开选择项目")}</small>
+            </span>
+            <b>⌄</b>
+          </button>
           <label class="compose-reference-search">
             <span>⌕</span>
             <input placeholder="搜索项目名称" aria-label="搜索项目名称" />
@@ -2524,11 +2533,7 @@ function renderCompose() {
           </div>
         </div>
       </aside>
-      <main class="compose-reference-main ${mobileMode ? "compose-mobile-drawer" : ""} ${mobileDrawerOpen ? "open" : ""}">
-        ${mobileMode ? `
-          <div class="compose-mobile-drawer-grip"></div>
-          <button class="compose-mobile-drawer-close" data-action="compose-mobile-close">关闭</button>
-        ` : ""}
+      <main class="compose-reference-main">
         <header class="compose-reference-top">
           <div class="compose-reference-title">
             <div>
@@ -2547,8 +2552,8 @@ function renderCompose() {
           </div>
         </header>
         <div class="compose-mobile-tabs" aria-label="编排页面分段">
-          <button data-action="compose-mobile-tab" data-tab="config" class="${mobileTab === "config" ? "active" : ""}">配置</button>
-          <button data-action="compose-mobile-tab" data-tab="repair" class="${mobileTab === "repair" ? "active" : ""}">修复</button>
+          <button data-action="compose-mobile-tab" data-tab="config" class="${mobileTab === "config" ? "active" : ""}">编辑</button>
+          <button data-action="compose-mobile-tab" data-tab="repair" class="${mobileTab === "repair" ? "active" : ""}">AI修复</button>
           <button data-action="compose-mobile-tab" data-tab="logs" class="${mobileTab === "logs" ? "active" : ""}">日志</button>
         </div>
         <section class="compose-workspace-shell">
@@ -3086,6 +3091,10 @@ document.addEventListener("click", async (event) => {
       state.composeMobileTab = button.dataset.tab || "config";
       render();
     }
+    if (action === "compose-mobile-project-toggle") {
+      state.composeMobileProjectOpen = !state.composeMobileProjectOpen;
+      render();
+    }
     if (action === "refresh") await refreshCurrent();
     if (action === "image-config-toggle") {
       state.images.configOpen = !state.images.configOpen;
@@ -3395,12 +3404,8 @@ document.addEventListener("click", async (event) => {
     }
     if (action === "compose-select") {
       await selectCompose(button.dataset.path);
-      state.composeMobileDrawerOpen = true;
+      state.composeMobileProjectOpen = false;
       state.composeMobileTab = state.composeMobileTab || "config";
-      render();
-    }
-    if (action === "compose-mobile-close") {
-      state.composeMobileDrawerOpen = false;
       render();
     }
     if (action === "compose-save") {

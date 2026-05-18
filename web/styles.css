@@ -9379,7 +9379,8 @@ td.actions button {
 .mobile-bottom-nav,
 .compose-mobile-tabs,
 .compose-mobile-drawer-grip,
-.compose-mobile-drawer-close {
+.compose-mobile-drawer-close,
+.compose-mobile-project-select {
   display: none;
 }
 
@@ -10097,13 +10098,13 @@ td.actions button {
   }
 
   .compose-reference-sidebar {
-    padding: 10px;
+    padding: 8px;
     border-right: 0;
     border-bottom: 1px solid rgba(213, 225, 242, 0.72);
   }
 
   .compose-reference-projects {
-    gap: 8px;
+    gap: 7px;
   }
 
   .compose-reference-projects-head strong {
@@ -10116,25 +10117,97 @@ td.actions button {
   }
 
   .compose-reference-projects-head {
-    min-height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: none;
   }
 
   .compose-reference-projects-head::after {
-    content: "点项目打开编辑";
-    color: #71839b;
+    content: none;
+  }
+
+  .compose-mobile-project-select {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) 24px;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    min-height: 50px;
+    padding: 7px 9px;
+    border: 1px solid rgba(202, 219, 243, 0.9);
+    border-radius: 14px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.95), rgba(244,250,255,0.88)),
+      rgba(255,255,255,0.9);
+    color: #0f172a;
+    box-shadow: 0 10px 22px rgba(31, 82, 140, 0.12), inset 0 1px 0 rgba(255,255,255,0.95);
+    text-align: left;
+  }
+
+  .compose-mobile-project-icon {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 11px;
+    background: linear-gradient(135deg, #2f6cf6, #0ea5a9);
+    color: #fff;
+  }
+
+  .compose-mobile-project-icon svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  .compose-mobile-project-select span {
+    min-width: 0;
+    display: grid;
+    gap: 2px;
+  }
+
+  .compose-mobile-project-select strong,
+  .compose-mobile-project-select small {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .compose-mobile-project-select strong {
+    font-size: 15px;
+    font-weight: 950;
+  }
+
+  .compose-mobile-project-select small {
+    color: #64748b;
     font-size: 10px;
-    font-weight: 780;
+    font-weight: 800;
+  }
+
+  .compose-mobile-project-select b {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    color: #2563eb;
+    font-size: 13px;
+    transform: rotate(0deg);
+    transition: transform 0.18s ease;
+  }
+
+  .compose-mobile-project-select.open b {
+    transform: rotate(180deg);
   }
 
   .compose-project-list {
-    display: grid;
+    display: none;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 7px;
-    max-height: none;
+    max-height: 168px;
     overflow: auto;
+    padding: 2px;
+  }
+
+  .compose-mobile-project-select.open ~ .compose-project-list {
+    display: grid;
   }
 
   .compose-project-card {
@@ -10184,7 +10257,7 @@ td.actions button {
   }
 
   .compose-reference-main.compose-mobile-drawer:not(.open) {
-    display: none;
+    display: grid;
   }
 
   .compose-mobile-drawer-grip {
@@ -10211,10 +10284,7 @@ td.actions button {
   }
 
   .compose-reference-top {
-    grid-template-columns: 1fr;
-    gap: 7px;
-    padding: 9px;
-    border-radius: 14px;
+    display: none;
   }
 
   .compose-reference-title h3 {
@@ -10272,6 +10342,10 @@ td.actions button {
     box-shadow: none;
   }
 
+  .compose-workspace-head {
+    display: none;
+  }
+
   .compose-workspace-head strong {
     font-size: 13px;
   }
@@ -10303,6 +10377,11 @@ td.actions button {
   .compose-reference-main.open .compose-workspace-shell,
   .compose-reference-main.open .compose-reference-workbench {
     display: block;
+    min-height: 0;
+  }
+
+  .compose-reference-main .compose-workspace-shell,
+  .compose-reference-main .compose-reference-workbench {
     min-height: 0;
   }
 

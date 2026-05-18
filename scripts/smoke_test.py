@@ -140,6 +140,7 @@ def main() -> int:
         assert_true("registry_mirrors" in app_js, "镜像库应支持多个镜像加速源")
         assert_true("compose-repair" in app_js, "Compose 编辑器应支持 AI 修正")
         assert_true("compose-convert-command-ai" in app_js, "Compose 编辑器应支持 AI 转 Compose")
+        assert_true("转 Compose" in app_js, "Compose 转换按钮应显示明确文案")
         assert_true("compose-apply-ai" in app_js, "Compose 编辑器应先预览再应用 AI 修正")
         assert_true('data-action="compose-apply-ai" ${canApplyAi ? "" : "disabled"}>应用修复</button>' in app_js, "Compose 右侧应用修复按钮应应用 AI 预览内容")
         assert_true("compose-reference-shell" in app_js, "Compose 页面应使用参考图四栏工作台外壳")

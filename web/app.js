@@ -2346,7 +2346,7 @@ function renderCompose() {
             ${composeActionButton("restart", "重启", "↻")}
             ${composeActionButton("config", "刷新状态", "◷")}
             <button data-action="compose-save" class="${state.compose.busyAction === "save" ? "loading" : ""}" ${!state.compose.selected || hasBusy ? "disabled" : ""}>保存</button>
-            <button data-action="compose-convert-command-ai" class="${state.compose.busyAction === "convert" ? "loading" : ""}" title="命令转 Compose" ${hasBusy ? "disabled" : ""}><span>${state.compose.busyAction === "convert" ? "…" : "···"}</span></button>
+            <button data-action="compose-convert-command-ai" class="${state.compose.busyAction === "convert" ? "loading" : ""}" title="Docker run 转 Compose" ${hasBusy ? "disabled" : ""}><span>${state.compose.busyAction === "convert" ? "…" : "↦"}</span>转 Compose</button>
           </div>
         </header>
         <section class="compose-workspace-shell">

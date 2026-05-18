@@ -10092,21 +10092,22 @@ td.actions button {
     display: grid;
     grid-template-columns: 1fr;
     min-height: 0;
+    overflow: visible;
     border-radius: 16px;
   }
 
   .compose-reference-sidebar {
-    padding: 8px;
+    padding: 10px;
     border-right: 0;
     border-bottom: 1px solid rgba(213, 225, 242, 0.72);
   }
 
   .compose-reference-projects {
-    gap: 7px;
+    gap: 8px;
   }
 
   .compose-reference-projects-head strong {
-    font-size: 13px;
+    font-size: 15px;
   }
 
   .compose-reference-search,
@@ -10123,14 +10124,15 @@ td.actions button {
 
   .compose-project-list {
     display: grid;
-    gap: 6px;
-    max-height: 31vh;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 7px;
+    max-height: none;
     overflow: auto;
   }
 
   .compose-project-card {
-    min-height: 44px;
-    padding: 8px 9px;
+    min-height: 48px;
+    padding: 8px 10px;
     border-radius: 12px;
   }
 
@@ -10139,8 +10141,7 @@ td.actions button {
   }
 
   .compose-project-card span {
-    display: block;
-    font-size: 10px;
+    display: none;
   }
 
   .compose-reference-main {
@@ -10159,13 +10160,15 @@ td.actions button {
       linear-gradient(180deg, rgba(255,255,255,0.88), rgba(243,249,255,0.82)),
       rgba(255,255,255,0.8);
     box-shadow: 0 16px 40px rgba(31, 82, 140, 0.18), inset 0 1px 0 rgba(255,255,255,0.9);
-    transform: translateY(106%);
+    transform: translateY(calc(100% + 80px));
     transition: transform 0.24s ease;
     overflow: auto;
+    pointer-events: none;
   }
 
   .compose-reference-main.open {
     transform: translateY(0);
+    pointer-events: auto;
   }
 
   .compose-mobile-drawer-grip {

@@ -1318,6 +1318,9 @@ function render() {
       ${renderMobileBottomNav()}
     </div>
     ${renderCardContextMenu()}
+    ${renderNavGroupSettingsModal()}
+    ${renderNavSettingsModal()}
+    ${renderCardModal()}
   `;
   if (state.tab === "compose") {
     mountComposeEditor();
@@ -1425,9 +1428,6 @@ function renderDashboard() {
       <div class="nav-bookmark-area">
         ${renderCards()}
       </div>
-      ${renderNavGroupSettingsModal()}
-      ${renderNavSettingsModal()}
-      ${renderCardModal()}
     </section>
   `;
 }

@@ -1463,6 +1463,10 @@ a {
   column-gap: 18px;
 }
 
+.bookmark-editor-modal .card-modal-grid .wide {
+  grid-column: 1 / -1;
+}
+
 .bookmark-editor-modal .field span {
   color: #657086;
   font-size: 20px;

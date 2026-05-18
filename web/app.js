@@ -2343,6 +2343,7 @@ function renderComposeProjectCard(project) {
       <i class="compose-project-lock">${navIcon("compose")}</i>
       <span class="compose-project-info">
         <strong>${h(project.name)}</strong>
+        <small>${h(status)}</small>
       </span>
       <span class="compose-project-state" title="${h(status)}" aria-label="${h(status)}"><i class="state-dot ${h(tone)}"></i></span>
     </button>

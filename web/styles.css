@@ -10140,8 +10140,21 @@ td.actions button {
     font-size: 13px;
   }
 
-  .compose-project-card span {
-    display: none;
+  .compose-project-card .compose-project-info {
+    min-width: 0;
+    display: block;
+  }
+
+  .compose-project-card .compose-project-state {
+    display: grid;
+    place-items: center;
+  }
+
+  .compose-project-card strong {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .compose-reference-main {

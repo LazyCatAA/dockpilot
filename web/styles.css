@@ -9711,7 +9711,10 @@ td.actions button {
   }
 
   .container-name-row {
+    grid-column: 1 / -1;
     width: 100%;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .container-icon {
@@ -9722,6 +9725,10 @@ td.actions button {
 
   .container-name-row strong {
     font-size: 13px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .container-image,
@@ -9744,6 +9751,11 @@ td.actions button {
   .container-runtime {
     max-width: none;
     white-space: nowrap;
+  }
+
+  .container-update-error {
+    grid-column: 1 / -1;
+    min-width: 0;
   }
 
   .container-card-divider {

@@ -1392,30 +1392,31 @@ function renderCards() {
   const prefs = navPrefs();
   const groups = filteredCardGroups();
   return `
-    <section class="nav-minimal-board">
-      <div class="nav-minimal-library">
+    <section class="nav-minimal-board nav-reference-board">
+      ${prefs.show_search ? `
+      <div class="nav-minimal-library nav-reference-toolbar">
         <span></span>
         <div class="nav-minimal-library-tools">
-          ${prefs.show_search ? `<input id="navSearch" value="${h(state.navSearch)}" placeholder="过滤书签" />` : ""}
-          <button data-action="card-add" data-group="Docker" title="添加书签">＋</button>
+          <input id="navSearch" value="${h(state.navSearch)}" placeholder="过滤书签" />
         </div>
       </div>
+      ` : ""}
       ${groups
         .map(
           ([group, cards]) => `
-            <div class="nav-minimal-group" style="--group-color:${h(navGroupPrefs(group).color || "#2563eb")}">
-              <div class="nav-minimal-group-head">
+            <section class="nav-minimal-group nav-reference-group" style="--group-color:${h(navGroupPrefs(group).color || "#2563eb")}">
+              <header class="nav-minimal-group-head nav-reference-group-head">
                 <div>
-                  <h3><i></i>${h(group)}</h3>
+                  <h3><i></i><span>${h(group)}</span>${prefs.show_group_count ? `<small>${cards.length}</small>` : ""}</h3>
                 </div>
                 <div class="nav-minimal-group-tools">
+                  <button class="nav-group-primary-action" title="添加书签" data-action="card-add" data-group="${h(group)}">＋</button>
+                  <button class="nav-group-primary-action" title="分组设置" data-action="card-group-settings" data-group="${h(group)}">${navIcon("settings")}</button>
                   <button title="折叠/展开" data-action="nav-group-collapse" data-group="${h(group)}">${navGroupPrefs(group).collapsed ? "展开" : "收起"}</button>
-                  <input type="color" title="分组颜色" data-action="nav-group-color" data-group="${h(group)}" value="${h(navGroupPrefs(group).color || "#2563eb")}" />
-                  <button title="添加书签" data-action="card-add" data-group="${h(group)}">＋</button>
-                  <button title="分组设置" data-action="card-group-settings" data-group="${h(group)}">改名</button>
                   <button title="隐藏分组" data-action="nav-group-hide" data-group="${h(group)}">隐藏</button>
+                  <input type="color" title="分组颜色" data-action="nav-group-color" data-group="${h(group)}" value="${h(navGroupPrefs(group).color || "#2563eb")}" />
                 </div>
-              </div>
+              </header>
               ${
                 navGroupPrefs(group).collapsed
                   ? ""
@@ -1423,7 +1424,7 @@ function renderCards() {
                     ? `<div class="nav-minimal-grid">${cards.map(renderBookmarkCard).join("")}</div>`
                     : `<div class="nav-minimal-empty">这个分组还没有书签。</div>`
               }
-            </div>
+            </section>
           `
         )
         .join("")}

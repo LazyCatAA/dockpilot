@@ -6930,6 +6930,11 @@ td.actions button {
   gap: 24px;
   padding: 28px clamp(18px, 4vw, 44px);
   border-radius: 28px;
+  background:
+    radial-gradient(circle at 18% 10%, rgba(255, 255, 255, 0.08), transparent 18%),
+    radial-gradient(circle at 82% 8%, rgba(255, 255, 255, 0.05), transparent 16%),
+    linear-gradient(135deg, #1a2d73 0%, #27469c 42%, #3158b7 100%);
+  box-shadow: 0 32px 90px rgba(8, 15, 51, 0.32);
 }
 
 .nav-minimal-topbar {
@@ -6985,14 +6990,14 @@ td.actions button {
 }
 
 .nav-minimal-search {
-  width: min(760px, 100%);
+  width: min(820px, 100%);
   min-height: 58px;
   grid-template-columns: 38px minmax(0, 1fr) 132px 84px;
   gap: 9px;
   padding: 8px;
   border-radius: 21px;
-  background: rgba(255, 255, 255, 0.5);
-  box-shadow: var(--glass-shadow), var(--glass-inner);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 14px 34px rgba(10, 24, 79, 0.15);
 }
 
 .nav-minimal-search-icon {
@@ -7033,52 +7038,54 @@ td.actions button {
 }
 
 .nav-minimal-group {
-  min-height: 260px;
-  gap: 11px;
-  padding: 14px;
-  border-radius: 20px;
-  background: rgba(255, 255, 255, 0.42);
-  box-shadow: var(--glass-shadow-sm), var(--glass-inner);
+  min-height: 206px;
+  gap: 14px;
+  padding: 16px 18px 18px;
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 24px 60px rgba(6, 16, 54, 0.16);
+  backdrop-filter: blur(16px);
 }
 
 .nav-minimal-group-head {
-  min-height: 32px;
+  min-height: 42px;
 }
 
 .nav-minimal-group-head h3 {
-  font-size: 16px;
+  color: #ffffff;
+  font-size: 18px;
 }
 
 .nav-minimal-grid {
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
 }
 
 .nav-density-compact .nav-minimal-grid {
-  grid-template-columns: repeat(auto-fill, minmax(184px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
 }
 
 .nav-density-spacious .nav-minimal-grid {
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
 }
 
 .nav-minimal-card {
-  min-height: 96px;
+  min-height: 88px;
   gap: 12px;
-  padding: 14px;
+  padding: 12px 14px;
   border-radius: 18px;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.58), rgba(248, 251, 255, 0.42)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(245, 248, 255, 0.96)),
     color-mix(in srgb, var(--bookmark-card-bg, #fff) 45%, transparent);
-  box-shadow: 0 10px 26px rgba(31, 82, 140, 0.08), var(--glass-inner);
+  box-shadow: 0 14px 26px rgba(5, 17, 58, 0.14);
 }
 
 .nav-minimal-card-icon {
-  width: 46px;
-  height: 46px;
-  flex-basis: 46px;
-  border-radius: 13px;
-  font-size: 14px;
+  width: 52px;
+  height: 52px;
+  flex-basis: 52px;
+  border-radius: 14px;
+  font-size: 15px;
 }
 
 .nav-minimal-card-copy {
@@ -7086,7 +7093,7 @@ td.actions button {
 }
 
 .nav-minimal-card-copy strong {
-  font-size: 14px;
+  font-size: 15px;
 }
 
 .nav-minimal-card-copy small {
@@ -7095,6 +7102,150 @@ td.actions button {
 
 .nav-minimal-card-copy em {
   font-size: 9px;
+}
+
+/* Reference-style navigation: deep canvas, grouped sections, dense app cards. */
+.nav-reference-board {
+  gap: 26px;
+}
+
+.nav-reference-toolbar {
+  justify-self: end;
+  width: min(360px, 100%);
+}
+
+.nav-reference-toolbar .nav-minimal-library-tools {
+  opacity: 1;
+}
+
+.nav-reference-toolbar .nav-minimal-library-tools input {
+  min-height: 36px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 10px 24px rgba(7, 18, 61, 0.12);
+}
+
+.nav-reference-group {
+  min-height: 0;
+  padding: 14px 0 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+.nav-reference-group-head {
+  min-height: 44px;
+  margin-bottom: 8px;
+  padding: 0 12px;
+}
+
+.nav-reference-group-head h3 {
+  gap: 10px;
+  color: #ffffff;
+  font-size: 22px;
+  line-height: 1;
+  text-shadow: 0 3px 10px rgba(5, 12, 42, 0.34);
+}
+
+.nav-reference-group-head h3 i {
+  width: 12px;
+  height: 12px;
+  box-shadow: 0 0 0 7px rgba(255, 255, 255, 0.12);
+}
+
+.nav-reference-group-head h3 small {
+  min-width: 24px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.nav-reference-group .nav-minimal-group-tools {
+  opacity: 1;
+  transform: none;
+}
+
+.nav-reference-group .nav-minimal-group-tools button,
+.nav-reference-group .nav-minimal-group-tools input[type="color"] {
+  min-width: 38px;
+  height: 38px;
+  min-height: 38px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 18px rgba(6, 16, 54, 0.18);
+}
+
+.nav-reference-group .nav-minimal-group-tools button:not(.nav-group-primary-action) {
+  max-width: 0;
+  min-width: 0;
+  overflow: hidden;
+  opacity: 0;
+  padding: 0;
+  border-width: 0;
+}
+
+.nav-reference-group:hover .nav-minimal-group-tools button:not(.nav-group-primary-action),
+.nav-reference-group .nav-minimal-group-tools:focus-within button:not(.nav-group-primary-action) {
+  max-width: 72px;
+  min-width: 38px;
+  opacity: 1;
+  padding: 0 10px;
+  border-width: 1px;
+}
+
+.nav-reference-group .nav-minimal-group-tools svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.nav-reference-group .nav-minimal-grid {
+  grid-template-columns: repeat(auto-fill, minmax(178px, 1fr));
+  gap: 14px;
+}
+
+.nav-reference-group .nav-minimal-card {
+  min-height: 78px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow: 0 12px 24px rgba(5, 16, 53, 0.18);
+}
+
+.nav-reference-group .nav-minimal-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 30px rgba(5, 16, 53, 0.22);
+}
+
+.nav-reference-group .nav-minimal-card-icon {
+  width: 46px;
+  height: 46px;
+  flex-basis: 46px;
+  border-radius: 14px;
+}
+
+.nav-reference-group .nav-minimal-card-copy {
+  gap: 2px;
+}
+
+.nav-reference-group .nav-minimal-card-copy strong {
+  color: #0f172a;
+  font-size: 15px;
+}
+
+.nav-reference-group .nav-minimal-card-copy em,
+.nav-reference-group .nav-minimal-card-copy small {
+  color: #8a97ad;
 }
 
 @media (min-width: 721px) {

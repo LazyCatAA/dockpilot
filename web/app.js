@@ -868,6 +868,8 @@ function navIcon(name) {
     ssh: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v13a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 18.5v-13Zm3 3.2 3.1 3.3L7 15.3l1.5 1.4 4.4-4.7-4.4-4.7L7 8.7Zm6.2 7.6H18v-2h-4.8v2Z"/></svg>`,
     files: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 7A2.5 2.5 0 0 1 6 4.5h4.4l2 2H18A2.5 2.5 0 0 1 20.5 9v8A2.5 2.5 0 0 1 18 19.5H6A2.5 2.5 0 0 1 3.5 17V7Z"/></svg>`,
     settings: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.2 3h3.6l.6 2.4c.6.2 1.1.4 1.6.7l2.2-1.3 2.5 2.5-1.3 2.2c.3.5.5 1 .7 1.6l2.3.6v3.6l-2.3.6c-.2.6-.4 1.1-.7 1.6l1.3 2.2-2.5 2.5-2.2-1.3c-.5.3-1 .5-1.6.7l-.6 2.4h-3.6l-.6-2.4c-.6-.2-1.1-.4-1.6-.7l-2.2 1.3-2.5-2.5 1.3-2.2c-.3-.5-.5-1-.7-1.6L1 15.3v-3.6l2.3-.6c.2-.6.4-1.1.7-1.6L2.7 7.3l2.5-2.5 2.2 1.3c.5-.3 1-.5 1.6-.7L10.2 3Zm1.8 6.1a2.9 2.9 0 1 0 0 5.8 2.9 2.9 0 0 0 0-5.8Z"/></svg>`,
+    add: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6V5Z"/></svg>`,
+    search: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.8 4a6.8 6.8 0 1 0 0 13.6 6.8 6.8 0 0 0 0-13.6Zm0 2a4.8 4.8 0 1 1 0 9.6 4.8 4.8 0 0 1 0-9.6Zm5.5 9.3 4.2 4.2-1.4 1.4-4.2-4.2 1.4-1.4Z"/></svg>`,
     network: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 0 1 0 18 9 9 0 0 1 0-18Zm-5.7 8h3.1c.1-1.8.5-3.4 1.1-4.7A6.1 6.1 0 0 0 6.3 11Zm0 2a6.1 6.1 0 0 0 4.2 4.7A12.7 12.7 0 0 1 9.4 13H6.3Zm5.1 0c.2 3.4 1 5.5 1.6 5.5s1.4-2.1 1.6-5.5h-3.2Zm0-2h3.2c-.2-3.4-1-5.5-1.6-5.5s-1.4 2.1-1.6 5.5Zm4.1 2c-.1 1.8-.5 3.4-1.1 4.7a6.1 6.1 0 0 0 4.2-4.7h-3.1Zm3.1-2a6.1 6.1 0 0 0-4.2-4.7c.6 1.3 1 2.9 1.1 4.7h3.1Z"/></svg>`,
     link: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.2 16.3a4.7 4.7 0 0 1 0-6.6l2-2a4.7 4.7 0 0 1 6.6 6.6l-.9.9-1.8-1.8.9-.9a2.1 2.1 0 1 0-3-3l-2 2a2.1 2.1 0 0 0 0 3l.5.5-1.8 1.8-.5-.5Zm5.6-8.6a4.7 4.7 0 0 1 0 6.6l-2 2a4.7 4.7 0 1 1-6.6-6.6l.9-.9 1.8 1.8-.9.9a2.1 2.1 0 1 0 3 3l2-2a2.1 2.1 0 0 0 0-3l-.5-.5 1.8-1.8.5.5Z"/></svg>`,
     edit: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 16.8 9.7-9.7 3.2 3.2L7.2 20H4v-3.2ZM15.1 5.7l1.2-1.2a2 2 0 0 1 2.8 0l.4.4a2 2 0 0 1 0 2.8l-1.2 1.2-3.2-3.2Z"/></svg>`,
@@ -1297,7 +1299,7 @@ function render() {
     return;
   }
   app.innerHTML = `
-    <div class="layout ${state.sidebarCollapsed ? "sidebar-collapsed" : ""}">
+    <div class="layout responsive-baseline ${state.sidebarCollapsed ? "sidebar-collapsed" : ""}">
       <aside class="sidebar">
         <div class="brand">
           ${renderBrandMark()}
@@ -1403,7 +1405,7 @@ function renderVps() {
 
 function renderPlaceholder(title, detail) {
   return `
-    <section class="panel page-panel">
+    <section class="panel page-panel files-page">
       <div class="panel-head">
         <div>
           <h3>${h(title)}</h3>
@@ -1418,9 +1420,16 @@ function renderPlaceholder(title, detail) {
 function renderDashboard() {
   const prefs = navPrefs();
   return `
-    <section class="nav-home nav-minimal nav-width-${h(prefs.layout_width)} nav-density-${h(prefs.density)} nav-style-${h(prefs.card_style)} nav-icon-${h(prefs.icon_size)} nav-title-${h(prefs.title_font_size)}" style="--nav-bg:${h(prefs.background)}">
-      <div class="nav-minimal-topbar">
-        <button class="nav-minimal-settings" data-action="nav-settings-open" title="导航页设置">设置</button>
+    <section class="nav-home nav-minimal nav-workbench nav-width-${h(prefs.layout_width)} nav-density-${h(prefs.density)} nav-style-${h(prefs.card_style)} nav-icon-${h(prefs.icon_size)} nav-title-${h(prefs.title_font_size)}" style="--nav-bg:${h(prefs.background)}">
+      <div class="nav-minimal-topbar nav-workbench-command">
+        <div class="nav-workbench-title">
+          <strong>${h(prefs.title || "私人导航")}</strong>
+          <span>${h(prefs.subtitle || "清晰分组的服务入口，支持内外网地址和自定义图标")}</span>
+        </div>
+        <div class="nav-workbench-actions">
+          <button class="nav-workbench-icon-button" data-action="card-add" data-group="" title="新增书签" aria-label="新增书签">${navIcon("add")}</button>
+          <button class="nav-minimal-settings nav-workbench-icon-button" data-action="nav-settings-open" title="导航页设置" aria-label="导航页设置">${navIcon("settings")}</button>
+        </div>
       </div>
       <div class="nav-minimal-hero">
         ${renderWebSearch(prefs)}
@@ -1434,9 +1443,9 @@ function renderDashboard() {
 
 function renderWebSearch(prefs) {
   return `
-    <form id="webSearchForm" class="nav-minimal-search">
-      <span class="nav-minimal-search-icon">⌕</span>
-      <input id="webSearchInput" name="q" value="${h(state.webSearch)}" placeholder="搜索网页或直接输入关键词" autocomplete="off" />
+    <form id="webSearchForm" class="nav-minimal-search nav-workbench-search">
+      <span class="nav-minimal-search-icon nav-workbench-search-icon">${navIcon("search")}</span>
+      <input id="webSearchInput" name="q" value="${h(state.webSearch)}" placeholder="搜索网页、服务名或直接输入地址" autocomplete="off" />
       <select name="web_search_engine" aria-label="搜索引擎">
         <option value="google" ${prefs.web_search_engine === "google" ? "selected" : ""}>Google</option>
         <option value="bing" ${prefs.web_search_engine === "bing" ? "selected" : ""}>Bing</option>
@@ -1455,8 +1464,11 @@ function renderCards() {
   return `
     <section class="nav-minimal-board nav-reference-board">
       ${prefs.show_search ? `
-      <div class="nav-minimal-library nav-reference-toolbar">
-        <span></span>
+      <div class="nav-minimal-library nav-reference-toolbar nav-workbench-library-head">
+        <div>
+          <h3>${h(prefs.section_title || "书签分组")}</h3>
+          <span>每个分组可改名、调色、折叠、隐藏，并支持独立卡片密度。</span>
+        </div>
         <div class="nav-minimal-library-tools">
           <input id="navSearch" value="${h(state.navSearch)}" placeholder="过滤书签" />
         </div>
@@ -1467,7 +1479,7 @@ function renderCards() {
           ([group, cards]) => {
             const groupPrefs = navGroupPrefs(group);
             return `
-            <section class="nav-minimal-group nav-reference-group nav-group-layout-${h(groupPrefs.layout)} nav-group-card-${h(groupPrefs.card_size)} nav-group-icon-${h(groupPrefs.icon_size)} nav-group-gap-${h(groupPrefs.gap)} nav-group-radius-${h(groupPrefs.radius)}" style="--group-color:${h(groupPrefs.color || "#2563eb")}">
+            <section class="nav-minimal-group nav-reference-group nav-workbench-group nav-group-layout-${h(groupPrefs.layout)} nav-group-card-${h(groupPrefs.card_size)} nav-group-icon-${h(groupPrefs.icon_size)} nav-group-gap-${h(groupPrefs.gap)} nav-group-radius-${h(groupPrefs.radius)}" style="--group-color:${h(groupPrefs.color || "#2563eb")}">
               <header class="nav-minimal-group-head nav-reference-group-head">
                 <div>
                   <h3><i></i><span>${h(group)}</span>${prefs.show_group_count ? `<small>${cards.length}</small>` : ""}</h3>

@@ -11763,15 +11763,23 @@ body,
 
 .nav-workbench-command {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 22px;
-  align-items: start;
+  grid-template-columns: 1fr;
+  justify-items: center;
+  gap: 12px;
+  position: relative;
   width: 100%;
+  min-height: 76px;
+}
+
+.nav-workbench-centered {
+  align-content: center;
 }
 
 .nav-workbench-title {
   display: grid;
   gap: 8px;
+  justify-items: center;
+  text-align: center;
 }
 
 .nav-workbench-title strong {
@@ -11794,6 +11802,9 @@ body,
 }
 
 .nav-workbench-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -11837,13 +11848,14 @@ body,
 }
 
 .nav-workbench .nav-minimal-hero {
-  justify-items: start;
+  justify-items: center;
   gap: 0;
   width: 100%;
 }
 
 .nav-workbench-search {
   width: min(960px, 100%);
+  margin: 0 auto;
   min-height: 72px;
   grid-template-columns: 50px minmax(0, 1fr) 148px 104px;
   gap: 10px;
@@ -11989,13 +12001,20 @@ body,
   font-size: 12px;
 }
 
-.nav-workbench-group .nav-minimal-group-tools {
-  opacity: 1;
-  transform: none;
+.nav-workbench-group .nav-workbench-group-tools {
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity 0.18s ease, transform 0.18s ease;
 }
 
-.nav-workbench-group .nav-minimal-group-tools button,
-.nav-workbench-group .nav-minimal-group-tools input[type="color"] {
+.nav-workbench-group:hover .nav-workbench-group-tools,
+.nav-workbench-group .nav-workbench-group-tools:focus-within {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.nav-workbench-group .nav-workbench-group-tools button,
+.nav-workbench-group .nav-workbench-group-tools input[type="color"] {
   min-width: 34px;
   width: 34px;
   height: 34px;
@@ -12006,23 +12025,6 @@ body,
   color: #526173;
   padding: 0;
   box-shadow: 0 8px 18px rgba(40, 55, 86, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.78);
-}
-
-.nav-workbench-group .nav-minimal-group-tools button:not(.nav-group-primary-action) {
-  max-width: 0;
-  min-width: 0;
-  opacity: 0;
-  padding: 0;
-  border-width: 0;
-}
-
-.nav-workbench-group:hover .nav-minimal-group-tools button:not(.nav-group-primary-action),
-.nav-workbench-group .nav-minimal-group-tools:focus-within button:not(.nav-group-primary-action) {
-  max-width: 74px;
-  min-width: 34px;
-  opacity: 1;
-  padding: 0 8px;
-  border-width: 1px;
 }
 
 .nav-workbench-group .nav-minimal-grid {
@@ -12075,6 +12077,94 @@ body,
   color: #99a4b5;
 }
 
+.nav-compact-modal,
+.bookmark-editor-modal.nav-compact-modal,
+.nav-settings-modal.nav-compact-modal,
+.nav-group-editor-modal.nav-compact-modal {
+  width: min(680px, calc(100vw - 40px));
+  max-height: min(80vh, 760px);
+  border-radius: 22px;
+}
+
+.nav-compact-modal .card-modal-head,
+.bookmark-editor-modal.nav-compact-modal .card-modal-head {
+  padding: 16px 20px;
+}
+
+.nav-compact-modal .card-modal-foot,
+.bookmark-editor-modal.nav-compact-modal .card-modal-foot {
+  padding: 14px 20px 16px;
+}
+
+.nav-compact-modal .card-modal-head h3,
+.bookmark-editor-modal.nav-compact-modal .card-modal-head h3 {
+  font-size: 22px;
+  letter-spacing: 0;
+}
+
+.nav-compact-modal .card-modal-body,
+.bookmark-editor-modal.nav-compact-modal .card-modal-body {
+  gap: 10px;
+}
+
+.bookmark-editor-modal.nav-compact-modal .card-modal-grid,
+.bookmark-editor-modal.nav-compact-modal .card-modal-options,
+.bookmark-editor-modal.nav-compact-modal .card-icon-editor,
+.bookmark-editor-modal.nav-compact-modal .icon-library-grid {
+  margin-right: 20px;
+  margin-left: 20px;
+}
+
+.bookmark-editor-modal.nav-compact-modal .card-modal-grid {
+  padding-top: 14px;
+  row-gap: 12px;
+  column-gap: 12px;
+}
+
+.bookmark-editor-modal.nav-compact-modal .field span,
+.bookmark-editor-modal.nav-compact-modal .card-modal-options .field span,
+.bookmark-editor-modal.nav-compact-modal .card-icon-editor h4 {
+  font-size: 14px;
+}
+
+.bookmark-editor-modal.nav-compact-modal .field input,
+.bookmark-editor-modal.nav-compact-modal .field textarea,
+.bookmark-editor-modal.nav-compact-modal .field select {
+  min-height: 40px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
+.bookmark-editor-modal.nav-compact-modal .field textarea {
+  min-height: 72px;
+}
+
+.bookmark-editor-modal.nav-compact-modal .card-icon-preview {
+  width: 76px;
+  height: 76px;
+  border-radius: 18px;
+}
+
+.bookmark-editor-modal.nav-compact-modal .switch-label {
+  font-size: 14px;
+}
+
+.bookmark-editor-modal.nav-compact-modal .switch-label i {
+  width: 50px;
+  height: 26px;
+}
+
+.bookmark-editor-modal.nav-compact-modal .switch-label i::after {
+  width: 18px;
+  height: 18px;
+}
+
+.bookmark-editor-modal.nav-compact-modal .card-modal-foot button {
+  min-height: 40px;
+  border-radius: 12px;
+  font-size: 14px;
+}
+
 @media (max-width: 720px) {
   .nav-home.nav-workbench {
     gap: 14px;
@@ -12094,7 +12184,8 @@ body,
   }
 
   .nav-workbench-actions {
-    justify-content: flex-start;
+    position: static;
+    justify-content: center;
   }
 
   .nav-workbench-search {
@@ -12122,15 +12213,17 @@ body,
     align-items: start;
   }
 
-  .nav-workbench-group .nav-minimal-group-tools {
+  .nav-workbench-group .nav-workbench-group-tools {
     display: grid;
-    grid-template-columns: repeat(3, 40px);
+    grid-template-columns: repeat(2, 40px);
     gap: 8px;
     justify-content: start;
+    opacity: 1;
+    transform: none;
   }
 
-  .nav-workbench-group .nav-minimal-group-tools button,
-  .nav-workbench-group .nav-minimal-group-tools input[type="color"] {
+  .nav-workbench-group .nav-workbench-group-tools button,
+  .nav-workbench-group .nav-workbench-group-tools input[type="color"] {
     width: 40px;
     min-width: 40px;
     max-width: 40px;
@@ -12139,10 +12232,6 @@ body,
     opacity: 1;
     overflow: hidden;
     padding: 0;
-  }
-
-  .nav-workbench-group .nav-minimal-group-tools button:not(.nav-group-primary-action) {
-    display: none;
   }
 
   .nav-workbench-group .nav-minimal-grid {
@@ -12162,5 +12251,14 @@ body,
     height: 40px;
     flex-basis: 40px;
     border-radius: 14px;
+  }
+
+  .nav-compact-modal,
+  .bookmark-editor-modal.nav-compact-modal,
+  .nav-settings-modal.nav-compact-modal,
+  .nav-group-editor-modal.nav-compact-modal {
+    width: min(100%, calc(100vw - 16px));
+    max-height: calc(100vh - 16px);
+    border-radius: 18px;
   }
 }

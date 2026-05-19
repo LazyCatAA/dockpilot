@@ -1421,7 +1421,7 @@ function renderDashboard() {
   const prefs = navPrefs();
   return `
     <section class="nav-home nav-minimal nav-workbench nav-width-${h(prefs.layout_width)} nav-density-${h(prefs.density)} nav-style-${h(prefs.card_style)} nav-icon-${h(prefs.icon_size)} nav-title-${h(prefs.title_font_size)}" style="--nav-bg:${h(prefs.background)}">
-      <div class="nav-minimal-topbar nav-workbench-command">
+      <div class="nav-minimal-topbar nav-workbench-command nav-workbench-centered">
         <div class="nav-workbench-title">
           <strong>${h(prefs.title || "私人导航")}</strong>
           <span>${h(prefs.subtitle || "清晰分组的服务入口，支持内外网地址和自定义图标")}</span>
@@ -1484,12 +1484,9 @@ function renderCards() {
                 <div>
                   <h3><i></i><span>${h(group)}</span>${prefs.show_group_count ? `<small>${cards.length}</small>` : ""}</h3>
                 </div>
-                <div class="nav-minimal-group-tools">
+                <div class="nav-minimal-group-tools nav-workbench-group-tools">
                   <button class="nav-group-primary-action" title="添加书签" data-action="card-add" data-group="${h(group)}">＋</button>
                   <button class="nav-group-primary-action" title="分组设置" data-action="card-group-settings" data-group="${h(group)}">${navIcon("settings")}</button>
-                  <button title="折叠/展开" data-action="nav-group-collapse" data-group="${h(group)}">${groupPrefs.collapsed ? "展开" : "收起"}</button>
-                  <button title="隐藏分组" data-action="nav-group-hide" data-group="${h(group)}">隐藏</button>
-                  <input type="color" title="分组颜色" data-action="nav-group-color" data-group="${h(group)}" value="${h(groupPrefs.color || "#2563eb")}" />
                 </div>
               </header>
               ${
@@ -1523,7 +1520,7 @@ function renderNavSettingsModal() {
   const prefs = navPrefs();
   return `
     <div class="card-modal-backdrop" data-action="nav-settings-close">
-      <form id="navSettingsForm" class="card-modal nav-settings-modal">
+      <form id="navSettingsForm" class="card-modal nav-settings-modal nav-compact-modal">
         <div class="card-modal-head">
           <h3>导航外观设置</h3>
           <button type="button" data-action="nav-settings-close">×</button>
@@ -1643,7 +1640,7 @@ function renderNavGroupSettingsModal() {
   const prefs = navGroupPrefs(group);
   return `
     <div class="card-modal-backdrop" data-action="nav-group-close">
-      <form id="navGroupForm" class="card-modal nav-group-editor-modal">
+      <form id="navGroupForm" class="card-modal nav-group-editor-modal nav-compact-modal">
         <div class="card-modal-head">
           <h3>分组设置</h3>
           <button type="button" data-action="nav-group-close">×</button>
@@ -1709,7 +1706,7 @@ function renderCardModal() {
   const title = card.id ? "修改项目" : "添加项目";
   return `
     <div class="card-modal-backdrop" id="cardModal">
-      <form id="cardForm" class="card-modal bookmark-editor-modal">
+      <form id="cardForm" class="card-modal bookmark-editor-modal nav-compact-modal">
         <div class="card-modal-head">
           <h3>${title}</h3>
           <div class="card-modal-head-tools">

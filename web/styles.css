@@ -12523,6 +12523,91 @@ body,
   transition: transform 0.18s ease;
 }
 
+/* Per-card visual overrides must live after the workbench defaults. */
+.nav-workbench-group .nav-minimal-card {
+  background: color-mix(in srgb, var(--bookmark-card-bg, #ffffff) 18%, rgba(255, 255, 255, 0.88));
+}
+
+.nav-workbench-group .nav-minimal-card.small {
+  min-height: 68px;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+.nav-workbench-group .nav-minimal-card.medium {
+  min-height: 82px;
+  gap: 13px;
+  padding: 12px 14px;
+}
+
+.nav-workbench-group .nav-minimal-card.large {
+  min-height: 98px;
+  gap: 14px;
+  padding: 14px 16px;
+}
+
+.nav-workbench-group .nav-minimal-card.small .nav-minimal-card-icon {
+  width: 38px;
+  height: 38px;
+  flex-basis: 38px;
+}
+
+.nav-workbench-group .nav-minimal-card.medium .nav-minimal-card-icon {
+  width: 46px;
+  height: 46px;
+  flex-basis: 46px;
+}
+
+.nav-workbench-group .nav-minimal-card.large .nav-minimal-card-icon {
+  width: 56px;
+  height: 56px;
+  flex-basis: 56px;
+}
+
+.nav-workbench-group .nav-minimal-card.shape-square {
+  border-radius: 14px;
+}
+
+.nav-workbench-group .nav-minimal-card.shape-rounded {
+  border-radius: 20px;
+}
+
+.nav-workbench-group .nav-minimal-card.shape-squircle {
+  border-radius: 28px;
+}
+
+.nav-workbench-group .nav-minimal-card.shape-pill {
+  border-radius: 999px;
+}
+
+.nav-workbench-group .nav-minimal-card.soft {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(243, 247, 255, 0.96)),
+    color-mix(in srgb, var(--bookmark-card-bg, #ffffff) 28%, transparent);
+}
+
+.nav-workbench-group .nav-minimal-card.outline {
+  border-color: color-mix(in srgb, var(--bookmark-accent, #2563eb) 38%, rgba(148, 163, 184, 0.28));
+  background: color-mix(in srgb, var(--bookmark-card-bg, #ffffff) 12%, rgba(255, 255, 255, 0.74));
+  box-shadow: 0 10px 22px rgba(25, 36, 61, 0.08), inset 0 0 0 1px color-mix(in srgb, var(--bookmark-accent, #2563eb) 12%, transparent);
+}
+
+.nav-workbench-group .nav-minimal-card.icon-shape-circle .nav-minimal-card-icon {
+  border-radius: 999px;
+}
+
+.nav-workbench-group .nav-minimal-card.icon-shape-rounded .nav-minimal-card-icon {
+  border-radius: 14px;
+}
+
+.nav-workbench-group .nav-minimal-card.icon-shape-squircle .nav-minimal-card-icon {
+  border-radius: 18px;
+}
+
+.nav-workbench-group .nav-minimal-card.icon-shape-square .nav-minimal-card-icon {
+  border-radius: 8px;
+}
+
 @media (max-width: 720px) {
   .nav-home.nav-workbench {
     gap: 14px;
@@ -12609,6 +12694,74 @@ body,
     height: 40px;
     flex-basis: 40px;
     border-radius: 14px;
+  }
+
+  .nav-workbench-group .nav-minimal-card.small {
+    min-height: 68px;
+    gap: 8px;
+    padding: 9px;
+  }
+
+  .nav-workbench-group .nav-minimal-card.medium {
+    min-height: 76px;
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .nav-workbench-group .nav-minimal-card.large {
+    min-height: 92px;
+    gap: 11px;
+    padding: 12px;
+  }
+
+  .nav-workbench-group .nav-minimal-card.small .nav-minimal-card-icon {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+  }
+
+  .nav-workbench-group .nav-minimal-card.medium .nav-minimal-card-icon {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
+  }
+
+  .nav-workbench-group .nav-minimal-card.large .nav-minimal-card-icon {
+    width: 50px;
+    height: 50px;
+    flex-basis: 50px;
+  }
+
+  .nav-workbench-group .nav-minimal-card.shape-square {
+    border-radius: 12px;
+  }
+
+  .nav-workbench-group .nav-minimal-card.shape-rounded {
+    border-radius: 15px;
+  }
+
+  .nav-workbench-group .nav-minimal-card.shape-squircle {
+    border-radius: 20px;
+  }
+
+  .nav-workbench-group .nav-minimal-card.shape-pill {
+    border-radius: 999px;
+  }
+
+  .nav-workbench-group .nav-minimal-card.icon-shape-circle .nav-minimal-card-icon {
+    border-radius: 999px;
+  }
+
+  .nav-workbench-group .nav-minimal-card.icon-shape-rounded .nav-minimal-card-icon {
+    border-radius: 13px;
+  }
+
+  .nav-workbench-group .nav-minimal-card.icon-shape-squircle .nav-minimal-card-icon {
+    border-radius: 16px;
+  }
+
+  .nav-workbench-group .nav-minimal-card.icon-shape-square .nav-minimal-card-icon {
+    border-radius: 8px;
   }
 
   .nav-compact-modal,

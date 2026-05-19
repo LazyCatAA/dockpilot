@@ -720,10 +720,42 @@ function cardIconShape(card) {
   return ["squircle", "circle", "rounded", "square"].includes(card.icon_shape) ? card.icon_shape : "squircle";
 }
 
+function cardIconScale(card) {
+  const scale = Number(card.icon_scale || 100);
+  return Math.max(50, Math.min(160, Number.isFinite(scale) ? scale : 100));
+}
+
+function cardBackgroundOpacity(card) {
+  const opacity = Number(card.background_opacity ?? 100);
+  return Math.max(0, Math.min(100, Number.isFinite(opacity) ? opacity : 100));
+}
+
+function cardShowsBackground(card) {
+  return Boolean(Number(card.show_background || 0)) && Boolean(card.background_image);
+}
+
+function cssUrl(value) {
+  return String(value || "").replace(/[\n\r]/g, "").replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
 function cardIconMarkup(card) {
   if (card.icon_data) return `<img src="${h(card.icon_data)}" alt="" />`;
   const label = (card.icon || card.title.slice(0, 2).toUpperCase()).slice(0, 4);
   return `<span>${h(label)}</span>`;
+}
+
+function cardInlineStyle(card) {
+  const styles = [
+    `--bookmark-card-bg:${h(card.card_color || "#ffffff")}`,
+    `--bookmark-title-color:${h(card.title_color || "#111827")}`,
+    `--bookmark-accent:${h(card.color || "#2f80ed")}`,
+    `--bookmark-icon-scale:${cardIconScale(card) / 100}`,
+    `--bookmark-bg-opacity:${cardBackgroundOpacity(card) / 100}`,
+  ];
+  if (cardShowsBackground(card)) {
+    styles.push(`--bookmark-card-image:url("${h(cssUrl(card.background_image))}")`);
+  }
+  return styles.join(";");
 }
 
 function openCardModal(card = null, groupName = "Docker") {
@@ -744,6 +776,11 @@ function openCardModal(card = null, groupName = "Docker") {
         shape: "rounded",
         icon_shape: "squircle",
         icon_data: "",
+        is_public: 0,
+        background_image: "",
+        background_opacity: 100,
+        show_background: 0,
+        icon_scale: 100,
       };
   state.cardModal = { open: true, iconMime: "", iconBase64: "", clearIcon: false };
   state.cardContextMenu = { open: false, x: 0, y: 0, id: null };
@@ -752,6 +789,32 @@ function openCardModal(card = null, groupName = "Docker") {
 function closeCardModal() {
   state.editingCard = null;
   state.cardModal = { open: false, iconMime: "", iconBase64: "", clearIcon: false };
+}
+
+function syncEditingCardFromForm() {
+  const form = document.getElementById("cardForm");
+  if (!form || !state.editingCard) return;
+  const data = Object.fromEntries(new FormData(form));
+  Object.assign(state.editingCard, {
+    title: data.title || "",
+    url: data.url || "",
+    internal_url: data.internal_url || "",
+    description: data.description || "",
+    group_name: data.group_name || state.editingCard.group_name || "Docker",
+    icon: data.icon || "",
+    color: data.color || state.editingCard.color || "#2f80ed",
+    title_color: data.title_color || state.editingCard.title_color || "#111827",
+    card_color: data.card_color || state.editingCard.card_color || "#ffffff",
+    is_public: data.is_public === "1" ? 1 : 0,
+    background_image: data.background_image || "",
+    background_opacity: Number(data.background_opacity ?? state.editingCard.background_opacity ?? 100),
+    show_background: data.show_background === "1" ? 1 : 0,
+    icon_scale: Number(data.icon_scale ?? state.editingCard.icon_scale ?? 100),
+    size: data.size || state.editingCard.size || "medium",
+    style: data.style || state.editingCard.style || "default",
+    shape: data.shape || state.editingCard.shape || "rounded",
+    icon_shape: data.icon_shape || state.editingCard.icon_shape || "squircle",
+  });
 }
 
 function closeCardContextMenu() {
@@ -1503,6 +1566,7 @@ function renderCards() {
         .join("")}
       ${renderHiddenNavGroups()}
       <input class="hidden-input" id="cardIconUpload" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+      <input class="hidden-input" id="cardBackgroundUpload" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
     </section>
   `;
 }
@@ -1600,10 +1664,10 @@ function renderBookmarkCard(card) {
   const host = cardHost(card);
   return `
     <button
-      class="nav-minimal-card shape-${h(cardShape(card))} icon-shape-${h(cardIconShape(card))} ${h(cardSize(card))} ${h(cardStyle(card))}"
+      class="nav-minimal-card shape-${h(cardShape(card))} icon-shape-${h(cardIconShape(card))} ${h(cardSize(card))} ${h(cardStyle(card))} ${cardShowsBackground(card) ? "has-card-background" : ""}"
       data-card-id="${h(card.id)}"
       data-action="card-open-default"
-      style="--bookmark-card-bg:${h(card.card_color || "#ffffff")};--bookmark-title-color:${h(card.title_color || "#111827")};--bookmark-accent:${h(card.color || "#2f80ed")}"
+      style="${cardInlineStyle(card)}"
       title="${h(card.title)}"
     >
       <span class="nav-minimal-card-icon">${cardIconMarkup(card)}</span>
@@ -1704,115 +1768,143 @@ function renderCardModal() {
   if (!state.cardModal.open || !state.editingCard) return "";
   const card = state.editingCard;
   const title = card.id ? "修改项目" : "添加项目";
+  const groups = [...new Set(["Docker", ...state.cards.map((item) => item.group_name || "应用"), card.group_name || "Docker"])].filter(Boolean);
+  const cachedIconText = card.icon_data ? "已缓存" : "未缓存";
+  const iconScale = cardIconScale(card);
+  const backgroundOpacity = cardBackgroundOpacity(card);
+  const publicChecked = Boolean(Number(card.is_public || 0));
+  const showBackgroundChecked = Boolean(Number(card.show_background || 0));
   return `
-    <div class="card-modal-backdrop" id="cardModal">
-      <form id="cardForm" class="card-modal bookmark-editor-modal nav-compact-modal">
+    <div class="card-modal-backdrop bookmark-editor-backdrop" id="cardModal">
+      <form id="cardForm" class="card-modal bookmark-editor-modal nav-compact-modal bookmark-editor-shell">
         <div class="card-modal-head">
           <h3>${title}</h3>
           <div class="card-modal-head-tools">
-            <input name="group_name" value="${h(card.group_name || "Docker")}" placeholder="分组" />
-            <span></span>
-            <label class="switch-label">公开 <input type="checkbox" checked disabled /><i></i></label>
+            <select name="group_name" class="bookmark-group-select">
+              ${groups.map((group) => `<option value="${h(group)}" ${group === (card.group_name || "Docker") ? "selected" : ""}>${h(group)}</option>`).join("")}
+            </select>
+            <input type="hidden" name="is_public" value="0" />
+            <label class="switch-label bookmark-switch"><span>公开</span><input name="is_public" value="1" type="checkbox" ${publicChecked ? "checked" : ""} /><i></i></label>
             <button type="button" data-action="card-cancel">×</button>
           </div>
         </div>
         <div class="card-modal-body">
-          <div class="card-modal-grid">
+          <section class="bookmark-editor-section">
+            <div class="bookmark-title-grid">
+              <label class="field">
+                <span>标题 <b>*</b></span>
+                <input name="title" value="${h(card.title || "")}" required />
+              </label>
+              <label class="field color-field">
+                <span>标题颜色</span>
+                <input name="title_color" type="color" value="${h(card.title_color || "#111827")}" />
+              </label>
+            </div>
             <label class="field wide">
-              <span>标题 *</span>
-              <input name="title" value="${h(card.title || "")}" required />
-            </label>
-            <label class="field">
-              <span>标题颜色</span>
-              <input name="title_color" type="color" value="${h(card.title_color || "#111827")}" />
-            </label>
-            <label class="field wide">
-              <span>描述（每行对应一行文字）</span>
+              <span>描述 <small>水平模式显示，每行对应一行文字</small></span>
               <textarea name="description" placeholder="第一行（上）&#10;第二行（中）&#10;第三行（下）">${h(card.description || "")}</textarea>
             </label>
             <label class="field wide">
-              <span>外网链接 *</span>
+              <span>外网链接 <b>*</b><small>备用地址</small></span>
               <input name="url" value="${h(card.url || "")}" placeholder="https://example.com" required />
             </label>
             <label class="field wide">
-              <span>内网链接</span>
+              <span>内网链接 <small>选填，内网访问时优先跳转</small><small>备用地址</small></span>
               <input name="internal_url" value="${h(card.internal_url || "")}" placeholder="http://192.168.1.200:9838" />
             </label>
-          </div>
-          <div class="card-modal-options">
-            <label class="field">
-              <span>图标文字</span>
-              <input name="icon" value="${h(card.icon || "")}" maxlength="4" placeholder="QB" />
-            </label>
-            <label class="field">
-              <span>图标底色</span>
-              <input name="color" type="color" value="${h(card.color || "#2f80ed")}" />
-            </label>
-            <label class="field">
-              <span>卡片颜色</span>
-              <input name="card_color" type="color" value="${h(card.card_color || "#ffffff")}" />
-            </label>
-            <label class="field">
-              <span>尺寸</span>
-              <select name="size">
-                <option value="small" ${cardSize(card) === "small" ? "selected" : ""}>小</option>
-                <option value="medium" ${cardSize(card) === "medium" ? "selected" : ""}>中</option>
-                <option value="large" ${cardSize(card) === "large" ? "selected" : ""}>大</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>样式</span>
-              <select name="style">
-                <option value="default" ${cardStyle(card) === "default" ? "selected" : ""}>默认</option>
-                <option value="soft" ${cardStyle(card) === "soft" ? "selected" : ""}>柔和</option>
-                <option value="outline" ${cardStyle(card) === "outline" ? "selected" : ""}>描边</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>卡片形状</span>
-              <select name="shape">
-                <option value="rounded" ${cardShape(card) === "rounded" ? "selected" : ""}>圆角</option>
-                <option value="squircle" ${cardShape(card) === "squircle" ? "selected" : ""}>超椭圆</option>
-                <option value="pill" ${cardShape(card) === "pill" ? "selected" : ""}>胶囊</option>
-                <option value="square" ${cardShape(card) === "square" ? "selected" : ""}>直角</option>
-              </select>
-            </label>
-            <label class="field">
-              <span>图标形状</span>
-              <select name="icon_shape">
-                <option value="squircle" ${cardIconShape(card) === "squircle" ? "selected" : ""}>超椭圆</option>
-                <option value="circle" ${cardIconShape(card) === "circle" ? "selected" : ""}>圆形</option>
-                <option value="rounded" ${cardIconShape(card) === "rounded" ? "selected" : ""}>圆角</option>
-                <option value="square" ${cardIconShape(card) === "square" ? "selected" : ""}>直角</option>
-              </select>
-            </label>
-          </div>
-          <div class="card-icon-editor">
-            <div>
-              <h4>图标样式</h4>
-              <p>可自动匹配服务标识，也可上传自定义图片。</p>
-              <div class="mini-actions">
-                <button type="button" data-action="card-icon-auto">自动匹配</button>
-                <button type="button" data-action="card-icon-pick">上传图片</button>
-                <button type="button" data-action="card-icon-clear">清除图片</button>
+          </section>
+
+          <section class="bookmark-editor-section">
+            <header class="bookmark-section-title"><strong>图标</strong></header>
+            <div class="bookmark-icon-panel">
+              <button type="button" class="card-icon-preview" data-action="card-icon-pick" title="点击上传图标" style="--bookmark-icon-scale:${iconScale / 100};--bookmark-accent:${h(card.color || "#2f80ed")}">${cardIconMarkup(card)}</button>
+              <div class="bookmark-icon-controls">
+                <div class="bookmark-icon-actions">
+                  <span class="bookmark-cache-badge">${h(cachedIconText)}</span>
+                  <button type="button" data-action="card-icon-auto">⚡ 智能匹配</button>
+                </div>
+                <div class="range-row">
+                  <span>缩放</span>
+                  <input id="cardIconScale" class="card-icon-scale" name="icon_scale" type="range" min="50" max="160" value="${h(iconScale)}" data-output="cardIconScaleValue" />
+                  <b id="cardIconScaleValue">${h(iconScale)}%</b>
+                </div>
+                <label class="field icon-url-field">
+                  <span>图标</span>
+                  <input name="icon" value="${h(card.icon || "")}" maxlength="4" placeholder="QB" />
+                </label>
               </div>
             </div>
-            <div class="card-icon-preview">${cardIconMarkup(card)}</div>
-          </div>
-          <div class="icon-library-grid">
-            ${[
-              ["QB", "#60a5fa"],
-              ["MP", "#8b5cf6"],
-              ["GH", "#111827"],
-              ["D", "#2563eb"],
-              ["A", "#06b6d4"],
-              ["JF", "#7c3aed"],
-              ["E", "#22c55e"],
-              ["HA", "#0ea5e9"],
-            ]
-              .map(([icon, color]) => `<button type="button" data-action="card-icon-library" data-icon="${h(icon)}" data-color="${h(color)}" style="--icon-color:${h(color)}">${h(icon)}</button>`)
-              .join("")}
-          </div>
+          </section>
+
+          <section class="bookmark-editor-section">
+            <header class="bookmark-section-title"><strong>卡片背景</strong><small>可选，支持模糊和遮罩效果</small></header>
+            <label class="field wide">
+              <input name="background_image" value="${h(card.background_image || "")}" placeholder="背景图 URL..." />
+            </label>
+            <button type="button" class="bookmark-editor-upload" data-action="card-background-pick">
+              <span>＋</span>
+              <strong>点击上传</strong>
+            </button>
+            <div class="bookmark-appearance-row">
+              <label class="field color-field">
+                <span>文字</span>
+                <input name="color" type="color" value="${h(card.color || "#2f80ed")}" />
+              </label>
+              <label class="field color-field">
+                <span>背景</span>
+                <input name="card_color" type="color" value="${h(card.card_color || "#ffffff")}" />
+              </label>
+              <div class="range-row opacity-row">
+                <span>透明度</span>
+                <input id="cardBackgroundOpacity" name="background_opacity" type="range" min="0" max="100" value="${h(backgroundOpacity)}" data-output="cardBackgroundOpacityValue" />
+                <b id="cardBackgroundOpacityValue">${h(backgroundOpacity)}%</b>
+              </div>
+              <input type="hidden" name="show_background" value="0" />
+              <label class="switch-label bookmark-switch compact"><span>显示</span><input name="show_background" value="1" type="checkbox" ${showBackgroundChecked ? "checked" : ""} /><i></i></label>
+            </div>
+          </section>
+
+          <section class="bookmark-editor-section bookmark-editor-section-last">
+            <header class="bookmark-section-title"><strong>图标形状</strong></header>
+            <div class="bookmark-select-row">
+              <label class="field">
+                <select name="icon_shape">
+                  <option value="circle" ${cardIconShape(card) === "circle" ? "selected" : ""}>圆形</option>
+                  <option value="squircle" ${cardIconShape(card) === "squircle" ? "selected" : ""}>超椭圆</option>
+                  <option value="rounded" ${cardIconShape(card) === "rounded" ? "selected" : ""}>圆角</option>
+                  <option value="square" ${cardIconShape(card) === "square" ? "selected" : ""}>直角</option>
+                </select>
+              </label>
+              <span class="bookmark-icon-dot" style="--icon-color:${h(card.color || "#2f80ed")}"></span>
+            </div>
+            <div class="bookmark-select-row triple">
+              <label class="field">
+                <span>卡片尺寸</span>
+                <select name="size">
+                  <option value="small" ${cardSize(card) === "small" ? "selected" : ""}>小</option>
+                  <option value="medium" ${cardSize(card) === "medium" ? "selected" : ""}>中</option>
+                  <option value="large" ${cardSize(card) === "large" ? "selected" : ""}>大</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>卡片样式</span>
+                <select name="style">
+                  <option value="default" ${cardStyle(card) === "default" ? "selected" : ""}>默认</option>
+                  <option value="soft" ${cardStyle(card) === "soft" ? "selected" : ""}>柔和</option>
+                  <option value="outline" ${cardStyle(card) === "outline" ? "selected" : ""}>描边</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>卡片形状</span>
+                <select name="shape">
+                  <option value="rounded" ${cardShape(card) === "rounded" ? "selected" : ""}>圆角</option>
+                  <option value="squircle" ${cardShape(card) === "squircle" ? "selected" : ""}>超椭圆</option>
+                  <option value="pill" ${cardShape(card) === "pill" ? "selected" : ""}>胶囊</option>
+                  <option value="square" ${cardShape(card) === "square" ? "selected" : ""}>直角</option>
+                </select>
+              </label>
+            </div>
+          </section>
         </div>
         <div class="card-modal-foot">
           <button type="button" data-action="card-cancel">取消</button>
@@ -3401,8 +3493,12 @@ document.addEventListener("click", async (event) => {
     if (action === "card-icon-pick") {
       document.getElementById("cardIconUpload")?.click();
     }
+    if (action === "card-background-pick") {
+      document.getElementById("cardBackgroundUpload")?.click();
+    }
     if (action === "card-icon-auto") {
       if (state.editingCard) {
+        syncEditingCardFromForm();
         const icon = autoIconForCard(state.editingCard);
         state.editingCard.icon = icon.icon;
         state.editingCard.color = icon.color;
@@ -3414,6 +3510,7 @@ document.addEventListener("click", async (event) => {
     }
     if (action === "card-icon-library") {
       if (state.editingCard) {
+        syncEditingCardFromForm();
         state.editingCard.icon = button.dataset.icon || state.editingCard.icon;
         state.editingCard.color = button.dataset.color || state.editingCard.color;
         state.cardModal.clearIcon = true;
@@ -3986,6 +4083,15 @@ document.addEventListener("change", async (event) => {
       event.target.value = "";
       render();
     }
+    if (event.target.id === "cardBackgroundUpload") {
+      const file = event.target.files[0];
+      if (!file || !state.editingCard) return;
+      const buffer = await file.arrayBuffer();
+      state.editingCard.background_image = `data:${file.type};base64,${bytesToBase64(buffer)}`;
+      state.editingCard.show_background = 1;
+      event.target.value = "";
+      render();
+    }
     if (event.target.dataset.action === "container-color") {
       await api(`/api/docker/containers/${encodeURIComponent(event.target.dataset.id)}/pref`, {
         method: "POST",
@@ -4008,6 +4114,10 @@ document.addEventListener("change", async (event) => {
 });
 
 document.addEventListener("input", (event) => {
+  if (event.target.dataset.output) {
+    const output = document.getElementById(event.target.dataset.output);
+    if (output) output.textContent = `${event.target.value}%`;
+  }
   if (event.target.id === "imageSearch") {
     state.images.query = event.target.value;
     render();

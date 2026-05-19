@@ -289,6 +289,45 @@ def test_nav_preferences_are_normalized() -> None:
     assert_true(prefs["groups"]["Docker"]["radius"] == "pill", "首页导航分组卡片形状应可保存")
 
 
+def test_card_visual_fields_are_persisted_and_normalized() -> None:
+    with tempfile.TemporaryDirectory() as tmp:
+        store = server.Store(Path(tmp) / "dockpilot.db")
+        store.init()
+        created = store.create_card(
+            {
+                "title": "QB",
+                "url": "qb.example.com",
+                "group_name": "Docker",
+                "is_public": True,
+                "background_image": "https://example.com/bg.webp",
+                "background_opacity": "145",
+                "show_background": False,
+                "icon_scale": "135",
+            }
+        )
+        assert_true(created["is_public"] == 1, "书签公开开关应被持久化")
+        assert_true(created["background_image"] == "https://example.com/bg.webp", "书签卡片背景图 URL 应被持久化")
+        assert_true(created["background_opacity"] == 100, "书签背景透明度应限制在 0-100")
+        assert_true(created["show_background"] == 0, "书签背景显示开关应被持久化")
+        assert_true(created["icon_scale"] == 135, "书签图标缩放应被持久化")
+
+        updated = store.update_card(
+            int(created["id"]),
+            {
+                "is_public": False,
+                "background_image": "",
+                "background_opacity": "-20",
+                "show_background": True,
+                "icon_scale": "12",
+            },
+        )
+        assert_true(updated["is_public"] == 0, "书签公开开关应支持关闭")
+        assert_true(updated["background_image"] == "", "书签背景图应支持清空")
+        assert_true(updated["background_opacity"] == 0, "书签背景透明度下限应限制为 0")
+        assert_true(updated["show_background"] == 1, "书签背景显示开关应支持打开")
+        assert_true(updated["icon_scale"] == 50, "书签图标缩放应限制到稳定下限")
+
+
 def test_remote_image_search_strips_tag_from_full_reference() -> None:
     assert_true(
         normalize_image_search_query("shenxianmq/symedia:latest") == "shenxianmq/symedia",
@@ -419,6 +458,7 @@ def main() -> int:
     test_volumes_are_marked_used_from_container_mounts()
     test_volume_label_lines_are_normalized()
     test_nav_preferences_are_normalized()
+    test_card_visual_fields_are_persisted_and_normalized()
     test_remote_image_search_strips_tag_from_full_reference()
     test_remote_image_search_returns_direct_fallback_for_simple_name()
     test_network_proxy_url_is_normalized_for_lan_proxy()

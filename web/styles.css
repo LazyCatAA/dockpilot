@@ -12165,6 +12165,364 @@ body,
   font-size: 14px;
 }
 
+.switch-label input:checked + i {
+  background: #3b82f6;
+}
+
+.switch-label input:checked + i::after {
+  transform: translateX(22px);
+}
+
+.bookmark-editor-modal.nav-compact-modal,
+.bookmark-editor-modal.bookmark-editor-shell {
+  width: min(470px, calc(100vw - 40px));
+  max-height: min(82vh, 805px);
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 28px 90px rgba(15, 23, 42, 0.28);
+}
+
+.bookmark-editor-backdrop {
+  background: rgba(15, 23, 42, 0.56);
+  backdrop-filter: blur(16px);
+}
+
+.bookmark-editor-modal .card-modal-head {
+  min-height: 62px;
+  padding: 16px 24px;
+  border-bottom: 1px solid #edf0f4;
+}
+
+.bookmark-editor-modal .card-modal-head h3 {
+  font-size: 20px;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.bookmark-editor-modal .card-modal-head-tools {
+  gap: 10px;
+}
+
+.bookmark-editor-modal .bookmark-group-select {
+  width: 86px;
+  min-height: 32px;
+  padding: 0 20px 0 0;
+  border: 0;
+  background: transparent;
+  color: #465166;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.bookmark-editor-modal .card-modal-head-tools > button[data-action="card-cancel"] {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  min-height: 32px;
+  border: 0;
+  background: transparent;
+  color: #9aa4b2;
+  font-size: 28px;
+  line-height: 1;
+  box-shadow: none;
+}
+
+.bookmark-editor-modal .card-modal-body {
+  display: block;
+  padding: 0;
+  background: #ffffff;
+}
+
+.bookmark-editor-modal .bookmark-editor-section {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 18px 24px 20px;
+  border-bottom: 1px solid #eef2f7;
+}
+
+.bookmark-editor-modal .bookmark-editor-section-last {
+  border-bottom: 0;
+}
+
+.bookmark-editor-modal .bookmark-title-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 58px;
+  gap: 12px;
+  align-items: end;
+}
+
+.bookmark-editor-modal .field {
+  gap: 7px;
+}
+
+.bookmark-editor-modal .field span,
+.bookmark-editor-modal .bookmark-section-title strong {
+  color: #475569;
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.bookmark-editor-modal .field span b {
+  color: #ef4444;
+}
+
+.bookmark-editor-modal .field span small,
+.bookmark-editor-modal .bookmark-section-title small {
+  margin-left: 5px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.bookmark-editor-modal .field input,
+.bookmark-editor-modal .field textarea,
+.bookmark-editor-modal .field select,
+.bookmark-editor-modal.nav-compact-modal .field input,
+.bookmark-editor-modal.nav-compact-modal .field textarea,
+.bookmark-editor-modal.nav-compact-modal .field select {
+  min-height: 40px;
+  border: 1px solid #dfe5ec;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #111827;
+  font-size: 16px;
+  box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.02);
+}
+
+.bookmark-editor-modal .field textarea,
+.bookmark-editor-modal.nav-compact-modal .field textarea {
+  min-height: 80px;
+  resize: vertical;
+  line-height: 1.45;
+}
+
+.bookmark-editor-modal .color-field input[type="color"] {
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.bookmark-editor-modal .bookmark-section-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 18px;
+}
+
+.bookmark-editor-modal .bookmark-icon-panel {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.bookmark-editor-modal .card-icon-preview,
+.bookmark-editor-modal.nav-compact-modal .card-icon-preview {
+  width: 84px;
+  height: 84px;
+  min-height: 84px;
+  border: 1px solid #0f172a;
+  border-radius: 14px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--bookmark-accent, #2f80ed) 86%, #dbeafe), #e0f2fe);
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+}
+
+.bookmark-editor-modal .card-icon-preview img,
+.bookmark-editor-modal .card-icon-preview span {
+  transform: scale(var(--bookmark-icon-scale, 1));
+}
+
+.bookmark-editor-modal .bookmark-icon-controls {
+  display: grid;
+  gap: 10px;
+}
+
+.bookmark-editor-modal .bookmark-icon-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bookmark-editor-modal .bookmark-cache-badge,
+.bookmark-editor-modal .bookmark-icon-actions button {
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.bookmark-editor-modal .bookmark-cache-badge {
+  display: inline-flex;
+  align-items: center;
+  background: #111827;
+  color: #ffffff;
+}
+
+.bookmark-editor-modal .bookmark-icon-actions button {
+  border: 0;
+  background: #eef4ff;
+  color: #2563eb;
+}
+
+.bookmark-editor-modal .range-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) 42px;
+  gap: 9px;
+  align-items: center;
+  min-height: 30px;
+  color: #8a94a8;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.bookmark-editor-modal .range-row input[type="range"] {
+  width: 100%;
+  accent-color: #3b82f6;
+}
+
+.bookmark-editor-modal .range-row b {
+  color: #64748b;
+  font-size: 12px;
+  text-align: right;
+}
+
+.bookmark-editor-modal .icon-url-field input {
+  font-size: 14px;
+}
+
+.bookmark-editor-modal .bookmark-editor-upload {
+  width: 100%;
+  min-height: 132px;
+  display: grid;
+  place-items: center;
+  gap: 6px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #64748b;
+  font-weight: 850;
+}
+
+.bookmark-editor-modal .bookmark-editor-upload span {
+  color: #94a3b8;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.bookmark-editor-modal .bookmark-appearance-row {
+  display: grid;
+  grid-template-columns: 44px 44px minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: end;
+}
+
+.bookmark-editor-modal .opacity-row {
+  grid-template-columns: 52px minmax(0, 1fr) 38px;
+}
+
+.bookmark-editor-modal .bookmark-select-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px;
+  gap: 12px;
+  align-items: end;
+}
+
+.bookmark-editor-modal .bookmark-select-row.triple {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.bookmark-editor-modal .bookmark-icon-dot {
+  width: 36px;
+  height: 36px;
+  display: block;
+  border-radius: 12px;
+  background: var(--icon-color, #2f80ed);
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+}
+
+.bookmark-editor-modal .bookmark-switch {
+  gap: 8px;
+  font-size: 12px;
+}
+
+.bookmark-editor-modal .bookmark-switch i,
+.bookmark-editor-modal.nav-compact-modal .bookmark-switch i {
+  width: 38px;
+  height: 22px;
+}
+
+.bookmark-editor-modal .bookmark-switch i::after,
+.bookmark-editor-modal.nav-compact-modal .bookmark-switch i::after {
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  transition: transform 0.18s ease;
+}
+
+.bookmark-editor-modal .bookmark-switch input:checked + i::after {
+  transform: translateX(16px);
+}
+
+.bookmark-editor-modal .card-modal-foot {
+  position: sticky;
+  bottom: 0;
+  padding: 16px 24px;
+  border-top: 1px solid #eef2f7;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+}
+
+.bookmark-editor-modal .card-modal-foot button,
+.bookmark-editor-modal.nav-compact-modal .card-modal-foot button {
+  min-width: 108px;
+  min-height: 38px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.bookmark-editor-modal .card-modal-foot .primary {
+  background: #111827;
+}
+
+.nav-minimal-card.has-card-background::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--bookmark-card-image);
+  background-position: center;
+  background-size: cover;
+  opacity: var(--bookmark-bg-opacity, 1);
+}
+
+.nav-minimal-card.has-card-background::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background: color-mix(in srgb, var(--bookmark-card-bg, #ffffff) 68%, transparent);
+}
+
+.nav-minimal-card.has-card-background > * {
+  position: relative;
+  z-index: 1;
+}
+
+.nav-minimal-card-icon > img,
+.nav-minimal-card-icon > span {
+  transform: scale(var(--bookmark-icon-scale, 1));
+  transition: transform 0.18s ease;
+}
+
 @media (max-width: 720px) {
   .nav-home.nav-workbench {
     gap: 14px;

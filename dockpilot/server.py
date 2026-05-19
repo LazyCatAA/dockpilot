@@ -135,6 +135,33 @@ def normalize_card_description(value: Any) -> str:
     return str(value or "").strip()[:2000]
 
 
+def normalize_bool_int(value: Any) -> int:
+    if isinstance(value, bool):
+        return 1 if value else 0
+    return 1 if str(value or "").strip().lower() in {"1", "true", "yes", "on"} else 0
+
+
+def normalize_int_range(value: Any, fallback: int, minimum: int, maximum: int) -> int:
+    try:
+        number = int(float(str(value).strip()))
+    except (TypeError, ValueError):
+        number = fallback
+    return max(minimum, min(maximum, number))
+
+
+def normalize_card_background_image(value: Any) -> str:
+    image = str(value or "").strip()
+    if not image:
+        return ""
+    if image.startswith("data:image/"):
+        if len(image) > 2_500_000:
+            raise ValueError("background image is too large")
+        if not re.match(r"^data:image/(png|jpeg|jpg|webp|gif);base64,[A-Za-z0-9+/=\s]+$", image, re.I):
+            raise ValueError("invalid background image")
+        return image
+    return normalize_card_url(image)[:1000]
+
+
 def read_json_setting(value: str | None, fallback: Any) -> Any:
     if not value:
         return fallback
@@ -288,6 +315,11 @@ class Store:
                     shape TEXT NOT NULL DEFAULT 'rounded',
                     icon_shape TEXT NOT NULL DEFAULT 'squircle',
                     icon_data TEXT NOT NULL DEFAULT '',
+                    is_public INTEGER NOT NULL DEFAULT 0,
+                    background_image TEXT NOT NULL DEFAULT '',
+                    background_opacity INTEGER NOT NULL DEFAULT 100,
+                    show_background INTEGER NOT NULL DEFAULT 0,
+                    icon_scale INTEGER NOT NULL DEFAULT 100,
                     sort_order INTEGER NOT NULL DEFAULT 0,
                     created_at INTEGER NOT NULL,
                     updated_at INTEGER NOT NULL
@@ -322,6 +354,11 @@ class Store:
                 "shape": "ALTER TABLE cards ADD COLUMN shape TEXT NOT NULL DEFAULT 'rounded'",
                 "icon_shape": "ALTER TABLE cards ADD COLUMN icon_shape TEXT NOT NULL DEFAULT 'squircle'",
                 "icon_data": "ALTER TABLE cards ADD COLUMN icon_data TEXT NOT NULL DEFAULT ''",
+                "is_public": "ALTER TABLE cards ADD COLUMN is_public INTEGER NOT NULL DEFAULT 0",
+                "background_image": "ALTER TABLE cards ADD COLUMN background_image TEXT NOT NULL DEFAULT ''",
+                "background_opacity": "ALTER TABLE cards ADD COLUMN background_opacity INTEGER NOT NULL DEFAULT 100",
+                "show_background": "ALTER TABLE cards ADD COLUMN show_background INTEGER NOT NULL DEFAULT 0",
+                "icon_scale": "ALTER TABLE cards ADD COLUMN icon_scale INTEGER NOT NULL DEFAULT 100",
             }
             for column, statement in card_migrations.items():
                 if column not in card_columns:
@@ -454,6 +491,11 @@ class Store:
         style = normalize_card_style(data.get("style"))
         shape = normalize_card_shape(data.get("shape"))
         icon_shape = normalize_icon_shape(data.get("icon_shape"))
+        is_public = normalize_bool_int(data.get("is_public", False))
+        background_image = normalize_card_background_image(data.get("background_image", ""))
+        background_opacity = normalize_int_range(data.get("background_opacity", 100), 100, 0, 100)
+        show_background = normalize_bool_int(data.get("show_background", False))
+        icon_scale = normalize_int_range(data.get("icon_scale", 100), 100, 50, 160)
         icon_data = ""
         if data.get("icon_content_base64"):
             icon_data = normalize_container_icon(str(data.get("icon_content_base64", "")), str(data.get("icon_mime", "")))
@@ -462,9 +504,9 @@ class Store:
             cursor = conn.execute(
                 """
                 INSERT INTO cards(
-                  title,url,internal_url,description,group_name,icon,color,title_color,card_color,size,style,shape,icon_shape,icon_data,sort_order,created_at,updated_at
+                  title,url,internal_url,description,group_name,icon,color,title_color,card_color,size,style,shape,icon_shape,icon_data,is_public,background_image,background_opacity,show_background,icon_scale,sort_order,created_at,updated_at
                 )
-                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 """,
                 (
                     title,
@@ -481,6 +523,11 @@ class Store:
                     shape,
                     icon_shape,
                     icon_data,
+                    is_public,
+                    background_image,
+                    background_opacity,
+                    show_background,
+                    icon_scale,
                     int(row["next_order"]),
                     now_ts(),
                     now_ts(),
@@ -504,6 +551,11 @@ class Store:
             "style",
             "shape",
             "icon_shape",
+            "is_public",
+            "background_image",
+            "background_opacity",
+            "show_background",
+            "icon_scale",
             "sort_order",
         ]
         updates = []
@@ -532,6 +584,16 @@ class Store:
                     data[key] = normalize_card_shape(data[key])
                 if key == "icon_shape":
                     data[key] = normalize_icon_shape(data[key])
+                if key == "is_public":
+                    data[key] = normalize_bool_int(data[key])
+                if key == "background_image":
+                    data[key] = normalize_card_background_image(data[key])
+                if key == "background_opacity":
+                    data[key] = normalize_int_range(data[key], 100, 0, 100)
+                if key == "show_background":
+                    data[key] = normalize_bool_int(data[key])
+                if key == "icon_scale":
+                    data[key] = normalize_int_range(data[key], 100, 50, 160)
                 if key == "sort_order":
                     data[key] = int(data[key])
                 updates.append(f"{key}=?")

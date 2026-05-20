@@ -12100,6 +12100,47 @@ body,
   color: #99a4b5;
 }
 
+@media (min-width: 1920px) {
+  .content {
+    padding: clamp(28px, 1.7vw, 48px) clamp(36px, 3vw, 96px) 56px;
+  }
+
+  .nav-home.nav-workbench {
+    max-width: min(3000px, calc(100vw - 260px));
+    min-height: calc(100vh - 96px);
+    gap: clamp(30px, 1.7vw, 46px);
+    padding: clamp(42px, 2.2vw, 72px);
+  }
+
+  .nav-workbench-title strong {
+    font-size: clamp(42px, 1.9vw, 58px);
+  }
+
+  .nav-workbench-title span {
+    font-size: clamp(15px, 0.58vw, 18px);
+  }
+
+  .nav-workbench-search {
+    width: min(1120px, 62vw);
+  }
+
+  .nav-workbench .nav-reference-board {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(430px, 1fr));
+    align-items: start;
+    gap: clamp(24px, 1.35vw, 38px);
+  }
+
+  .nav-workbench-library-head,
+  .nav-reference-toolbar.nav-workbench-library-head {
+    grid-column: 1 / -1;
+  }
+
+  .nav-workbench-group {
+    align-self: start;
+  }
+}
+
 .nav-compact-modal,
 .bookmark-editor-modal.nav-compact-modal,
 .nav-settings-modal.nav-compact-modal,
